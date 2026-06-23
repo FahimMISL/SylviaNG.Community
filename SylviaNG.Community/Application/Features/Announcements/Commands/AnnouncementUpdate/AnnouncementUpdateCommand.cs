@@ -8,9 +8,9 @@ namespace SylviaNG.Community.Application.Features.Announcements.Commands.Announc
         public long AnnouncementId { get; set; }
         public AnnouncementUpdateRequest Request { get; set; }
 
-        public AnnouncementUpdateCommand(long AnnouncementId, AnnouncementUpdateRequest request)
+        public AnnouncementUpdateCommand(long announcementId, AnnouncementUpdateRequest request)
         {
-            AnnouncementId = AnnouncementId;
+            AnnouncementId = announcementId;
             Request = request;
         }
     }

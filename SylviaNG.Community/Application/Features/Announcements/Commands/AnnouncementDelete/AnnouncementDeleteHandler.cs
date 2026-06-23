@@ -5,16 +5,16 @@ namespace SylviaNG.Community.Application.Features.Announcements.Commands.Announc
 {
     public class AnnouncementDeleteHandler : IRequestHandler<AnnouncementDeleteCommand, Unit>
     {
-        private readonly IAnnouncementService _AnnouncementService;
+        private readonly IAnnouncementService _announcementService;
 
-        public AnnouncementDeleteHandler(IAnnouncementService AnnouncementService)
+        public AnnouncementDeleteHandler(IAnnouncementService announcementService)
         {
-            _AnnouncementService = AnnouncementService;
+            _announcementService = announcementService;
         }
 
         public async Task<Unit> Handle(AnnouncementDeleteCommand command, CancellationToken cancellationToken)
         {
-            await _AnnouncementService.DeleteAsync(command.AnnouncementId);
+            await _announcementService.DeleteAsync(command.AnnouncementId);
             return Unit.Value;
         }
     }

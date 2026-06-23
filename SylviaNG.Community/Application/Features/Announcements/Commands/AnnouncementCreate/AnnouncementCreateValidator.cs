@@ -13,18 +13,10 @@ namespace SylviaNG.Community.Application.Features.Announcements.Commands.Announc
             RuleFor(x => x.Request.SiteId)
                 .GreaterThan(0).WithMessage("SiteId is required.");
 
-            RuleFor(x => x.Request.NumberOfPositions)
-                .GreaterThan(0).WithMessage("Number of positions must be greater than 0.");
-
-            RuleFor(x => x.Request.MinSalary)
-                .LessThan(x => x.Request.MaxSalary)
-                .When(x => x.Request.MinSalary.HasValue && x.Request.MaxSalary.HasValue)
-                .WithMessage("MinSalary must be less than MaxSalary.");
-
-            RuleFor(x => x.Request.ClosingDate)
-                .GreaterThan(x => x.Request.PostingDate)
-                .When(x => x.Request.PostingDate.HasValue && x.Request.ClosingDate.HasValue)
-                .WithMessage("Closing date must be after posting date.");
+            RuleFor(x => x.Request.ExpiryDate)
+                .GreaterThan(x => x.Request.PublishDate)
+                .When(x => x.Request.PublishDate.HasValue && x.Request.ExpiryDate.HasValue)
+                .WithMessage("Expiry date must be after publish date.");
         }
     }
 }

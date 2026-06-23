@@ -6,9 +6,9 @@ namespace SylviaNG.Community.Application.Interfaces.Services
     public interface IAnnouncementService
     {
         Task<long> CreateAsync(AnnouncementCreateRequest request);
-        Task UpdateAsync(long AnnouncementId, AnnouncementUpdateRequest request);
-        Task DeleteAsync(long AnnouncementId);
-        Task<AnnouncementResponse> GetByIdAsync(long AnnouncementId);
+        Task UpdateAsync(long announcementId, AnnouncementUpdateRequest request);
+        Task DeleteAsync(long announcementId);
+        Task<AnnouncementResponse> GetByIdAsync(long announcementId);
         Task<List<AnnouncementResponse>> GetAllAsync();
         Task<PagedResult<AnnouncementResponse>> GetPaginatedAsync(PagedRequest request);
         Task<List<AnnouncementLookupResponse>> GetActiveBySiteIdAsync(long siteId);

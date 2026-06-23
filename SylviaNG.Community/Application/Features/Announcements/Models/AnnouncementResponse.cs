@@ -9,19 +9,12 @@ namespace SylviaNG.Community.Application.Features.Announcements.Models
         public string? SiteName { get; set; }
         public long? DepartmentId { get; set; }
         public string? DepartmentName { get; set; }
-        public long? DesignationId { get; set; }
-        public string? DesignationName { get; set; }
         public string Title { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public string? Requirements { get; set; }
-        public int NumberOfPositions { get; set; }
-        public EmploymentTypeEnum EmploymentType { get; set; }
-        public JobStatusEnum Status { get; set; }
-        public decimal? MinSalary { get; set; }
-        public decimal? MaxSalary { get; set; }
-        public DateTime? PostingDate { get; set; }
-        public DateTime? ClosingDate { get; set; }
+        public string? Body { get; set; }
+        public AnnouncementTypeEnum AnnouncementType { get; set; }
+        public AnnouncementStatusEnum Status { get; set; }
+        public DateTime? PublishDate { get; set; }
+        public DateTime? ExpiryDate { get; set; }
         public bool IsActive { get; set; }
-        public int TotalApplications { get; set; }
     }
 }

@@ -7,16 +7,16 @@ namespace SylviaNG.Community.Application.Features.Announcements.Queries.Announce
 {
     public class AnnouncementGetAllPagedHandler : IRequestHandler<AnnouncementGetAllPagedQuery, PagedResult<AnnouncementResponse>>
     {
-        private readonly IAnnouncementService _AnnouncementService;
+        private readonly IAnnouncementService _announcementService;
 
-        public AnnouncementGetAllPagedHandler(IAnnouncementService AnnouncementService)
+        public AnnouncementGetAllPagedHandler(IAnnouncementService announcementService)
         {
-            _AnnouncementService = AnnouncementService;
+            _announcementService = announcementService;
         }
 
         public async Task<PagedResult<AnnouncementResponse>> Handle(AnnouncementGetAllPagedQuery query, CancellationToken cancellationToken)
         {
-            return await _AnnouncementService.GetPaginatedAsync(query.Request);
+            return await _announcementService.GetPaginatedAsync(query.Request);
         }
     }
 }

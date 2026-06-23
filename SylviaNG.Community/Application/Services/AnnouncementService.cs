@@ -10,68 +10,66 @@ namespace SylviaNG.Community.Application.Services
 {
     public class AnnouncementService : IAnnouncementService
     {
-        private readonly IAnnouncementRepository _AnnouncementRepository;
+        private readonly IAnnouncementRepository _announcementRepository;
         private readonly IUnitOfWork _unitOfWork;
 
         public AnnouncementService(
-            IAnnouncementRepository AnnouncementRepository,
-            IUnitOfWork _unitOfWork)
+            IAnnouncementRepository announcementRepository,
+            IUnitOfWork unitOfWork)
         {
-            _AnnouncementRepository = AnnouncementRepository;
-            this._unitOfWork = _unitOfWork;
+            _announcementRepository = announcementRepository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<long> CreateAsync(AnnouncementCreateRequest request)
         {
-            var exists = await _AnnouncementRepository.ExistsByTitleAndSiteIdAsync(request.Title, request.SiteId);
+            var exists = await _announcementRepository.ExistsByTitleAndSiteIdAsync(request.Title, request.SiteId);
             if (exists)
                 throw new DuplicateException("Announcement", "Title", request.Title);
 
             var entity = request.ToEntity();
-            await _AnnouncementRepository.AddAsync(entity);
+            await _announcementRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
             return entity.AnnouncementId;
         }
 
-        public async Task UpdateAsync(long AnnouncementId, AnnouncementUpdateRequest request)
+        public async Task UpdateAsync(long announcementId, AnnouncementUpdateRequest request)
         {
-            var entity = await _AnnouncementRepository.GetByIdAsync(AnnouncementId)
-                ?? throw new NotFoundException("Announcement", AnnouncementId);
+            var entity = await _announcementRepository.GetByIdAsync(announcementId)
+                ?? throw new NotFoundException("Announcement", announcementId);
 
             entity.ApplyUpdate(request);
-            _AnnouncementRepository.Update(entity);
+            _announcementRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task DeleteAsync(long AnnouncementId)
+        public async Task DeleteAsync(long announcementId)
         {
-            var entity = await _AnnouncementRepository.GetByIdAsync(AnnouncementId)
-                ?? throw new NotFoundException("Announcement", AnnouncementId);
+            var entity = await _announcementRepository.GetByIdAsync(announcementId)
+                ?? throw new NotFoundException("Announcement", announcementId);
 
-            _AnnouncementRepository.Delete(entity);
+            _announcementRepository.Delete(entity);
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task<AnnouncementResponse> GetByIdAsync(long AnnouncementId)
+        public async Task<AnnouncementResponse> GetByIdAsync(long announcementId)
         {
-            var entity = await _AnnouncementRepository.GetByIdWithIncludeAsync(
-                j => j.AnnouncementId == AnnouncementId,
-                j => j.Applications)
-                ?? throw new NotFoundException("Announcement", AnnouncementId);
+            var entity = await _announcementRepository.GetByIdAsync(announcementId)
+                ?? throw new NotFoundException("Announcement", announcementId);
 
             return entity.ToResponse();
         }
 
         public async Task<List<AnnouncementResponse>> GetAllAsync()
         {
-            var entities = await _AnnouncementRepository.GetAllWithIncludeAsync(j => j.Applications);
+            var entities = await _announcementRepository.GetAllAsync();
             return entities.Select(e => e.ToResponse()).ToList();
         }
 
         public async Task<PagedResult<AnnouncementResponse>> GetPaginatedAsync(PagedRequest request)
         {
-            var pagedResult = await _AnnouncementRepository.GetPaginatedAsync(request);
+            var pagedResult = await _announcementRepository.GetPaginatedAsync(request);
 
             return new PagedResult<AnnouncementResponse>
             {
@@ -84,7 +82,7 @@ namespace SylviaNG.Community.Application.Services
 
         public async Task<List<AnnouncementLookupResponse>> GetActiveBySiteIdAsync(long siteId)
         {
-            var entities = await _AnnouncementRepository.GetActiveBySiteIdAsync(siteId);
+            var entities = await _announcementRepository.GetActiveBySiteIdAsync(siteId);
             return entities.Select(e => e.ToLookupResponse()).ToList();
         }
     }

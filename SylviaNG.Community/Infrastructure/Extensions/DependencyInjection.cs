@@ -69,7 +69,6 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             // Register your repositories here
             // Adding DI of repositories
             services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
-            services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 
             // Register Unit of Work
             services.AddScoped<IUnitOfWork, UnitOfWork>();

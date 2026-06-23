@@ -55,8 +55,6 @@ namespace SylviaNG.Community.Infrastructure.Data
         #region Tables
 
         public DbSet<Announcement> Announcements { get; set; }
-        public DbSet<JobApplication> JobApplications { get; set; }
-        public DbSet<Interview> Interviews { get; set; }
         public DbSet<Employee> Employees { get; set; }
 
         #endregion

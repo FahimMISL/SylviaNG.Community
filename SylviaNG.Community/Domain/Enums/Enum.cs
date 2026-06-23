@@ -1,31 +1,20 @@
 namespace SylviaNG.Community.Domain.Enums;
 
-public enum JobStatusEnum
+public enum AnnouncementStatusEnum
 {
     Draft,
-    Open,
-    OnHold,
-    Closed,
+    Published,
+    Scheduled,
+    Expired,
     Archived
 }
 
-public enum EmploymentTypeEnum
+public enum AnnouncementTypeEnum
 {
-    FullTime,
-    PartTime,
-    Contract,
-    Internship
-}
-
-public enum ApplicationStatusEnum
-{
-    Applied,
-    Screening,
-    Shortlisted,
-    InterviewScheduled,
-    Interviewed,
-    Offered,
-    Hired,
-    Rejected,
-    Withdrawn
+    General,
+    Holiday,
+    Event,
+    Policy,
+    Emergency,
+    Achievement
 }

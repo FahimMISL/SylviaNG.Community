@@ -12,7 +12,7 @@ using SylviaNG.Community.SharedKernel.Pagination;
 namespace SylviaNG.Community.Controllers
 {
     [ApiController]
-    [Route("community/job-posting")]
+    [Route("community/announcement")]
     public class AnnouncementController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -23,7 +23,7 @@ namespace SylviaNG.Community.Controllers
         }
 
         /// <summary>
-        /// Get all job postings.
+        /// Get all announcements.
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<List<AnnouncementResponse>>> GetAll()
@@ -33,17 +33,17 @@ namespace SylviaNG.Community.Controllers
         }
 
         /// <summary>
-        /// Get a job posting by ID.
+        /// Get an announcement by ID.
         /// </summary>
-        [HttpGet("{AnnouncementId}")]
-        public async Task<ActionResult<AnnouncementResponse>> GetById(long AnnouncementId)
+        [HttpGet("{announcementId}")]
+        public async Task<ActionResult<AnnouncementResponse>> GetById(long announcementId)
         {
-            var result = await _mediator.Send(new AnnouncementGetByIdQuery(AnnouncementId));
+            var result = await _mediator.Send(new AnnouncementGetByIdQuery(announcementId));
             return Ok(result);
         }
 
         /// <summary>
-        /// Get paginated job postings with search and sort.
+        /// Get paginated announcements with search and sort.
         /// </summary>
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResult<AnnouncementResponse>>> GetPaged([FromQuery] PagedRequest request)
@@ -53,7 +53,7 @@ namespace SylviaNG.Community.Controllers
         }
 
         /// <summary>
-        /// Create a new job posting.
+        /// Create a new announcement.
         /// </summary>
         [HttpPost]
         public async Task<ActionResult<long>> Create([FromBody] AnnouncementCreateRequest request)
@@ -63,22 +63,22 @@ namespace SylviaNG.Community.Controllers
         }
 
         /// <summary>
-        /// Update an existing job posting.
+        /// Update an existing announcement.
         /// </summary>
-        [HttpPut("{AnnouncementId}")]
-        public async Task<ActionResult> Update(long AnnouncementId, [FromBody] AnnouncementUpdateRequest request)
+        [HttpPut("{announcementId}")]
+        public async Task<ActionResult> Update(long announcementId, [FromBody] AnnouncementUpdateRequest request)
         {
-            await _mediator.Send(new AnnouncementUpdateCommand(AnnouncementId, request));
+            await _mediator.Send(new AnnouncementUpdateCommand(announcementId, request));
             return Ok();
         }
 
         /// <summary>
-        /// Delete a job posting.
+        /// Delete an announcement.
         /// </summary>
-        [HttpDelete("{AnnouncementId}")]
-        public async Task<ActionResult> Delete(long AnnouncementId)
+        [HttpDelete("{announcementId}")]
+        public async Task<ActionResult> Delete(long announcementId)
         {
-            await _mediator.Send(new AnnouncementDeleteCommand(AnnouncementId));
+            await _mediator.Send(new AnnouncementDeleteCommand(announcementId));
             return Ok();
         }
     }

@@ -29,7 +29,6 @@ namespace SylviaNG.Community.Application.Extensions
             // Add community-specific services here
 
             services.AddScoped<IAnnouncementService, AnnouncementService>();
-            services.AddScoped<IJobApplicationService, JobApplicationService>();
 
             // Provide access to HttpContext for request metadata enrichment
             services.AddHttpContextAccessor();

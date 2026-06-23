@@ -7,9 +7,9 @@ namespace SylviaNG.Community.Application.Features.Announcements.Queries.Announce
     {
         public long AnnouncementId { get; set; }
 
-        public AnnouncementGetByIdQuery(long AnnouncementId)
+        public AnnouncementGetByIdQuery(long announcementId)
         {
-            AnnouncementId = AnnouncementId;
+            AnnouncementId = announcementId;
         }
     }
 }

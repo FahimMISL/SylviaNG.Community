@@ -6,16 +6,16 @@ namespace SylviaNG.Community.Application.Features.Announcements.Queries.Announce
 {
     public class AnnouncementGetByIdHandler : IRequestHandler<AnnouncementGetByIdQuery, AnnouncementResponse>
     {
-        private readonly IAnnouncementService _AnnouncementService;
+        private readonly IAnnouncementService _announcementService;
 
-        public AnnouncementGetByIdHandler(IAnnouncementService AnnouncementService)
+        public AnnouncementGetByIdHandler(IAnnouncementService announcementService)
         {
-            _AnnouncementService = AnnouncementService;
+            _announcementService = announcementService;
         }
 
         public async Task<AnnouncementResponse> Handle(AnnouncementGetByIdQuery query, CancellationToken cancellationToken)
         {
-            return await _AnnouncementService.GetByIdAsync(query.AnnouncementId);
+            return await _announcementService.GetByIdAsync(query.AnnouncementId);
         }
     }
 }

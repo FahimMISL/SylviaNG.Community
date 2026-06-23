@@ -29,8 +29,8 @@ public class AnnouncementControllerTests
         // Arrange
         var expected = new List<AnnouncementResponse>
         {
-            new() { AnnouncementId = 1, Title = "Software Engineer", Status = JobStatusEnum.Open },
-            new() { AnnouncementId = 2, Title = "UI Designer", Status = JobStatusEnum.Draft }
+            new() { AnnouncementId = 1, Title = "Town Hall", Status = AnnouncementStatusEnum.Published },
+            new() { AnnouncementId = 2, Title = "Holiday Notice", Status = AnnouncementStatusEnum.Draft }
         };
 
         _mediatorMock.Setup(m => m.Send(It.IsAny<AnnouncementGetAllQuery>(), default))
@@ -48,7 +48,7 @@ public class AnnouncementControllerTests
     public async Task GetById_ShouldReturnOkWithAnnouncement()
     {
         // Arrange
-        var expected = new AnnouncementResponse { AnnouncementId = 1, Title = "Software Engineer" };
+        var expected = new AnnouncementResponse { AnnouncementId = 1, Title = "Town Hall" };
 
         _mediatorMock.Setup(m => m.Send(It.IsAny<AnnouncementGetByIdQuery>(), default))
             .ReturnsAsync(expected);
@@ -67,7 +67,7 @@ public class AnnouncementControllerTests
         // Arrange
         var request = new AnnouncementCreateRequest
         {
-            Title = "New Job",
+            Title = "New Announcement",
             SiteId = 1
         };
 

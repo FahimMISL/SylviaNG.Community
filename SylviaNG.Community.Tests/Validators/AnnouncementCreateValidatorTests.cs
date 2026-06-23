@@ -2,7 +2,6 @@ using FluentAssertions;
 using FluentValidation;
 using SylviaNG.Community.Application.Features.Announcements.Commands.AnnouncementCreate;
 using SylviaNG.Community.Application.Features.Announcements.Models;
-using SylviaNG.Community.Domain.Enums;
 
 namespace SylviaNG.Community.Tests.Validators;
 
@@ -16,11 +15,10 @@ public class AnnouncementCreateValidatorTests
         // Arrange
         var command = new AnnouncementCreateCommand(new AnnouncementCreateRequest
         {
-            Title = "Software Engineer",
+            Title = "Town Hall Meeting",
             SiteId = 1,
-            NumberOfPositions = 2,
-            PostingDate = new DateTime(2025, 1, 1),
-            ClosingDate = new DateTime(2025, 6, 30)
+            PublishDate = new DateTime(2025, 1, 1),
+            ExpiryDate = new DateTime(2025, 6, 30)
         });
 
         // Act
@@ -67,15 +65,15 @@ public class AnnouncementCreateValidatorTests
     }
 
     [Fact]
-    public void Validate_WithMinSalaryGreaterThanMaxSalary_ShouldHaveError()
+    public void Validate_WithExpiryBeforePublish_ShouldHaveError()
     {
         // Arrange
         var command = new AnnouncementCreateCommand(new AnnouncementCreateRequest
         {
             Title = "Valid Title",
             SiteId = 1,
-            MinSalary = 100000,
-            MaxSalary = 50000
+            PublishDate = new DateTime(2025, 6, 30),
+            ExpiryDate = new DateTime(2025, 1, 1)
         });
 
         // Act
@@ -83,6 +81,6 @@ public class AnnouncementCreateValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.PropertyName == "Request.MinSalary");
+        result.Errors.Should().ContainSingle(e => e.PropertyName == "Request.ExpiryDate");
     }
 }

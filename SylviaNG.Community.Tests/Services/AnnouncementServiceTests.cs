@@ -29,18 +29,17 @@ public class AnnouncementServiceTests
         // Arrange
         var request = new AnnouncementCreateRequest
         {
-            Title = "Software Engineer",
+            Title = "Town Hall Meeting",
             SiteId = 1,
             DepartmentId = 1,
-            NumberOfPositions = 2,
-            EmploymentType = EmploymentTypeEnum.FullTime
+            AnnouncementType = AnnouncementTypeEnum.Event
         };
 
         _repositoryMock.Setup(r => r.ExistsByTitleAndSiteIdAsync(request.Title, request.SiteId, null))
             .ReturnsAsync(false);
 
         _repositoryMock.Setup(r => r.AddAsync(It.IsAny<Announcement>()))
-            .Callback<Announcement>(j => j.AnnouncementId = 1);
+            .Callback<Announcement>(a => a.AnnouncementId = 1);
 
         _unitOfWorkMock.Setup(u => u.SaveChangesAsync())
             .ReturnsAsync(1);
@@ -60,7 +59,7 @@ public class AnnouncementServiceTests
         // Arrange
         var request = new AnnouncementCreateRequest
         {
-            Title = "Existing Job",
+            Title = "Existing Announcement",
             SiteId = 1
         };
 
@@ -72,7 +71,7 @@ public class AnnouncementServiceTests
 
         // Assert
         await act.Should().ThrowAsync<DuplicateException>()
-            .WithMessage("*Existing Job*");
+            .WithMessage("*Existing Announcement*");
     }
 
     [Fact]
@@ -110,15 +109,12 @@ public class AnnouncementServiceTests
         var entity = new Announcement
         {
             AnnouncementId = 1,
-            Title = "Software Engineer",
+            Title = "Town Hall Meeting",
             SiteId = 1,
-            IsActive = true,
-            Applications = new List<JobApplication>()
+            IsActive = true
         };
 
-        _repositoryMock.Setup(r => r.GetByIdWithIncludeAsync(
-            It.IsAny<System.Linq.Expressions.Expression<Func<Announcement, bool>>>(),
-            It.IsAny<System.Linq.Expressions.Expression<Func<Announcement, object>>[]>()))
+        _repositoryMock.Setup(r => r.GetByIdAsync(1))
             .ReturnsAsync(entity);
 
         // Act
@@ -127,7 +123,6 @@ public class AnnouncementServiceTests
         // Assert
         result.Should().NotBeNull();
         result.AnnouncementId.Should().Be(1);
-        result.Title.Should().Be("Software Engineer");
-        result.TotalApplications.Should().Be(0);
+        result.Title.Should().Be("Town Hall Meeting");
     }
 }

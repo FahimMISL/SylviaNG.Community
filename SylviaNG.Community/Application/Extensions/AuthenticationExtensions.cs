@@ -1,12 +1,22 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using SylviaNG.Community.Infrastructure.Authentication;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 
 namespace SylviaNG.Community.Application.Extensions
 {
     public static class AuthenticationExtensions
     {
-        public static IServiceCollection AddKeycloakJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
+        private const string SmartScheme = "Smart";
+        private const string LocalScheme = "Local";
+
+        public static IServiceCollection AddKeycloakJwtAuthentication(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            IHostEnvironment environment)
         {
             var keycloakSection = configuration.GetSection("Keycloak");
             if (!keycloakSection.Exists())
@@ -18,12 +28,28 @@ namespace SylviaNG.Community.Application.Extensions
             var clientId = keycloakSection.GetValue<string>("ClientId") ?? throw new ArgumentNullException("Keycloak:ClientId");
             var requireHttps = keycloakSection.GetValue<bool>("RequireHttpsMetadata", false);
 
-            services.AddAuthentication(options =>
+            var jwtSection = configuration.GetSection("Jwt");
+            if (!jwtSection.Exists())
             {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                throw new ArgumentException("Jwt configuration section is missing in appsettings.json");
+            }
+
+            var localIssuer = jwtSection.GetValue<string>("Issuer") ?? throw new ArgumentNullException("Jwt:Issuer");
+            var localAudience = jwtSection.GetValue<string>("Audience") ?? throw new ArgumentNullException("Jwt:Audience");
+            var localSigningKey = jwtSection.GetValue<string>("SigningKey") ?? throw new ArgumentNullException("Jwt:SigningKey");
+
+            var isDevelopment = environment.IsDevelopment();
+
+            var authBuilder = services.AddAuthentication(options =>
+            {
+                // Every request is routed through the "Smart" policy scheme (see below),
+                // which decides between the Keycloak scheme, the locally-issued-JWT scheme
+                // ("Local" - see JwtTokenGenerator/AuthController), and, in Development only,
+                // the dev-header fallback scheme.
+                options.DefaultAuthenticateScheme = SmartScheme;
+                options.DefaultChallengeScheme = SmartScheme;
             })
-            .AddJwtBearer(options =>
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
             {
                 options.Authority = authority;
                 options.Audience = clientId;
@@ -40,56 +66,144 @@ namespace SylviaNG.Community.Application.Extensions
                     RoleClaimType = ClaimTypes.Role
                 };
 
-                options.Events = new JwtBearerEvents
+                options.Events = BuildJwtBearerEvents();
+            })
+            .AddJwtBearer(LocalScheme, options =>
+            {
+                options.RequireHttpsMetadata = false;
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    OnAuthenticationFailed = context =>
+                    ValidateIssuer = true,
+                    ValidIssuer = localIssuer,
+                    ValidateAudience = true,
+                    ValidAudience = localAudience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromMinutes(5),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(localSigningKey)),
+                    NameClaimType = ClaimTypes.Name,
+                    RoleClaimType = ClaimTypes.Role
+                };
+
+                options.Events = BuildJwtBearerEvents();
+            });
+
+            if (isDevelopment)
+            {
+                authBuilder.AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, DevHeaderAuthenticationHandler>(
+                    DevHeaderAuthenticationHandler.SchemeName, _ => { });
+            }
+
+            authBuilder.AddPolicyScheme(SmartScheme, "Keycloak, Local, or Dev Header", options =>
+            {
+                options.ForwardDefaultSelector = context =>
+                {
+                    if (context.Request.Headers.TryGetValue("Authorization", out var authHeader))
                     {
-                        Console.WriteLine($"Authentication failed: {context.Exception.Message}");
-                        return Task.CompletedTask;
-                    },
-                    OnTokenValidated = context =>
-                    {
-                        Console.WriteLine("Token validated successfully");
-                        return Task.CompletedTask;
-                    },
-                    OnChallenge = context =>
-                    {
-                        context.HandleResponse();
+                        var issuer = TryPeekUnvalidatedIssuer(authHeader.ToString());
+                        if (issuer == localIssuer)
+                            return LocalScheme;
 
-                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        context.Response.ContentType = "application/json";
-
-                        var response = new
-                        {
-                            hasError = true,
-                            decentMessage = "Unauthorized. Authentication is required.",
-                            errorDetails = context.ErrorDescription ?? "Invalid or missing authentication token.",
-                            content = (object?)null
-                        };
-
-                        var json = System.Text.Json.JsonSerializer.Serialize(response);
-                        return context.Response.WriteAsync(json);
-                    },
-                    OnForbidden = context =>
-                    {
-                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                        context.Response.ContentType = "application/json";
-
-                        var response = new
-                        {
-                            hasError = true,
-                            decentMessage = "Forbidden. You don't have permission to access this resource.",
-                            errorDetails = "Access denied. Insufficient permissions.",
-                            content = (object?)null
-                        };
-
-                        var json = System.Text.Json.JsonSerializer.Serialize(response);
-                        return context.Response.WriteAsync(json);
+                        return JwtBearerDefaults.AuthenticationScheme;
                     }
+
+                    // No bearer token: in Development, let the dev-header persona-switcher
+                    // authenticate; elsewhere fall through to Keycloak's default challenge.
+                    return isDevelopment ? DevHeaderAuthenticationHandler.SchemeName : JwtBearerDefaults.AuthenticationScheme;
                 };
             });
 
             return services;
+        }
+
+        /// <summary>
+        /// Peeks at a bearer token's "iss" claim WITHOUT validating its signature, purely to
+        /// decide which registered JwtBearer scheme should perform the real (signature-checked)
+        /// validation. Never used for anything security-sensitive - a forged issuer claim here
+        /// only routes the request to a scheme that will then reject it during real validation.
+        /// </summary>
+        private static string? TryPeekUnvalidatedIssuer(string authorizationHeaderValue)
+        {
+            try
+            {
+                const string prefix = "Bearer ";
+                if (!authorizationHeaderValue.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    return null;
+
+                var token = authorizationHeaderValue[prefix.Length..].Trim();
+                var parts = token.Split('.');
+                if (parts.Length < 2)
+                    return null;
+
+                var payloadJson = Encoding.UTF8.GetString(Base64UrlDecode(parts[1]));
+                using var document = JsonDocument.Parse(payloadJson);
+                return document.RootElement.TryGetProperty("iss", out var issProperty) ? issProperty.GetString() : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static byte[] Base64UrlDecode(string input)
+        {
+            var padded = input.Replace('-', '+').Replace('_', '/');
+            switch (padded.Length % 4)
+            {
+                case 2: padded += "=="; break;
+                case 3: padded += "="; break;
+            }
+            return Convert.FromBase64String(padded);
+        }
+
+        private static JwtBearerEvents BuildJwtBearerEvents()
+        {
+            return new JwtBearerEvents
+            {
+                OnAuthenticationFailed = context =>
+                {
+                    Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+                    return Task.CompletedTask;
+                },
+                OnTokenValidated = context =>
+                {
+                    Console.WriteLine("Token validated successfully");
+                    return Task.CompletedTask;
+                },
+                OnChallenge = context =>
+                {
+                    context.HandleResponse();
+
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    context.Response.ContentType = "application/json";
+
+                    var response = new
+                    {
+                        hasError = true,
+                        decentMessage = "Unauthorized. Authentication is required.",
+                        errorDetails = context.ErrorDescription ?? "Invalid or missing authentication token.",
+                        content = (object?)null
+                    };
+
+                    var json = JsonSerializer.Serialize(response);
+                    return context.Response.WriteAsync(json);
+                },
+                OnForbidden = context =>
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    context.Response.ContentType = "application/json";
+
+                    var response = new
+                    {
+                        hasError = true,
+                        decentMessage = "Forbidden. You don't have permission to access this resource.",
+                        errorDetails = "Access denied. Insufficient permissions.",
+                        content = (object?)null
+                    };
+
+                    var json = JsonSerializer.Serialize(response);
+                    return context.Response.WriteAsync(json);
+                }
+            };
         }
     }
 }

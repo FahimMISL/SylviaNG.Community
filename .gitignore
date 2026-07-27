@@ -52,6 +52,7 @@ docker-compose.override.yml
 **/docker-compose.*.yml
 docker/*.tar
 docker/*.img
+.env
 
 # Kubernetes (Optional overrides/configs)
 k8s/*.local.yaml

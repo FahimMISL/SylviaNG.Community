@@ -18,3 +18,9 @@ public enum AnnouncementTypeEnum
     Emergency,
     Achievement
 }
+
+public enum ContactVisibilityEnum
+{
+    Private,
+    Public
+}

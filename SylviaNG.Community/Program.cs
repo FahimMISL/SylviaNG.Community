@@ -66,8 +66,9 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 
-// Add Keycloak Authentication
-builder.Services.AddKeycloakJwtAuthentication(builder.Configuration);
+// Add Keycloak Authentication (with a Development-only header-based fallback scheme
+// so frontend apps without a real login flow yet can still exercise authorization)
+builder.Services.AddKeycloakJwtAuthentication(builder.Configuration, builder.Environment);
 
 builder.Services.AddAuthorizationPolicies();
 

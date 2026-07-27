@@ -24,7 +24,7 @@ public class AnnouncementServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_WithValidRequest_ShouldReturnAnnouncementId()
+    public async System.Threading.Tasks.Task CreateAsync_WithValidRequest_ShouldReturnAnnouncementId()
     {
         // Arrange
         var request = new AnnouncementCreateRequest
@@ -54,7 +54,7 @@ public class AnnouncementServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_WithDuplicateTitle_ShouldThrowDuplicateException()
+    public async System.Threading.Tasks.Task CreateAsync_WithDuplicateTitle_ShouldThrowDuplicateException()
     {
         // Arrange
         var request = new AnnouncementCreateRequest
@@ -75,7 +75,7 @@ public class AnnouncementServiceTests
     }
 
     [Fact]
-    public async Task DeleteAsync_WithExistingId_ShouldDeleteAndSave()
+    public async System.Threading.Tasks.Task DeleteAsync_WithExistingId_ShouldDeleteAndSave()
     {
         // Arrange
         var entity = new Announcement { AnnouncementId = 1, Title = "Test" };
@@ -90,7 +90,7 @@ public class AnnouncementServiceTests
     }
 
     [Fact]
-    public async Task DeleteAsync_WithNonExistentId_ShouldThrowNotFoundException()
+    public async System.Threading.Tasks.Task DeleteAsync_WithNonExistentId_ShouldThrowNotFoundException()
     {
         // Arrange
         _repositoryMock.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((Announcement?)null);
@@ -103,7 +103,7 @@ public class AnnouncementServiceTests
     }
 
     [Fact]
-    public async Task GetByIdAsync_WithExistingId_ShouldReturnMappedResponse()
+    public async System.Threading.Tasks.Task GetByIdAsync_WithExistingId_ShouldReturnMappedResponse()
     {
         // Arrange
         var entity = new Announcement

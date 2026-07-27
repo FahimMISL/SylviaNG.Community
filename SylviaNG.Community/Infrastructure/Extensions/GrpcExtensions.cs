@@ -14,6 +14,14 @@ namespace SylviaNG.Community.Infrastructure.Extensions
         /// </summary>
         public static IServiceCollection AddGrpcServices(this IServiceCollection services, IConfiguration configuration)
         {
+            // When the real Core service isn't reachable (e.g. local development), a stub
+            // implementation can stand in so department/designation/site/grade names still resolve.
+            if (configuration.GetValue<bool>("GrpcServices:CoreService:UseStub"))
+            {
+                services.AddScoped<ICoreGrpcClient, StubCoreGrpcClient>();
+                return services;
+            }
+
             // ── gRPC: Core Service Channel ───────────────────────────────────────────
             var coreServiceUrl = configuration["GrpcServices:CoreService:Url"] ?? "http://localhost:7000";
 

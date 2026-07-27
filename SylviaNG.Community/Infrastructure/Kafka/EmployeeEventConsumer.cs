@@ -30,7 +30,7 @@ namespace SylviaNG.Community.Infrastructure.Kafka
             _logger = logger;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async System.Threading.Tasks.Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Employee sync consumer starting...");
 
@@ -62,7 +62,7 @@ namespace SylviaNG.Community.Infrastructure.Kafka
                 catch (ConsumeException ex)
                 {
                     _logger.LogError(ex, "Kafka consume error");
-                    await Task.Delay(5000, stoppingToken);
+                    await System.Threading.Tasks.Task.Delay(5000, stoppingToken);
                 }
                 catch (JsonException ex)
                 {
@@ -77,7 +77,7 @@ namespace SylviaNG.Community.Infrastructure.Kafka
             consumer.Close();
         }
 
-        private async Task ProcessMessageAsync(string payload, CancellationToken ct)
+        private async System.Threading.Tasks.Task ProcessMessageAsync(string payload, CancellationToken ct)
         {
             using var doc = JsonDocument.Parse(payload);
             var root = doc.RootElement;
@@ -104,7 +104,7 @@ namespace SylviaNG.Community.Infrastructure.Kafka
             }
         }
 
-        private async Task HandleEmployeeEventAsync(string? action, JsonElement root, ApplicationDBContext dbContext, CancellationToken ct)
+        private async System.Threading.Tasks.Task HandleEmployeeEventAsync(string? action, JsonElement root, ApplicationDBContext dbContext, CancellationToken ct)
         {
             var employeeId = root.GetProperty("employeeId").GetInt64();
 
@@ -151,7 +151,7 @@ namespace SylviaNG.Community.Infrastructure.Kafka
             }
         }
 
-        private async Task HandleJobInformationEventAsync(string? action, JsonElement root, ApplicationDBContext dbContext, CancellationToken ct)
+        private async System.Threading.Tasks.Task HandleJobInformationEventAsync(string? action, JsonElement root, ApplicationDBContext dbContext, CancellationToken ct)
         {
             var employeeId = root.TryGetProperty("employeeId", out var eid) ? eid.GetInt64() : (long?)null;
             if (employeeId == null)

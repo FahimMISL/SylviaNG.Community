@@ -2,8 +2,10 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.PostComments.Commands.PostCommentAdd;
 using SylviaNG.Community.Application.Features.PostComments.Commands.PostCommentDelete;
+using SylviaNG.Community.Application.Features.PostComments.Commands.PostCommentUpdate;
 using SylviaNG.Community.Application.Features.PostComments.Models;
 using SylviaNG.Community.Application.Features.PostComments.Queries.PostCommentGetAll;
+using SylviaNG.Community.Application.Interfaces.Services;
 
 namespace SylviaNG.Community.Controllers
 {
@@ -12,10 +14,12 @@ namespace SylviaNG.Community.Controllers
     public class PostCommentController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public PostCommentController(IMediator mediator)
+        public PostCommentController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         /// <summary>
@@ -36,10 +40,19 @@ namespace SylviaNG.Community.Controllers
             return Ok(id);
         }
 
+        [HttpPut("{commentId}")]
+        public async Task<ActionResult> Update(long postId, long commentId, [FromBody] PostCommentUpdateRequest request)
+        {
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new PostCommentUpdateCommand(postId, commentId, request, callerId, _currentUserService.IsHrOrAdmin));
+            return Ok();
+        }
+
         [HttpDelete("{commentId}")]
         public async Task<ActionResult> Delete(long postId, long commentId)
         {
-            await _mediator.Send(new PostCommentDeleteCommand(postId, commentId));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new PostCommentDeleteCommand(postId, commentId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
     }

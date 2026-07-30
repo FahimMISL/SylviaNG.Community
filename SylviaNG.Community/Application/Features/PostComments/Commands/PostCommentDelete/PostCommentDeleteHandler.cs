@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.PostComments.Commands.PostComm
 
         public async Task Handle(PostCommentDeleteCommand command, CancellationToken cancellationToken)
         {
-            await _postCommentService.DeleteAsync(command.PostId, command.CommentId);
+            await _postCommentService.DeleteAsync(command.PostId, command.CommentId, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

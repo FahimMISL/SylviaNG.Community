@@ -10,7 +10,9 @@ using SylviaNG.Community.Application.Features.Posts.Commands.PostUpdate;
 using SylviaNG.Community.Application.Features.Posts.Models;
 using SylviaNG.Community.Application.Features.Posts.Queries.PostGetAllPaged;
 using SylviaNG.Community.Application.Features.Posts.Queries.PostGetById;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Controllers;
+using SylviaNG.Community.Domain.Enums;
 using SylviaNG.Community.SharedKernel.Pagination;
 
 namespace SylviaNG.Community.Tests.Controllers;
@@ -18,19 +20,22 @@ namespace SylviaNG.Community.Tests.Controllers;
 public class PostControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock;
+    private readonly Mock<ICurrentUserService> _currentUserServiceMock;
     private readonly PostController _controller;
 
     public PostControllerTests()
     {
         _mediatorMock = new Mock<IMediator>();
-        _controller = new PostController(_mediatorMock.Object);
+        _currentUserServiceMock = new Mock<ICurrentUserService>();
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(1);
+        _controller = new PostController(_mediatorMock.Object, _currentUserServiceMock.Object);
     }
 
     [Fact]
     public async Task GetById_ShouldReturnOkWithResult()
     {
         // Arrange
-        var expected = new PostResponse { PostId = 1, Type = "Update", Visibility = "Public" };
+        var expected = new PostResponse { PostId = 1, Type = "Update", Visibility = VisibilityEnum.Everyone };
         _mediatorMock.Setup(m => m.Send(It.IsAny<PostGetByIdQuery>(), default)).ReturnsAsync(expected);
 
         // Act
@@ -53,7 +58,7 @@ public class PostControllerTests
         _mediatorMock.Setup(m => m.Send(It.IsAny<PostGetAllPagedQuery>(), default)).ReturnsAsync(expected);
 
         // Act
-        var result = await _controller.GetPaged(new PagedRequest());
+        var result = await _controller.GetPaged(new PostFilterRequest());
 
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
@@ -67,7 +72,7 @@ public class PostControllerTests
         _mediatorMock.Setup(m => m.Send(It.IsAny<PostCreateCommand>(), default)).ReturnsAsync(42L);
 
         // Act
-        var result = await _controller.Create(new PostCreateRequest { EmployeeId = 1, Type = "Update", Visibility = "Public" });
+        var result = await _controller.Create(new PostCreateRequest { EmployeeId = 1, Type = "Update", Visibility = VisibilityEnum.Everyone });
 
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
@@ -82,7 +87,20 @@ public class PostControllerTests
 
         // Assert
         result.Should().BeOfType<OkResult>();
-        _mediatorMock.Verify(m => m.Send(It.IsAny<PostUpdateCommand>(), default), Times.Once);
+        _mediatorMock.Verify(m => m.Send(It.Is<PostUpdateCommand>(c => c.CallerEmployeeId == 1 && !c.IsHrOrAdmin), default), Times.Once);
+    }
+
+    [Fact]
+    public async Task Update_ShouldForwardIsHrOrAdminFromCurrentUserService()
+    {
+        // Arrange
+        _currentUserServiceMock.Setup(c => c.IsHrOrAdmin).Returns(true);
+
+        // Act
+        await _controller.Update(1, new PostUpdateRequest { Content = "Edited" });
+
+        // Assert
+        _mediatorMock.Verify(m => m.Send(It.Is<PostUpdateCommand>(c => c.IsHrOrAdmin), default), Times.Once);
     }
 
     [Fact]
@@ -93,7 +111,7 @@ public class PostControllerTests
 
         // Assert
         result.Should().BeOfType<OkResult>();
-        _mediatorMock.Verify(m => m.Send(It.IsAny<PostDeleteCommand>(), default), Times.Once);
+        _mediatorMock.Verify(m => m.Send(It.Is<PostDeleteCommand>(c => c.CallerEmployeeId == 1 && !c.IsHrOrAdmin), default), Times.Once);
     }
 
     [Fact]

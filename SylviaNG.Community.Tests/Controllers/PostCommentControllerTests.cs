@@ -6,6 +6,7 @@ using SylviaNG.Community.Application.Features.PostComments.Commands.PostCommentA
 using SylviaNG.Community.Application.Features.PostComments.Commands.PostCommentDelete;
 using SylviaNG.Community.Application.Features.PostComments.Models;
 using SylviaNG.Community.Application.Features.PostComments.Queries.PostCommentGetAll;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Controllers;
 
 namespace SylviaNG.Community.Tests.Controllers;
@@ -13,12 +14,15 @@ namespace SylviaNG.Community.Tests.Controllers;
 public class PostCommentControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock;
+    private readonly Mock<ICurrentUserService> _currentUserServiceMock;
     private readonly PostCommentController _controller;
 
     public PostCommentControllerTests()
     {
         _mediatorMock = new Mock<IMediator>();
-        _controller = new PostCommentController(_mediatorMock.Object);
+        _currentUserServiceMock = new Mock<ICurrentUserService>();
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(2);
+        _controller = new PostCommentController(_mediatorMock.Object, _currentUserServiceMock.Object);
     }
 
     [Fact]
@@ -58,6 +62,6 @@ public class PostCommentControllerTests
 
         // Assert
         result.Should().BeOfType<OkResult>();
-        _mediatorMock.Verify(m => m.Send(It.IsAny<PostCommentDeleteCommand>(), default), Times.Once);
+        _mediatorMock.Verify(m => m.Send(It.Is<PostCommentDeleteCommand>(c => c.CallerEmployeeId == 2 && !c.IsHrOrAdmin), default), Times.Once);
     }
 }

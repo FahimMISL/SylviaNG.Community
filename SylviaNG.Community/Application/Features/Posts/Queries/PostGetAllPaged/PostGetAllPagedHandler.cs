@@ -16,7 +16,7 @@ namespace SylviaNG.Community.Application.Features.Posts.Queries.PostGetAllPaged
 
         public async Task<PagedResult<PostResponse>> Handle(PostGetAllPagedQuery query, CancellationToken cancellationToken)
         {
-            return await _postService.GetFeedPaginatedAsync(query.Request);
+            return await _postService.GetFeedPaginatedAsync(query.Request, query.CallerEmployeeId);
         }
     }
 }

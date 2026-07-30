@@ -6,6 +6,7 @@ namespace SylviaNG.Community.Application.Interfaces.Services
     {
         Task<long> AddAsync(long postId, PostCommentAddRequest request);
         Task<List<PostCommentResponse>> GetByPostIdAsync(long postId);
-        Task DeleteAsync(long postId, long commentId);
+        Task UpdateAsync(long postId, long commentId, PostCommentUpdateRequest request, long callerEmployeeId, bool isHrOrAdmin);
+        Task DeleteAsync(long postId, long commentId, long callerEmployeeId, bool isHrOrAdmin);
     }
 }

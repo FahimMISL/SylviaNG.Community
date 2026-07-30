@@ -1,8 +1,10 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.Polls.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Application.Services;
 using SylviaNG.Community.Domain.Entities;
 using SylviaNG.Community.SharedKernel.Generic;
@@ -17,6 +19,8 @@ public class PollServiceTests
     private readonly Mock<IPollVoteRepository> _pollVoteRepositoryMock;
     private readonly Mock<IPostRepository> _postRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IFeedBroadcaster> _feedBroadcasterMock;
+    private readonly Mock<ILogger<PollService>> _loggerMock;
     private readonly PollService _service;
 
     public PollServiceTests()
@@ -26,12 +30,16 @@ public class PollServiceTests
         _pollVoteRepositoryMock = new Mock<IPollVoteRepository>();
         _postRepositoryMock = new Mock<IPostRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _feedBroadcasterMock = new Mock<IFeedBroadcaster>();
+        _loggerMock = new Mock<ILogger<PollService>>();
         _service = new PollService(
             _pollRepositoryMock.Object,
             _pollOptionRepositoryMock.Object,
             _pollVoteRepositoryMock.Object,
             _postRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            _feedBroadcasterMock.Object,
+            _loggerMock.Object);
     }
 
     [Fact]
@@ -119,5 +127,53 @@ public class PollServiceTests
 
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task VoteAsync_WhenVoteSucceeds_ShouldBroadcastPollResultsForPost()
+    {
+        // Arrange
+        var poll = new Poll { PollId = 1, PostId = 1, AllowVoteChange = false };
+        var options = new List<PollOption> { new() { PollOptionId = 5, PollId = 1 }, new() { PollOptionId = 6, PollId = 1 } };
+        _pollRepositoryMock.Setup(r => r.GetByPostIdAsync(1)).ReturnsAsync(poll);
+        _pollOptionRepositoryMock.Setup(r => r.GetByPollIdAsync(1)).ReturnsAsync(options);
+        _pollVoteRepositoryMock.Setup(r => r.GetByEmployeeAndOptionsAsync(2, It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync((PollVote?)null);
+        _pollVoteRepositoryMock.Setup(r => r.AddAsync(It.IsAny<PollVote>()))
+            .Callback<PollVote>(v => v.VoteId = 50);
+        _pollVoteRepositoryMock.Setup(r => r.GetByOptionsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<PollVote> { new() { VoteId = 50, PollOptionId = 5, EmployeeId = 2 } });
+
+        // Act
+        await _service.VoteAsync(1, new PollVoteRequest { EmployeeId = 2, PollOptionId = 5 });
+
+        // Assert
+        _feedBroadcasterMock.Verify(
+            b => b.BroadcastPollResultsAsync(1, It.IsAny<PollResponse>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task VoteAsync_WhenBroadcastThrows_ShouldNotFailTheVote()
+    {
+        // Arrange
+        var poll = new Poll { PollId = 1, PostId = 1, AllowVoteChange = false };
+        var options = new List<PollOption> { new() { PollOptionId = 5, PollId = 1 }, new() { PollOptionId = 6, PollId = 1 } };
+        _pollRepositoryMock.Setup(r => r.GetByPostIdAsync(1)).ReturnsAsync(poll);
+        _pollOptionRepositoryMock.Setup(r => r.GetByPollIdAsync(1)).ReturnsAsync(options);
+        _pollVoteRepositoryMock.Setup(r => r.GetByEmployeeAndOptionsAsync(2, It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync((PollVote?)null);
+        _pollVoteRepositoryMock.Setup(r => r.AddAsync(It.IsAny<PollVote>()))
+            .Callback<PollVote>(v => v.VoteId = 50);
+        _pollVoteRepositoryMock.Setup(r => r.GetByOptionsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<PollVote> { new() { VoteId = 50, PollOptionId = 5, EmployeeId = 2 } });
+        _feedBroadcasterMock.Setup(b => b.BroadcastPollResultsAsync(It.IsAny<long>(), It.IsAny<PollResponse>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("hub unavailable"));
+
+        // Act
+        var result = await _service.VoteAsync(1, new PollVoteRequest { EmployeeId = 2, PollOptionId = 5 });
+
+        // Assert
+        result.Should().Be(50);
     }
 }

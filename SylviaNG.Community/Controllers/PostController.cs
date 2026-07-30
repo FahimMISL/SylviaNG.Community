@@ -9,6 +9,7 @@ using SylviaNG.Community.Application.Features.Posts.Commands.PostUpdate;
 using SylviaNG.Community.Application.Features.Posts.Models;
 using SylviaNG.Community.Application.Features.Posts.Queries.PostGetAllPaged;
 using SylviaNG.Community.Application.Features.Posts.Queries.PostGetById;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.SharedKernel.Pagination;
 
 namespace SylviaNG.Community.Controllers
@@ -18,16 +19,19 @@ namespace SylviaNG.Community.Controllers
     public class PostController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public PostController(IMediator mediator)
+        public PostController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet("paged")]
-        public async Task<ActionResult<PagedResult<PostResponse>>> GetPaged([FromQuery] PagedRequest request)
+        public async Task<ActionResult<PagedResult<PostResponse>>> GetPaged([FromQuery] PostFilterRequest request)
         {
-            var result = await _mediator.Send(new PostGetAllPagedQuery(request));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            var result = await _mediator.Send(new PostGetAllPagedQuery(request, callerId));
             return Ok(result);
         }
 
@@ -48,14 +52,16 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{postId}")]
         public async Task<ActionResult> Update(long postId, [FromBody] PostUpdateRequest request)
         {
-            await _mediator.Send(new PostUpdateCommand(postId, request));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new PostUpdateCommand(postId, request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
 
         [HttpDelete("{postId}")]
         public async Task<ActionResult> Delete(long postId)
         {
-            await _mediator.Send(new PostDeleteCommand(postId));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new PostDeleteCommand(postId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
 

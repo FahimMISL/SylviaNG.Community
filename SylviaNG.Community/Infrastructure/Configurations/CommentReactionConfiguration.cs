@@ -13,7 +13,8 @@ namespace SylviaNG.Community.Infrastructure.Configurations
 
             builder.Property(r => r.ReactionType)
                 .IsRequired()
-                .HasMaxLength(50);
+                .HasConversion<string>()
+                .HasMaxLength(20);
 
             builder.HasIndex(r => new { r.CommentId, r.EmployeeId }).IsUnique();
             builder.HasIndex(r => r.EmployeeId);

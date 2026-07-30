@@ -2,10 +2,12 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.Notifications.Commands.NotificationCreate;
 using SylviaNG.Community.Application.Features.Notifications.Commands.NotificationDelete;
+using SylviaNG.Community.Application.Features.Notifications.Commands.NotificationMarkAllRead;
 using SylviaNG.Community.Application.Features.Notifications.Commands.NotificationMarkRead;
 using SylviaNG.Community.Application.Features.Notifications.Models;
 using SylviaNG.Community.Application.Features.Notifications.Queries.NotificationGetAllPaged;
 using SylviaNG.Community.Application.Features.Notifications.Queries.NotificationGetById;
+using SylviaNG.Community.Application.Features.Notifications.Queries.NotificationGetUnreadCount;
 using SylviaNG.Community.SharedKernel.Pagination;
 
 namespace SylviaNG.Community.Controllers
@@ -25,7 +27,7 @@ namespace SylviaNG.Community.Controllers
         /// Get paginated notifications for a given employee (typically the current employee).
         /// </summary>
         [HttpGet("paged")]
-        public async Task<ActionResult<PagedResult<NotificationResponse>>> GetPaged([FromQuery] long employeeId, [FromQuery] PagedRequest request)
+        public async Task<ActionResult<PagedResult<NotificationResponse>>> GetPaged([FromQuery] long employeeId, [FromQuery] NotificationFilterRequest request)
         {
             var result = await _mediator.Send(new NotificationGetAllPagedQuery(employeeId, request));
             return Ok(result);
@@ -61,6 +63,20 @@ namespace SylviaNG.Community.Controllers
         {
             await _mediator.Send(new NotificationDeleteCommand(notificationId));
             return Ok();
+        }
+
+        [HttpGet("unread-count")]
+        public async Task<ActionResult<int>> GetUnreadCount([FromQuery] long employeeId)
+        {
+            var result = await _mediator.Send(new NotificationGetUnreadCountQuery(employeeId));
+            return Ok(result);
+        }
+
+        [HttpPut("mark-all-read")]
+        public async Task<ActionResult<int>> MarkAllAsRead([FromQuery] long employeeId)
+        {
+            var result = await _mediator.Send(new NotificationMarkAllReadCommand(employeeId));
+            return Ok(result);
         }
     }
 }

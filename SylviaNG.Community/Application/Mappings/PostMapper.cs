@@ -23,7 +23,7 @@ namespace SylviaNG.Community.Application.Mappings
         public static void ApplyUpdate(this Post entity, PostUpdateRequest request)
         {
             if (request.Type != null) entity.Type = request.Type;
-            if (request.Visibility != null) entity.Visibility = request.Visibility;
+            if (request.Visibility.HasValue) entity.Visibility = request.Visibility.Value;
             if (request.Content != null) entity.Content = request.Content;
             if (request.IsAnnouncement.HasValue) entity.IsAnnouncement = request.IsAnnouncement.Value;
         }

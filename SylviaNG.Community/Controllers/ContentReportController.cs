@@ -32,7 +32,7 @@ namespace SylviaNG.Community.Controllers
         /// </summary>
         [Authorize(Policy = "HRAdminOnly")]
         [HttpGet("paged")]
-        public async Task<ActionResult<PagedResult<ContentReportResponse>>> GetPaged([FromQuery] PagedRequest request)
+        public async Task<ActionResult<PagedResult<ContentReportQueueItemResponse>>> GetPaged([FromQuery] PagedRequest request)
         {
             var result = await _mediator.Send(new ContentReportGetAllPagedQuery(request));
             return Ok(result);

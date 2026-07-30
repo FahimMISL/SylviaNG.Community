@@ -14,8 +14,7 @@ namespace SylviaNG.Community.Application.Features.Posts.Commands.PostCreate
                 .MaximumLength(50).WithMessage("Type must not exceed 50 characters.");
 
             RuleFor(x => x.Request.Visibility)
-                .NotEmpty().WithMessage("Visibility is required.")
-                .MaximumLength(50).WithMessage("Visibility must not exceed 50 characters.");
+                .IsInEnum().WithMessage("Visibility must be a valid value.");
         }
     }
 }

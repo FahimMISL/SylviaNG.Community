@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Posts.Commands.PostDelete
 
         public async Task Handle(PostDeleteCommand command, CancellationToken cancellationToken)
         {
-            await _postService.DeleteAsync(command.PostId);
+            await _postService.DeleteAsync(command.PostId, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

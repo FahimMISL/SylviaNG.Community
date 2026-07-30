@@ -7,9 +7,9 @@ namespace SylviaNG.Community.Application.Features.Notifications.Queries.Notifica
     public class NotificationGetAllPagedQuery : IRequest<PagedResult<NotificationResponse>>
     {
         public long EmployeeId { get; set; }
-        public PagedRequest Request { get; set; }
+        public NotificationFilterRequest Request { get; set; }
 
-        public NotificationGetAllPagedQuery(long employeeId, PagedRequest request)
+        public NotificationGetAllPagedQuery(long employeeId, NotificationFilterRequest request)
         {
             EmployeeId = employeeId;
             Request = request;

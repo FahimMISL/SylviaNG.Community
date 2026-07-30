@@ -15,5 +15,13 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         long? EmployeeId { get; }
 
         bool IsHrOrAdmin { get; }
+
+        /// <summary>
+        /// Username of the caller, if authenticated via the locally-issued JWT ("Local" scheme -
+        /// see JwtTokenGenerator). Null for Keycloak-authenticated or Development DevHeader
+        /// sessions, which carry no local credential record - only locally-authenticated
+        /// accounts can use self-service actions like change-password.
+        /// </summary>
+        string? Username { get; }
     }
 }

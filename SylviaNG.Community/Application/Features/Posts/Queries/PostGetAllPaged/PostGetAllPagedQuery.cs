@@ -6,11 +6,13 @@ namespace SylviaNG.Community.Application.Features.Posts.Queries.PostGetAllPaged
 {
     public class PostGetAllPagedQuery : IRequest<PagedResult<PostResponse>>
     {
-        public PagedRequest Request { get; set; }
+        public PostFilterRequest Request { get; set; }
+        public long CallerEmployeeId { get; set; }
 
-        public PostGetAllPagedQuery(PagedRequest request)
+        public PostGetAllPagedQuery(PostFilterRequest request, long callerEmployeeId)
         {
             Request = request;
+            CallerEmployeeId = callerEmployeeId;
         }
     }
 }

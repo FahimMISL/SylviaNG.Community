@@ -37,7 +37,8 @@ namespace SylviaNG.Community.Infrastructure.Authentication
                 new(ClaimTypes.NameIdentifier, credential.EmployeeId?.ToString() ?? credential.Username),
                 new(ClaimTypes.Name, credential.DisplayName),
                 new(ClaimTypes.Role, credential.Role),
-                new("tenant_id", "default_tenant")
+                new("tenant_id", "default_tenant"),
+                new("username", credential.Username)
             };
 
             if (credential.EmployeeId.HasValue)

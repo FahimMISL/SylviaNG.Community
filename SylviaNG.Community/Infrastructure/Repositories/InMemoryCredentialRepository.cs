@@ -58,10 +58,29 @@ namespace SylviaNG.Community.Infrastructure.Repositories
             },
         };
 
+        // Accounts is a static IReadOnlyList (immutable structure), but the Credential
+        // objects it holds are mutable - lock guards concurrent PasswordHash writes across
+        // requests, since this list is shared process-wide.
+        private static readonly object PasswordLock = new();
+
         public Task<Credential?> GetByUsernameAsync(string username)
         {
             var match = Accounts.FirstOrDefault(c => c.Username == username && c.IsActive);
             return System.Threading.Tasks.Task.FromResult(match);
+        }
+
+        public System.Threading.Tasks.Task UpdatePasswordHashAsync(string username, string newPasswordHash)
+        {
+            lock (PasswordLock)
+            {
+                var credential = Accounts.FirstOrDefault(c => c.Username == username && c.IsActive);
+                if (credential != null)
+                {
+                    credential.PasswordHash = newPasswordHash;
+                }
+            }
+
+            return System.Threading.Tasks.Task.CompletedTask;
         }
     }
 }

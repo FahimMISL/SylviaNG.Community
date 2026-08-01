@@ -9,6 +9,8 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         Task MarkAsReadAsync(long notificationId);
         Task DeleteAsync(long notificationId);
         Task<NotificationResponse> GetByIdAsync(long notificationId);
-        Task<PagedResult<NotificationResponse>> GetPaginatedAsync(long employeeId, PagedRequest request);
+        Task<PagedResult<NotificationResponse>> GetPaginatedAsync(long employeeId, NotificationFilterRequest request);
+        Task<int> GetUnreadCountAsync(long employeeId);
+        Task<int> MarkAllAsReadAsync(long employeeId);
     }
 }

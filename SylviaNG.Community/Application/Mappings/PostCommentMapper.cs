@@ -16,6 +16,11 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
+        public static void ApplyUpdate(this PostComment entity, PostCommentUpdateRequest request)
+        {
+            entity.Content = request.Content;
+        }
+
         public static PostCommentResponse ToResponse(this PostComment entity)
         {
             return new PostCommentResponse

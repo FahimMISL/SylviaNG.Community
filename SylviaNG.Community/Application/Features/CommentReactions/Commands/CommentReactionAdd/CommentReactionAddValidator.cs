@@ -10,8 +10,7 @@ namespace SylviaNG.Community.Application.Features.CommentReactions.Commands.Comm
                 .GreaterThan(0).WithMessage("EmployeeId is required.");
 
             RuleFor(x => x.Request.ReactionType)
-                .NotEmpty().WithMessage("ReactionType is required.")
-                .MaximumLength(50).WithMessage("ReactionType must not exceed 50 characters.");
+                .IsInEnum().WithMessage("ReactionType must be a valid value.");
         }
     }
 }

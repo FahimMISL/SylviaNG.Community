@@ -9,6 +9,7 @@ namespace SylviaNG.Community.Infrastructure.Services
         // Confirm against the actual Keycloak client/claim-mapper configuration once
         // available and adjust this single constant if the real claim name differs.
         private const string EmployeeIdClaimType = "employee_id";
+        private const string UsernameClaimType = "username";
 
         private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -29,5 +30,8 @@ namespace SylviaNG.Community.Infrastructure.Services
         public bool IsHrOrAdmin =>
             _httpContextAccessor.HttpContext?.User?.IsInRole("HR") == true ||
             _httpContextAccessor.HttpContext?.User?.IsInRole("Admin") == true;
+
+        public string? Username =>
+            _httpContextAccessor.HttpContext?.User?.FindFirst(UsernameClaimType)?.Value;
     }
 }

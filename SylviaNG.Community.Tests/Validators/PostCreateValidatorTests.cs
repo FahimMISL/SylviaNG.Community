@@ -1,6 +1,7 @@
 using FluentAssertions;
 using SylviaNG.Community.Application.Features.Posts.Commands.PostCreate;
 using SylviaNG.Community.Application.Features.Posts.Models;
+using SylviaNG.Community.Domain.Enums;
 
 namespace SylviaNG.Community.Tests.Validators;
 
@@ -12,7 +13,7 @@ public class PostCreateValidatorTests
     public void Validate_WithValidRequest_ShouldHaveNoErrors()
     {
         // Arrange
-        var command = new PostCreateCommand(new PostCreateRequest { EmployeeId = 1, Type = "Update", Visibility = "Public" });
+        var command = new PostCreateCommand(new PostCreateRequest { EmployeeId = 1, Type = "Update", Visibility = VisibilityEnum.Everyone });
 
         // Act
         var result = _validator.Validate(command);
@@ -25,7 +26,7 @@ public class PostCreateValidatorTests
     public void Validate_WithMissingEmployeeId_ShouldHaveError()
     {
         // Arrange
-        var command = new PostCreateCommand(new PostCreateRequest { EmployeeId = 0, Type = "Update", Visibility = "Public" });
+        var command = new PostCreateCommand(new PostCreateRequest { EmployeeId = 0, Type = "Update", Visibility = VisibilityEnum.Everyone });
 
         // Act
         var result = _validator.Validate(command);
@@ -39,7 +40,7 @@ public class PostCreateValidatorTests
     public void Validate_WithEmptyType_ShouldHaveError()
     {
         // Arrange
-        var command = new PostCreateCommand(new PostCreateRequest { EmployeeId = 1, Type = "", Visibility = "Public" });
+        var command = new PostCreateCommand(new PostCreateRequest { EmployeeId = 1, Type = "", Visibility = VisibilityEnum.Everyone });
 
         // Act
         var result = _validator.Validate(command);
@@ -50,10 +51,10 @@ public class PostCreateValidatorTests
     }
 
     [Fact]
-    public void Validate_WithEmptyVisibility_ShouldHaveError()
+    public void Validate_WithInvalidVisibility_ShouldHaveError()
     {
         // Arrange
-        var command = new PostCreateCommand(new PostCreateRequest { EmployeeId = 1, Type = "Update", Visibility = "" });
+        var command = new PostCreateCommand(new PostCreateRequest { EmployeeId = 1, Type = "Update", Visibility = (VisibilityEnum)999 });
 
         // Act
         var result = _validator.Validate(command);

@@ -77,5 +77,8 @@ paket-files/
 # Node modules (if JS is used)
 node_modules/
 
+# Locally uploaded files (runtime data written by FileUploadController, not source)
+SylviaNG.Community/wwwroot/uploads/
+
 # Visual Studio language service cache
 *.lscache

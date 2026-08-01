@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Posts.Commands.PostUpdate
 
         public async Task Handle(PostUpdateCommand command, CancellationToken cancellationToken)
         {
-            await _postService.UpdateAsync(command.PostId, command.Request);
+            await _postService.UpdateAsync(command.PostId, command.Request, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

@@ -3,10 +3,12 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using SylviaNG.Community.Application.Features.Notifications.Commands.NotificationCreate;
+using SylviaNG.Community.Application.Features.Notifications.Commands.NotificationMarkAllRead;
 using SylviaNG.Community.Application.Features.Notifications.Commands.NotificationMarkRead;
 using SylviaNG.Community.Application.Features.Notifications.Models;
 using SylviaNG.Community.Application.Features.Notifications.Queries.NotificationGetAllPaged;
 using SylviaNG.Community.Application.Features.Notifications.Queries.NotificationGetById;
+using SylviaNG.Community.Application.Features.Notifications.Queries.NotificationGetUnreadCount;
 using SylviaNG.Community.Controllers;
 using SylviaNG.Community.SharedKernel.Pagination;
 
@@ -50,7 +52,7 @@ public class NotificationControllerTests
         _mediatorMock.Setup(m => m.Send(It.IsAny<NotificationGetAllPagedQuery>(), default)).ReturnsAsync(expected);
 
         // Act
-        var result = await _controller.GetPaged(1, new PagedRequest());
+        var result = await _controller.GetPaged(1, new NotificationFilterRequest());
 
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
@@ -82,5 +84,35 @@ public class NotificationControllerTests
 
         // Assert
         result.Should().BeOfType<OkResult>();
+    }
+
+    [Fact]
+    public async Task GetUnreadCount_ShouldReturnOkWithCount()
+    {
+        // Arrange
+        _mediatorMock.Setup(m => m.Send(It.IsAny<NotificationGetUnreadCountQuery>(), default)).ReturnsAsync(4);
+
+        // Act
+        var result = await _controller.GetUnreadCount(1);
+
+        // Assert
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().Be(4);
+        _mediatorMock.Verify(m => m.Send(It.Is<NotificationGetUnreadCountQuery>(q => q.EmployeeId == 1), default), Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkAllAsRead_ShouldReturnOkWithUpdatedCount()
+    {
+        // Arrange
+        _mediatorMock.Setup(m => m.Send(It.IsAny<NotificationMarkAllReadCommand>(), default)).ReturnsAsync(3);
+
+        // Act
+        var result = await _controller.MarkAllAsRead(1);
+
+        // Assert
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().Be(3);
+        _mediatorMock.Verify(m => m.Send(It.Is<NotificationMarkAllReadCommand>(c => c.EmployeeId == 1), default), Times.Once);
     }
 }

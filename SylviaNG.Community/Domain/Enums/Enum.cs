@@ -24,3 +24,19 @@ public enum ContactVisibilityEnum
     Private,
     Public
 }
+
+public enum VisibilityEnum
+{
+    Everyone,
+    Department,
+    Branch
+}
+
+public enum ReactionTypeEnum
+{
+    Like,
+    Love,
+    Celebrate,
+    Support,
+    Insightful
+}

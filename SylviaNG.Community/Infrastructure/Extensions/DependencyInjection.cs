@@ -91,6 +91,8 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             // Module 3 - Notifications
             services.AddScoped<INotificationRepository, NotificationRepository>();
             services.AddScoped<INotificationPreferenceRepository, NotificationPreferenceRepository>();
+            services.AddSingleton<INotificationBroadcaster, SignalRNotificationBroadcaster>();
+            services.AddSingleton<IFeedBroadcaster, SignalRFeedBroadcaster>();
 
             // Module 9 - System/Admin
             services.AddScoped<IDashboardPreferenceRepository, DashboardPreferenceRepository>();

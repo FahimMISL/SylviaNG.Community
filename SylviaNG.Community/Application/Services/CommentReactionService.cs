@@ -1,5 +1,6 @@
 using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.CommentReactions.Models;
+using SylviaNG.Community.Application.Features.Notifications.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Application.Mappings;
@@ -12,20 +13,23 @@ namespace SylviaNG.Community.Application.Services
         private readonly ICommentReactionRepository _reactionRepository;
         private readonly IPostCommentRepository _commentRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
 
         public CommentReactionService(
             ICommentReactionRepository reactionRepository,
             IPostCommentRepository commentRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService)
         {
             _reactionRepository = reactionRepository;
             _commentRepository = commentRepository;
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         public async Task<CommentReactionResponse?> AddOrToggleAsync(long commentId, CommentReactionAddRequest request)
         {
-            _ = await _commentRepository.GetByIdAsync(commentId)
+            var comment = await _commentRepository.GetByIdAsync(commentId)
                 ?? throw new NotFoundException("PostComment", commentId);
 
             var existing = await _reactionRepository.GetAsync(commentId, request.EmployeeId);
@@ -35,6 +39,19 @@ namespace SylviaNG.Community.Application.Services
                 var entity = request.ToEntity(commentId);
                 await _reactionRepository.AddAsync(entity);
                 await _unitOfWork.SaveChangesAsync();
+
+                if (comment.EmployeeId != request.EmployeeId)
+                {
+                    await _notificationService.CreateAsync(new NotificationCreateRequest
+                    {
+                        EmployeeId = comment.EmployeeId,
+                        Title = "Someone reacted to your comment",
+                        Category = "CommentReaction",
+                        RelatedEntityType = "PostComment",
+                        RelatedEntityId = commentId
+                    });
+                }
+
                 return entity.ToResponse();
             }
 

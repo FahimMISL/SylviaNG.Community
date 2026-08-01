@@ -17,7 +17,8 @@ namespace SylviaNG.Community.Infrastructure.Configurations
 
             builder.Property(p => p.Visibility)
                 .IsRequired()
-                .HasMaxLength(50);
+                .HasConversion<string>()
+                .HasMaxLength(20);
 
             builder.Property(p => p.Content)
                 .HasColumnType("text");

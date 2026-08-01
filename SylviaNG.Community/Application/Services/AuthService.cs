@@ -39,5 +39,16 @@ namespace SylviaNG.Community.Application.Services
                 EmployeeId = credential.EmployeeId
             };
         }
+
+        public async Task ChangePasswordAsync(string username, ChangePasswordRequestDto request)
+        {
+            var credential = await _credentialRepository.GetByUsernameAsync(username);
+
+            if (credential == null || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, credential.PasswordHash))
+                throw new UnauthorizedException("Current password is incorrect.");
+
+            var newPasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 11);
+            await _credentialRepository.UpdatePasswordHashAsync(username, newPasswordHash);
+        }
     }
 }

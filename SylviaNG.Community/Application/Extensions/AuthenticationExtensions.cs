@@ -106,6 +106,19 @@ namespace SylviaNG.Community.Application.Extensions
                         return JwtBearerDefaults.AuthenticationScheme;
                     }
 
+                    // Browsers can't set the Authorization header on a WebSocket upgrade, so the
+                    // SignalR client appends ?access_token=<token> instead - check for that on the
+                    // notifications hub path before falling through to the dev/Keycloak default.
+                    if (context.Request.Path.StartsWithSegments("/community/hubs/notifications")
+                        && context.Request.Query.TryGetValue("access_token", out var queryToken))
+                    {
+                        var issuer = TryPeekUnvalidatedIssuer($"Bearer {queryToken}");
+                        if (issuer == localIssuer)
+                            return LocalScheme;
+
+                        return JwtBearerDefaults.AuthenticationScheme;
+                    }
+
                     // No bearer token: in Development, let the dev-header persona-switcher
                     // authenticate; elsewhere fall through to Keycloak's default challenge.
                     return isDevelopment ? DevHeaderAuthenticationHandler.SchemeName : JwtBearerDefaults.AuthenticationScheme;
@@ -159,6 +172,21 @@ namespace SylviaNG.Community.Application.Extensions
         {
             return new JwtBearerEvents
             {
+                // Browsers cannot set the Authorization header on a WebSocket upgrade request,
+                // so the SignalR JS client's accessTokenFactory instead appends
+                // ?access_token=<token> to the connection URL for the WebSocket transport.
+                // Ordinary REST calls and the hub's initial HTTP negotiate POST are unaffected
+                // since they still carry the real header.
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/community/hubs/notifications"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                },
                 OnAuthenticationFailed = context =>
                 {
                     Console.WriteLine($"Authentication failed: {context.Exception.Message}");

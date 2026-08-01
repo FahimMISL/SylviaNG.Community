@@ -4,6 +4,7 @@ using SylviaNG.Community.Application.Features.CommentReactions.Commands.CommentR
 using SylviaNG.Community.Application.Features.CommentReactions.Commands.CommentReactionRemove;
 using SylviaNG.Community.Application.Features.CommentReactions.Models;
 using SylviaNG.Community.Application.Features.CommentReactions.Queries.CommentReactionGetAll;
+using SylviaNG.Community.Application.Interfaces.Services;
 
 namespace SylviaNG.Community.Controllers
 {
@@ -12,10 +13,12 @@ namespace SylviaNG.Community.Controllers
     public class CommentReactionController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public CommentReactionController(IMediator mediator)
+        public CommentReactionController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet]
@@ -28,6 +31,9 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<CommentReactionResponse?>> Add(long commentId, [FromBody] CommentReactionAddRequest request)
         {
+            // EmployeeId is always the caller's own id - never trust a client-supplied value here,
+            // otherwise any authenticated caller could react as anyone else.
+            request.EmployeeId = _currentUserService.EmployeeId ?? 0;
             var result = await _mediator.Send(new CommentReactionAddCommand(commentId, request));
             return Ok(result);
         }
@@ -35,7 +41,11 @@ namespace SylviaNG.Community.Controllers
         [HttpDelete("{employeeId}")]
         public async Task<ActionResult> Remove(long commentId, long employeeId)
         {
-            await _mediator.Send(new CommentReactionRemoveCommand(commentId, employeeId));
+            // Route employeeId is only honored for HR/Admin (moderation override); everyone else
+            // can only remove their own reaction regardless of what's in the route.
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            var targetEmployeeId = _currentUserService.IsHrOrAdmin ? employeeId : callerId;
+            await _mediator.Send(new CommentReactionRemoveCommand(commentId, targetEmployeeId));
             return Ok();
         }
     }

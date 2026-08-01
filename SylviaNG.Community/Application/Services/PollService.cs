@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.Polls.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
@@ -16,19 +17,25 @@ namespace SylviaNG.Community.Application.Services
         private readonly IPollVoteRepository _pollVoteRepository;
         private readonly IPostRepository _postRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IFeedBroadcaster _feedBroadcaster;
+        private readonly ILogger<PollService> _logger;
 
         public PollService(
             IPollRepository pollRepository,
             IPollOptionRepository pollOptionRepository,
             IPollVoteRepository pollVoteRepository,
             IPostRepository postRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IFeedBroadcaster feedBroadcaster,
+            ILogger<PollService> logger)
         {
             _pollRepository = pollRepository;
             _pollOptionRepository = pollOptionRepository;
             _pollVoteRepository = pollVoteRepository;
             _postRepository = postRepository;
             _unitOfWork = unitOfWork;
+            _feedBroadcaster = feedBroadcaster;
+            _logger = logger;
         }
 
         public async Task<long> CreateAsync(long postId, PollCreateRequest request)
@@ -99,6 +106,8 @@ namespace SylviaNG.Community.Application.Services
                 _pollVoteRepository.Update(existingVote);
                 await _unitOfWork.SaveChangesAsync();
 
+                await BroadcastPollResultsSafeAsync(postId);
+
                 return existingVote.VoteId;
             }
 
@@ -112,7 +121,22 @@ namespace SylviaNG.Community.Application.Services
             await _pollVoteRepository.AddAsync(vote);
             await _unitOfWork.SaveChangesAsync();
 
+            await BroadcastPollResultsSafeAsync(postId);
+
             return vote.VoteId;
+        }
+
+        private async Task BroadcastPollResultsSafeAsync(long postId)
+        {
+            try
+            {
+                var pollResponse = await GetByPostIdAsync(postId);
+                await _feedBroadcaster.BroadcastPollResultsAsync(postId, pollResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to broadcast poll results for post {PostId}", postId);
+            }
         }
     }
 }

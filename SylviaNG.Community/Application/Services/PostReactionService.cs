@@ -1,4 +1,5 @@
 using SylviaNG.Community.Application.Common.Exceptions;
+using SylviaNG.Community.Application.Features.Notifications.Models;
 using SylviaNG.Community.Application.Features.PostReactions.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
@@ -12,15 +13,18 @@ namespace SylviaNG.Community.Application.Services
         private readonly IPostReactionRepository _reactionRepository;
         private readonly IPostRepository _postRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
 
         public PostReactionService(
             IPostReactionRepository reactionRepository,
             IPostRepository postRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService)
         {
             _reactionRepository = reactionRepository;
             _postRepository = postRepository;
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         /// <summary>
@@ -29,7 +33,7 @@ namespace SylviaNG.Community.Application.Services
         /// </summary>
         public async Task<PostReactionResponse?> AddOrToggleAsync(long postId, PostReactionAddRequest request)
         {
-            _ = await _postRepository.GetByIdAsync(postId)
+            var post = await _postRepository.GetByIdAsync(postId)
                 ?? throw new NotFoundException("Post", postId);
 
             var existing = await _reactionRepository.GetAsync(postId, request.EmployeeId);
@@ -39,6 +43,19 @@ namespace SylviaNG.Community.Application.Services
                 var entity = request.ToEntity(postId);
                 await _reactionRepository.AddAsync(entity);
                 await _unitOfWork.SaveChangesAsync();
+
+                if (post.EmployeeId != request.EmployeeId)
+                {
+                    await _notificationService.CreateAsync(new NotificationCreateRequest
+                    {
+                        EmployeeId = post.EmployeeId,
+                        Title = "Someone reacted to your post",
+                        Category = "PostReaction",
+                        RelatedEntityType = "Post",
+                        RelatedEntityId = postId
+                    });
+                }
+
                 return entity.ToResponse();
             }
 

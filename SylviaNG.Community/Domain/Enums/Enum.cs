@@ -36,7 +36,9 @@ public enum ReactionTypeEnum
 {
     Like,
     Love,
-    Celebrate,
-    Support,
-    Insightful
+    Care,
+    Haha,
+    Wow,
+    Sad,
+    Angry
 }

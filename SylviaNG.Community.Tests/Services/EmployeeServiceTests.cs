@@ -102,6 +102,79 @@ public class EmployeeServiceTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task UpdateProfileAsync_WhenViewerIsOwner_ShouldApplyAchievementsAndCommunityContributions()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, Achievements = "Old achievement" };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        var request = new EmployeeUpdateProfileRequest { Achievements = "Employee of the month", CommunityContributions = "Mentored 3 interns" };
+
+        // Act
+        await _service.UpdateProfileAsync(employeeId: 1, request, viewerEmployeeId: 1);
+
+        // Assert
+        entity.Achievements.Should().Be("Employee of the month");
+        entity.CommunityContributions.Should().Be("Mentored 3 interns");
+        _repositoryMock.Verify(r => r.Update(entity), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdatePhotoAsync_WhenViewerIsNotOwner_ShouldThrowForbiddenException()
+    {
+        // Act
+        var act = () => _service.UpdatePhotoAsync(employeeId: 1, storagePath: "uploads/employee-photo/2026-07/guid.jpg", viewerEmployeeId: 2);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _repositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<long>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdatePhotoAsync_WhenViewerIsOwner_ShouldSetPhotoUrlAndSave()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, PhotoUrl = null };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        // Act
+        await _service.UpdatePhotoAsync(employeeId: 1, storagePath: "uploads/employee-photo/2026-07/guid.jpg", viewerEmployeeId: 1);
+
+        // Assert
+        entity.PhotoUrl.Should().Be("uploads/employee-photo/2026-07/guid.jpg");
+        _repositoryMock.Verify(r => r.Update(entity), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateCoverPhotoAsync_WhenViewerIsNotOwner_ShouldThrowForbiddenException()
+    {
+        // Act
+        var act = () => _service.UpdateCoverPhotoAsync(employeeId: 1, storagePath: "uploads/employee-cover/2026-07/guid.jpg", viewerEmployeeId: 2);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _repositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<long>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateCoverPhotoAsync_WhenViewerIsOwner_ShouldSetCoverPhotoUrlAndSave()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, CoverPhotoUrl = null };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        // Act
+        await _service.UpdateCoverPhotoAsync(employeeId: 1, storagePath: "uploads/employee-cover/2026-07/guid.jpg", viewerEmployeeId: 1);
+
+        // Assert
+        entity.CoverPhotoUrl.Should().Be("uploads/employee-cover/2026-07/guid.jpg");
+        _repositoryMock.Verify(r => r.Update(entity), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task DeactivateAsync_WithExistingId_ShouldSetIsActiveFalse()
     {
         // Arrange

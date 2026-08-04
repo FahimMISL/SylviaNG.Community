@@ -32,6 +32,7 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
         public List<string> Badges { get; set; } = new();
         public List<string> RecentRecognitions { get; set; } = new();
         public string? PhotoUrl { get; set; }
+        public string? CoverPhotoUrl { get; set; }
         public bool IsActive { get; set; }
 
         public string? Phone { get; set; }

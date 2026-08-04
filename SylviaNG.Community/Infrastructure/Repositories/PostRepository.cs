@@ -30,6 +30,9 @@ namespace SylviaNG.Community.Infrastructure.Repositories
             if (request.IsPoll.HasValue)
                 query = query.Where(p => p.IsPoll == request.IsPoll.Value);
 
+            if (request.EmployeeId.HasValue)
+                query = query.Where(p => p.EmployeeId == request.EmployeeId.Value);
+
             request.SearchProperties ??= new[] { nameof(Post.Content) };
             request.SortBy ??= nameof(Post.CreatedAt);
             request.SortDirection ??= "desc";

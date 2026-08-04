@@ -38,6 +38,23 @@ namespace SylviaNG.Community.Application.Services
             return entity.BadgeId;
         }
 
+        public async Task UpdateAsync(long badgeId, BadgeUpdateRequest request)
+        {
+            var entity = await _badgeRepository.GetByIdAsync(badgeId)
+                ?? throw new NotFoundException("Badge", badgeId);
+
+            if (request.Name != null)
+            {
+                var exists = await _badgeRepository.ExistsByNameAsync(request.Name, badgeId);
+                if (exists)
+                    throw new DuplicateException("Badge", "Name", request.Name);
+            }
+
+            entity.ApplyUpdate(request);
+            _badgeRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         public async Task DeleteAsync(long badgeId)
         {
             var entity = await _badgeRepository.GetByIdAsync(badgeId)

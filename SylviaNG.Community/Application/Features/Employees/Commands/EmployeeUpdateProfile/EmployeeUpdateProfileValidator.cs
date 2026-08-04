@@ -17,6 +17,12 @@ namespace SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpd
 
             RuleFor(x => x.Request.Interests)
                 .MaximumLength(1000).WithMessage("Interests must not exceed 1000 characters.");
+
+            RuleFor(x => x.Request.Achievements)
+                .MaximumLength(1000).WithMessage("Achievements must not exceed 1000 characters.");
+
+            RuleFor(x => x.Request.CommunityContributions)
+                .MaximumLength(1000).WithMessage("Community contributions must not exceed 1000 characters.");
         }
     }
 }

@@ -7,9 +7,15 @@ namespace SylviaNG.Community.Application.Features.Recognitions.Commands.Recognit
     {
         public RecognitionCreateRequest Request { get; set; }
 
-        public RecognitionCreateCommand(RecognitionCreateRequest request)
+        /// <summary>Populated by the controller from ICurrentUserService - never from client input.</summary>
+        public long CallerEmployeeId { get; set; }
+        public bool IsHrOrAdmin { get; set; }
+
+        public RecognitionCreateCommand(RecognitionCreateRequest request, long callerEmployeeId, bool isHrOrAdmin)
         {
             Request = request;
+            CallerEmployeeId = callerEmployeeId;
+            IsHrOrAdmin = isHrOrAdmin;
         }
     }
 }

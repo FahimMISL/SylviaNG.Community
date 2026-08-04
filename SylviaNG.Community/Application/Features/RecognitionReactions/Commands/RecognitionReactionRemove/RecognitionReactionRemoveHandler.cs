@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.RecognitionReactions.Commands.
 
         public async Task Handle(RecognitionReactionRemoveCommand command, CancellationToken cancellationToken)
         {
-            await _recognitionService.RemoveReactionAsync(command.RecognitionId, command.EmployeeId);
+            await _recognitionService.RemoveReactionAsync(command.RecognitionId, command.EmployeeId, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

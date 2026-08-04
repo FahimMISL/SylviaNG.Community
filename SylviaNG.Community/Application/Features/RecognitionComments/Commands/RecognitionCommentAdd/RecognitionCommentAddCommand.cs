@@ -8,10 +8,14 @@ namespace SylviaNG.Community.Application.Features.RecognitionComments.Commands.R
         public long RecognitionId { get; set; }
         public RecognitionCommentAddRequest Request { get; set; }
 
-        public RecognitionCommentAddCommand(long recognitionId, RecognitionCommentAddRequest request)
+        /// <summary>Populated by the controller from ICurrentUserService - never from client input.</summary>
+        public long CallerEmployeeId { get; set; }
+
+        public RecognitionCommentAddCommand(long recognitionId, RecognitionCommentAddRequest request, long callerEmployeeId)
         {
             RecognitionId = recognitionId;
             Request = request;
+            CallerEmployeeId = callerEmployeeId;
         }
     }
 }

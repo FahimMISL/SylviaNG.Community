@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.Badges.Commands.BadgeCreate;
 using SylviaNG.Community.Application.Features.Badges.Commands.BadgeDelete;
+using SylviaNG.Community.Application.Features.Badges.Commands.BadgeUpdate;
 using SylviaNG.Community.Application.Features.Badges.Models;
 using SylviaNG.Community.Application.Features.Badges.Queries.BadgeGetAll;
 using SylviaNG.Community.Application.Features.Badges.Queries.BadgeGetAllPaged;
@@ -49,6 +50,14 @@ namespace SylviaNG.Community.Controllers
         {
             var id = await _mediator.Send(new BadgeCreateCommand(request));
             return Ok(id);
+        }
+
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpPut("{badgeId}")]
+        public async Task<ActionResult> Update(long badgeId, [FromBody] BadgeUpdateRequest request)
+        {
+            await _mediator.Send(new BadgeUpdateCommand(badgeId, request));
+            return Ok();
         }
 
         [Authorize(Policy = "HRAdminOnly")]

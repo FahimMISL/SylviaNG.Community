@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.RecognitionComments.Commands.RecognitionCommentAdd;
 using SylviaNG.Community.Application.Features.RecognitionComments.Models;
 using SylviaNG.Community.Application.Features.RecognitionComments.Queries.RecognitionCommentGetAll;
+using SylviaNG.Community.Application.Interfaces.Services;
 
 namespace SylviaNG.Community.Controllers
 {
@@ -11,10 +12,12 @@ namespace SylviaNG.Community.Controllers
     public class RecognitionCommentController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public RecognitionCommentController(IMediator mediator)
+        public RecognitionCommentController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet]
@@ -27,7 +30,8 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Add(long recognitionId, [FromBody] RecognitionCommentAddRequest request)
         {
-            var id = await _mediator.Send(new RecognitionCommentAddCommand(recognitionId, request));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            var id = await _mediator.Send(new RecognitionCommentAddCommand(recognitionId, request, callerId));
             return Ok(id);
         }
     }

@@ -6,11 +6,15 @@ namespace SylviaNG.Community.Application.Features.Recognitions.Commands.Recognit
     {
         public RecognitionCreateValidator()
         {
-            RuleFor(x => x.Request.SenderId)
-                .GreaterThan(0).WithMessage("SenderId is required.");
+            RuleFor(x => x.CallerEmployeeId)
+                .GreaterThan(0).WithMessage("A valid employee identity is required to send a recognition.");
 
             RuleFor(x => x.Request.RecipientId)
                 .GreaterThan(0).WithMessage("RecipientId is required.");
+
+            RuleFor(x => x.Request.BadgeId)
+                .GreaterThan(0).WithMessage("BadgeId must be a positive id.")
+                .When(x => x.Request.BadgeId.HasValue);
 
             RuleFor(x => x.Request.RecognitionType)
                 .NotEmpty().WithMessage("RecognitionType is required.")

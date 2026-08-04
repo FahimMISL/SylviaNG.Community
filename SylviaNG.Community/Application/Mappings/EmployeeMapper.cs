@@ -28,6 +28,8 @@ namespace SylviaNG.Community.Application.Mappings
             entity.Bio = request.Bio;
             entity.Skills = request.Skills;
             entity.Interests = request.Interests;
+            entity.Achievements = request.Achievements;
+            entity.CommunityContributions = request.CommunityContributions;
             entity.PhoneVisibility = request.PhoneVisibility;
             entity.EmailVisibility = request.EmailVisibility;
             entity.ExtensionVisibility = request.ExtensionVisibility;
@@ -64,6 +66,7 @@ namespace SylviaNG.Community.Application.Mappings
                 Badges = new List<string>(),
                 RecentRecognitions = new List<string>(),
                 PhotoUrl = entity.PhotoUrl,
+                CoverPhotoUrl = entity.CoverPhotoUrl,
                 IsActive = entity.IsActive,
                 Phone = canSeePrivate || entity.PhoneVisibility == ContactVisibilityEnum.Public ? entity.Phone : null,
                 Email = canSeePrivate || entity.EmailVisibility == ContactVisibilityEnum.Public ? entity.Email : null,

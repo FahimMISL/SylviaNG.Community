@@ -34,5 +34,6 @@ public class Employee : Audit
     public string? Achievements { get; set; }
     public string? CommunityContributions { get; set; }
     public string? PhotoUrl { get; set; }
+    public string? CoverPhotoUrl { get; set; }
     public bool IsActive { get; set; } = true;
 }

@@ -11,5 +11,8 @@ namespace SylviaNG.Community.Application.Features.Posts.Models
     {
         public bool? IsAnnouncement { get; set; }
         public bool? IsPoll { get; set; }
+
+        /// <summary>Restricts results to posts authored by this employee (e.g. the Community Profile page's post list).</summary>
+        public long? EmployeeId { get; set; }
     }
 }

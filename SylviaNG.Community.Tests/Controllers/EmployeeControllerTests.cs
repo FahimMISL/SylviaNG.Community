@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeCreate;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeDeactivate;
+using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdateCoverPhoto;
+using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdatePhoto;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdateProfile;
 using SylviaNG.Community.Application.Features.Employees.Models;
 using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetAllForManagement;
@@ -120,6 +122,54 @@ public class EmployeeControllerTests
         capturedCommand.Should().NotBeNull();
         capturedCommand!.EmployeeId.Should().Be(1);
         capturedCommand.ViewerEmployeeId.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task UpdatePhoto_ShouldPassCurrentUserAsViewer()
+    {
+        // Arrange
+        _currentUserMock.SetupGet(c => c.EmployeeId).Returns(1);
+
+        var request = new EmployeeUpdatePhotoRequest { StoragePath = "uploads/employee-photo/2026-07/guid.jpg" };
+        EmployeeUpdatePhotoCommand? capturedCommand = null;
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<EmployeeUpdatePhotoCommand>(), default))
+            .Callback<IRequest<Unit>, CancellationToken>((c, _) => capturedCommand = (EmployeeUpdatePhotoCommand)c)
+            .ReturnsAsync(Unit.Value);
+
+        // Act
+        var result = await _controller.UpdatePhoto(1, request);
+
+        // Assert
+        result.Should().BeOfType<OkResult>();
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.EmployeeId.Should().Be(1);
+        capturedCommand.ViewerEmployeeId.Should().Be(1);
+        capturedCommand.Request.StoragePath.Should().Be(request.StoragePath);
+    }
+
+    [Fact]
+    public async Task UpdateCoverPhoto_ShouldPassCurrentUserAsViewer()
+    {
+        // Arrange
+        _currentUserMock.SetupGet(c => c.EmployeeId).Returns(1);
+
+        var request = new EmployeeUpdateCoverPhotoRequest { StoragePath = "uploads/employee-cover/2026-07/guid.jpg" };
+        EmployeeUpdateCoverPhotoCommand? capturedCommand = null;
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<EmployeeUpdateCoverPhotoCommand>(), default))
+            .Callback<IRequest<Unit>, CancellationToken>((c, _) => capturedCommand = (EmployeeUpdateCoverPhotoCommand)c)
+            .ReturnsAsync(Unit.Value);
+
+        // Act
+        var result = await _controller.UpdateCoverPhoto(1, request);
+
+        // Assert
+        result.Should().BeOfType<OkResult>();
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.EmployeeId.Should().Be(1);
+        capturedCommand.ViewerEmployeeId.Should().Be(1);
+        capturedCommand.Request.StoragePath.Should().Be(request.StoragePath);
     }
 
     [Fact]

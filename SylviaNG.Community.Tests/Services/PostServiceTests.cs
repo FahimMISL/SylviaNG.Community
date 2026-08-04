@@ -250,6 +250,27 @@ public class PostServiceTests
     }
 
     [Fact]
+    public async Task GetFeedPaginatedAsync_WithEmployeeIdFilter_ShouldForwardItToRepository()
+    {
+        // Arrange
+        var pagedResult = new PagedResult<Post>
+        {
+            Data = new List<Post> { new() { PostId = 1, EmployeeId = 7, Type = "Update", Visibility = VisibilityEnum.Everyone } },
+            TotalCount = 1,
+            PageNumber = 1,
+            PageSize = 10
+        };
+        _postRepositoryMock.Setup(r => r.GetFeedPaginatedAsync(It.IsAny<PostFilterRequest>(), It.IsAny<long?>(), It.IsAny<long?>())).ReturnsAsync(pagedResult);
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Employee { EmployeeId = 1, DepartmentId = 5, SiteId = 9 });
+
+        // Act
+        await _service.GetFeedPaginatedAsync(new PostFilterRequest { EmployeeId = 7 }, callerEmployeeId: 1);
+
+        // Assert
+        _postRepositoryMock.Verify(r => r.GetFeedPaginatedAsync(It.Is<PostFilterRequest>(req => req.EmployeeId == 7), 5, 9), Times.Once);
+    }
+
+    [Fact]
     public async Task SetLockedAsync_ShouldUpdateFlagAndSave()
     {
         // Arrange

@@ -7,6 +7,7 @@ namespace SylviaNG.Community.Application.Interfaces.Services
     public interface IBadgeService
     {
         Task<long> CreateAsync(BadgeCreateRequest request);
+        Task UpdateAsync(long badgeId, BadgeUpdateRequest request);
         Task DeleteAsync(long badgeId);
         Task<BadgeResponse> GetByIdAsync(long badgeId);
         Task<List<BadgeResponse>> GetAllAsync();

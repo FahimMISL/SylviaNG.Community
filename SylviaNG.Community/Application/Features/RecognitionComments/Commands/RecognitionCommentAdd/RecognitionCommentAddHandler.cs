@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.RecognitionComments.Commands.R
 
         public async Task<long> Handle(RecognitionCommentAddCommand command, CancellationToken cancellationToken)
         {
-            return await _recognitionService.AddCommentAsync(command.RecognitionId, command.Request);
+            return await _recognitionService.AddCommentAsync(command.RecognitionId, command.Request, command.CallerEmployeeId);
         }
     }
 }

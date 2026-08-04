@@ -12,8 +12,19 @@ namespace SylviaNG.Community.Application.Mappings
             {
                 Name = request.Name,
                 Icon = request.Icon,
-                Description = request.Description
+                Description = request.Description,
+                Color = request.Color,
+                IsActive = true
             };
+        }
+
+        public static void ApplyUpdate(this Badge entity, BadgeUpdateRequest request)
+        {
+            if (request.Name != null) entity.Name = request.Name;
+            if (request.Icon != null) entity.Icon = request.Icon;
+            if (request.Description != null) entity.Description = request.Description;
+            if (request.Color != null) entity.Color = request.Color;
+            if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
         }
 
         public static BadgeResponse ToResponse(this Badge entity)
@@ -23,7 +34,9 @@ namespace SylviaNG.Community.Application.Mappings
                 BadgeId = entity.BadgeId,
                 Name = entity.Name,
                 Icon = entity.Icon,
-                Description = entity.Description
+                Description = entity.Description,
+                Color = entity.Color,
+                IsActive = entity.IsActive
             };
         }
 

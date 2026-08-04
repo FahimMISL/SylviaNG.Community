@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeCreate;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeDeactivate;
+using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdateCoverPhoto;
+using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdatePhoto;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdateProfile;
 using SylviaNG.Community.Application.Features.Employees.Models;
 using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetAllForManagement;
@@ -76,6 +78,28 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult> UpdateProfile(long employeeId, [FromBody] EmployeeUpdateProfileRequest request)
         {
             await _mediator.Send(new EmployeeUpdateProfileCommand(employeeId, request, _currentUserService.EmployeeId));
+            return Ok();
+        }
+
+        /// <summary>
+        /// Set my own profile photo. StoragePath must come from a prior POST community/file-upload
+        /// call (module "employee-photo").
+        /// </summary>
+        [HttpPut("{employeeId}/photo")]
+        public async Task<ActionResult> UpdatePhoto(long employeeId, [FromBody] EmployeeUpdatePhotoRequest request)
+        {
+            await _mediator.Send(new EmployeeUpdatePhotoCommand(employeeId, request, _currentUserService.EmployeeId));
+            return Ok();
+        }
+
+        /// <summary>
+        /// Set my own cover photo. StoragePath must come from a prior POST community/file-upload
+        /// call (module "employee-cover").
+        /// </summary>
+        [HttpPut("{employeeId}/cover-photo")]
+        public async Task<ActionResult> UpdateCoverPhoto(long employeeId, [FromBody] EmployeeUpdateCoverPhotoRequest request)
+        {
+            await _mediator.Send(new EmployeeUpdateCoverPhotoCommand(employeeId, request, _currentUserService.EmployeeId));
             return Ok();
         }
 

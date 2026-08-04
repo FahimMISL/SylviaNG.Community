@@ -7,13 +7,13 @@ namespace SylviaNG.Community.Application.Interfaces.Services
 {
     public interface IRecognitionService
     {
-        Task<long> CreateAsync(RecognitionCreateRequest request);
+        Task<long> CreateAsync(RecognitionCreateRequest request, long callerEmployeeId, bool isHrOrAdmin);
         Task<RecognitionResponse> GetByIdAsync(long recognitionId);
         Task<PagedResult<RecognitionResponse>> GetPaginatedAsync(PagedRequest request, long? senderId = null, long? recipientId = null);
-        Task<long> AddReactionAsync(long recognitionId, RecognitionReactionAddRequest request);
-        Task RemoveReactionAsync(long recognitionId, long employeeId);
+        Task<long> AddReactionAsync(long recognitionId, RecognitionReactionAddRequest request, long callerEmployeeId);
+        Task RemoveReactionAsync(long recognitionId, long employeeId, long callerEmployeeId, bool isHrOrAdmin);
         Task<List<RecognitionReactionResponse>> GetReactionsAsync(long recognitionId);
-        Task<long> AddCommentAsync(long recognitionId, RecognitionCommentAddRequest request);
+        Task<long> AddCommentAsync(long recognitionId, RecognitionCommentAddRequest request, long callerEmployeeId);
         Task<List<RecognitionCommentResponse>> GetCommentsAsync(long recognitionId);
     }
 }

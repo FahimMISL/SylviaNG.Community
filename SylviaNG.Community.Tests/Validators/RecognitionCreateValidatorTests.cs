@@ -14,11 +14,10 @@ public class RecognitionCreateValidatorTests
         // Arrange
         var command = new RecognitionCreateCommand(new RecognitionCreateRequest
         {
-            SenderId = 1,
             RecipientId = 2,
             RecognitionType = "Peer",
             Message = "Great job!"
-        });
+        }, callerEmployeeId: 1, isHrOrAdmin: false);
 
         // Act
         var result = _validator.Validate(command);
@@ -33,10 +32,9 @@ public class RecognitionCreateValidatorTests
         // Arrange
         var command = new RecognitionCreateCommand(new RecognitionCreateRequest
         {
-            SenderId = 1,
             RecipientId = 2,
             RecognitionType = ""
-        });
+        }, callerEmployeeId: 1, isHrOrAdmin: false);
 
         // Act
         var result = _validator.Validate(command);
@@ -47,21 +45,20 @@ public class RecognitionCreateValidatorTests
     }
 
     [Fact]
-    public void Validate_WithZeroSenderId_ShouldHaveError()
+    public void Validate_WithZeroCallerEmployeeId_ShouldHaveError()
     {
         // Arrange
         var command = new RecognitionCreateCommand(new RecognitionCreateRequest
         {
-            SenderId = 0,
             RecipientId = 2,
             RecognitionType = "Peer"
-        });
+        }, callerEmployeeId: 0, isHrOrAdmin: false);
 
         // Act
         var result = _validator.Validate(command);
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "Request.SenderId");
+        result.Errors.Should().Contain(e => e.PropertyName == "CallerEmployeeId");
     }
 }

@@ -9,6 +9,10 @@ namespace SylviaNG.Community.Application.Interfaces.Services
 
         Task UpdateProfileAsync(long employeeId, EmployeeUpdateProfileRequest request, long? viewerEmployeeId);
 
+        Task UpdatePhotoAsync(long employeeId, string storagePath, long? viewerEmployeeId);
+
+        Task UpdateCoverPhotoAsync(long employeeId, string storagePath, long? viewerEmployeeId);
+
         Task DeactivateAsync(long employeeId);
 
         Task<EmployeeResponse> GetByIdAsync(long employeeId, long? viewerEmployeeId, bool viewerIsHrAdmin);

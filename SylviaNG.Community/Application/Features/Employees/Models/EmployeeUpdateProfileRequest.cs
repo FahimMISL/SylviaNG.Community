@@ -12,6 +12,8 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
         public string? Bio { get; set; }
         public string? Skills { get; set; }
         public string? Interests { get; set; }
+        public string? Achievements { get; set; }
+        public string? CommunityContributions { get; set; }
         public ContactVisibilityEnum PhoneVisibility { get; set; }
         public ContactVisibilityEnum EmailVisibility { get; set; }
         public ContactVisibilityEnum ExtensionVisibility { get; set; }

@@ -62,6 +62,32 @@ namespace SylviaNG.Community.Application.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
+        public async System.Threading.Tasks.Task UpdatePhotoAsync(long employeeId, string storagePath, long? viewerEmployeeId)
+        {
+            if (viewerEmployeeId != employeeId)
+                throw new ForbiddenException("You can only edit your own profile.");
+
+            var entity = await _employeeRepository.GetByIdAsync(employeeId)
+                ?? throw new NotFoundException("Employee", employeeId);
+
+            entity.PhotoUrl = storagePath;
+            _employeeRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async System.Threading.Tasks.Task UpdateCoverPhotoAsync(long employeeId, string storagePath, long? viewerEmployeeId)
+        {
+            if (viewerEmployeeId != employeeId)
+                throw new ForbiddenException("You can only edit your own profile.");
+
+            var entity = await _employeeRepository.GetByIdAsync(employeeId)
+                ?? throw new NotFoundException("Employee", employeeId);
+
+            entity.CoverPhotoUrl = storagePath;
+            _employeeRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         public async System.Threading.Tasks.Task DeactivateAsync(long employeeId)
         {
             var entity = await _employeeRepository.GetByIdAsync(employeeId)

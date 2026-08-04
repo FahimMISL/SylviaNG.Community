@@ -21,6 +21,12 @@ namespace SylviaNG.Community.Infrastructure.Configurations
             builder.Property(b => b.Description)
                 .HasColumnType("text");
 
+            builder.Property(b => b.Color)
+                .HasMaxLength(20);
+
+            builder.Property(b => b.IsActive)
+                .HasDefaultValue(true);
+
             builder.HasIndex(b => b.Name).IsUnique();
         }
     }

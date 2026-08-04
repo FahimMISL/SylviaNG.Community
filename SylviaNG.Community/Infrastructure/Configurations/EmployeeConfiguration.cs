@@ -60,6 +60,9 @@ namespace SylviaNG.Community.Infrastructure.Configurations
             builder.Property(e => e.PhotoUrl)
                 .HasMaxLength(500);
 
+            builder.Property(e => e.CoverPhotoUrl)
+                .HasMaxLength(500);
+
             // Indexes
             builder.HasIndex(e => e.EmployeeCode);
             builder.HasIndex(e => e.IsActive);
@@ -91,6 +94,7 @@ namespace SylviaNG.Community.Infrastructure.Configurations
                     Achievements = (string?)null,
                     CommunityContributions = (string?)null,
                     PhotoUrl = (string?)null,
+                    CoverPhotoUrl = (string?)null,
                     IsActive = true,
                     TenantId = "default_tenant",
                     Remarks = (string?)null,
@@ -125,6 +129,7 @@ namespace SylviaNG.Community.Infrastructure.Configurations
                     Achievements = (string?)null,
                     CommunityContributions = (string?)null,
                     PhotoUrl = (string?)null,
+                    CoverPhotoUrl = (string?)null,
                     IsActive = true,
                     TenantId = "default_tenant",
                     Remarks = (string?)null,
@@ -159,6 +164,7 @@ namespace SylviaNG.Community.Infrastructure.Configurations
                     Achievements = (string?)null,
                     CommunityContributions = (string?)null,
                     PhotoUrl = (string?)null,
+                    CoverPhotoUrl = (string?)null,
                     IsActive = true,
                     TenantId = "default_tenant",
                     Remarks = (string?)null,

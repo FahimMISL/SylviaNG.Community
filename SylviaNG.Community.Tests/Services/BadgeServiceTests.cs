@@ -59,6 +59,52 @@ public class BadgeServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_WhenNotFound_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        _badgeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Badge?)null);
+
+        // Act
+        var act = () => _service.UpdateAsync(1, new BadgeUpdateRequest { Name = "Rockstar" });
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithDuplicateName_ShouldThrowDuplicateException()
+    {
+        // Arrange
+        var entity = new Badge { BadgeId = 1, Name = "Old Name" };
+        _badgeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+        _badgeRepositoryMock.Setup(r => r.ExistsByNameAsync("Taken", 1)).ReturnsAsync(true);
+
+        // Act
+        var act = () => _service.UpdateAsync(1, new BadgeUpdateRequest { Name = "Taken" });
+
+        // Assert
+        await act.Should().ThrowAsync<DuplicateException>();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithPartialRequest_ShouldOnlyApplyProvidedFields()
+    {
+        // Arrange
+        var entity = new Badge { BadgeId = 1, Name = "Rockstar", Icon = "fa-star", IsActive = true };
+        _badgeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        // Act
+        await _service.UpdateAsync(1, new BadgeUpdateRequest { IsActive = false });
+
+        // Assert
+        entity.Name.Should().Be("Rockstar");
+        entity.Icon.Should().Be("fa-star");
+        entity.IsActive.Should().BeFalse();
+        _badgeRepositoryMock.Verify(r => r.Update(entity), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
     public async Task AwardToEmployeeAsync_WhenBadgeNotFound_ShouldThrowNotFoundException()
     {
         // Arrange

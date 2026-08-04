@@ -7,42 +7,49 @@ namespace SylviaNG.Community.Application.Mappings
 {
     public static class RecognitionMapper
     {
-        public static Recognition ToEntity(this RecognitionCreateRequest request)
+        public static Recognition ToEntity(this RecognitionCreateRequest request, long senderId)
         {
             return new Recognition
             {
-                SenderId = request.SenderId,
+                SenderId = senderId,
                 RecipientId = request.RecipientId,
+                BadgeId = request.BadgeId,
                 RecognitionType = request.RecognitionType,
                 CoreValue = request.CoreValue,
                 AwardTitle = request.AwardTitle,
                 Message = request.Message,
-                IsPublic = request.IsPublic
+                IsPublic = request.IsPublic,
+                IsHrIssued = request.IsHrIssued
             };
         }
 
-        public static RecognitionResponse ToResponse(this Recognition entity)
+        public static RecognitionResponse ToResponse(this Recognition entity, Badge? badge = null)
         {
             return new RecognitionResponse
             {
                 RecognitionId = entity.RecognitionId,
                 SenderId = entity.SenderId,
                 RecipientId = entity.RecipientId,
+                BadgeId = entity.BadgeId,
+                BadgeName = badge?.Name,
+                BadgeIcon = badge?.Icon,
+                BadgeColor = badge?.Color,
                 RecognitionType = entity.RecognitionType,
                 CoreValue = entity.CoreValue,
                 AwardTitle = entity.AwardTitle,
                 Message = entity.Message,
                 IsPublic = entity.IsPublic,
+                IsHrIssued = entity.IsHrIssued,
                 CreatedAt = entity.CreatedAt
             };
         }
 
-        public static RecognitionReaction ToEntity(this RecognitionReactionAddRequest request, long recognitionId)
+        public static RecognitionReaction ToEntity(this RecognitionReactionAddRequest request, long recognitionId, long employeeId)
         {
             return new RecognitionReaction
             {
                 RecognitionId = recognitionId,
-                EmployeeId = request.EmployeeId,
+                EmployeeId = employeeId,
                 ReactionType = request.ReactionType
             };
         }
@@ -58,12 +65,12 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
-        public static RecognitionComment ToEntity(this RecognitionCommentAddRequest request, long recognitionId)
+        public static RecognitionComment ToEntity(this RecognitionCommentAddRequest request, long recognitionId, long employeeId)
         {
             return new RecognitionComment
             {
                 RecognitionId = recognitionId,
-                EmployeeId = request.EmployeeId,
+                EmployeeId = employeeId,
                 ParentCommentId = request.ParentCommentId,
                 Comment = request.Comment
             };

@@ -4,6 +4,7 @@ using SylviaNG.Community.Application.Features.RecognitionReactions.Commands.Reco
 using SylviaNG.Community.Application.Features.RecognitionReactions.Commands.RecognitionReactionRemove;
 using SylviaNG.Community.Application.Features.RecognitionReactions.Models;
 using SylviaNG.Community.Application.Features.RecognitionReactions.Queries.RecognitionReactionGetAll;
+using SylviaNG.Community.Application.Interfaces.Services;
 
 namespace SylviaNG.Community.Controllers
 {
@@ -12,10 +13,12 @@ namespace SylviaNG.Community.Controllers
     public class RecognitionReactionController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public RecognitionReactionController(IMediator mediator)
+        public RecognitionReactionController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet]
@@ -28,14 +31,16 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Add(long recognitionId, [FromBody] RecognitionReactionAddRequest request)
         {
-            var id = await _mediator.Send(new RecognitionReactionAddCommand(recognitionId, request));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            var id = await _mediator.Send(new RecognitionReactionAddCommand(recognitionId, request, callerId));
             return Ok(id);
         }
 
         [HttpDelete("{employeeId}")]
         public async Task<ActionResult> Remove(long recognitionId, long employeeId)
         {
-            await _mediator.Send(new RecognitionReactionRemoveCommand(recognitionId, employeeId));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new RecognitionReactionRemoveCommand(recognitionId, employeeId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
     }

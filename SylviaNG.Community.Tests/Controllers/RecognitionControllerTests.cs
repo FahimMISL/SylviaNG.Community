@@ -6,6 +6,7 @@ using SylviaNG.Community.Application.Features.Recognitions.Commands.RecognitionC
 using SylviaNG.Community.Application.Features.Recognitions.Models;
 using SylviaNG.Community.Application.Features.Recognitions.Queries.RecognitionGetAllPaged;
 using SylviaNG.Community.Application.Features.Recognitions.Queries.RecognitionGetById;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Controllers;
 using SylviaNG.Community.SharedKernel.Pagination;
 
@@ -14,12 +15,14 @@ namespace SylviaNG.Community.Tests.Controllers;
 public class RecognitionControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock;
+    private readonly Mock<ICurrentUserService> _currentUserServiceMock;
     private readonly RecognitionController _controller;
 
     public RecognitionControllerTests()
     {
         _mediatorMock = new Mock<IMediator>();
-        _controller = new RecognitionController(_mediatorMock.Object);
+        _currentUserServiceMock = new Mock<ICurrentUserService>();
+        _controller = new RecognitionController(_mediatorMock.Object, _currentUserServiceMock.Object);
     }
 
     [Fact]
@@ -60,12 +63,12 @@ public class RecognitionControllerTests
     public async Task Create_ShouldReturnOkWithNewId()
     {
         // Arrange
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(1);
         _mediatorMock.Setup(m => m.Send(It.IsAny<RecognitionCreateCommand>(), default)).ReturnsAsync(42L);
 
         // Act
         var result = await _controller.Create(new RecognitionCreateRequest
         {
-            SenderId = 1,
             RecipientId = 2,
             RecognitionType = "Peer"
         });

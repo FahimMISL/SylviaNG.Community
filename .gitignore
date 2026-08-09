@@ -52,6 +52,7 @@ docker-compose.override.yml
 **/docker-compose.*.yml
 docker/*.tar
 docker/*.img
+.env
 
 # Kubernetes (Optional overrides/configs)
 k8s/*.local.yaml
@@ -75,6 +76,9 @@ paket-files/
 
 # Node modules (if JS is used)
 node_modules/
+
+# Locally uploaded files (runtime data written by FileUploadController, not source)
+SylviaNG.Community/wwwroot/uploads/
 
 # Visual Studio language service cache
 *.lscache

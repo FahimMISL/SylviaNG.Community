@@ -1,0 +1,14 @@
+using SylviaNG.Community.Application.Features.Notifications.Models;
+using SylviaNG.Community.Domain.Entities;
+using SylviaNG.Community.SharedKernel.Generic;
+using SylviaNG.Community.SharedKernel.Pagination;
+
+namespace SylviaNG.Community.Application.Interfaces.Repositories
+{
+    public interface INotificationRepository : IRepository<Notification>
+    {
+        Task<PagedResult<Notification>> GetPaginatedByEmployeeAsync(long employeeId, NotificationFilterRequest request);
+        Task<int> GetUnreadCountAsync(long employeeId);
+        Task<int> MarkAllAsReadAsync(long employeeId);
+    }
+}

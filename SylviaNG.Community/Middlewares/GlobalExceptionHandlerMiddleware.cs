@@ -25,6 +25,21 @@ namespace SylviaNG.Community.Middlewares
                 _logger.LogWarning(ex, "Resource not found.");
                 await HandleExceptionAsync(context, StatusCodes.Status404NotFound, ex.Message);
             }
+            catch (DuplicateException ex)
+            {
+                _logger.LogWarning(ex, "Duplicate resource.");
+                await HandleExceptionAsync(context, StatusCodes.Status409Conflict, ex.Message);
+            }
+            catch (UnauthorizedException ex)
+            {
+                _logger.LogWarning(ex, "Unauthorized.");
+                await HandleExceptionAsync(context, StatusCodes.Status401Unauthorized, ex.Message);
+            }
+            catch (ForbiddenException ex)
+            {
+                _logger.LogWarning(ex, "Forbidden.");
+                await HandleExceptionAsync(context, StatusCodes.Status403Forbidden, ex.Message);
+            }
             catch (FluentValidation.ValidationException ex)
             {
                 _logger.LogWarning(ex, "Validation failed.");

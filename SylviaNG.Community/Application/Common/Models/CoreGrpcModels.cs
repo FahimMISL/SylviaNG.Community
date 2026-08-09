@@ -15,5 +15,7 @@ namespace SylviaNG.Community.Application.Common.Models
     public class CoreBatchLookupResult
     {
         public List<EntityIdNameCodeResponse> Sites { get; set; } = new();
+        public List<EntityIdNameCodeResponse> Departments { get; set; } = new();
+        public List<EntityIdNameCodeResponse> Designations { get; set; } = new();
     }
 }

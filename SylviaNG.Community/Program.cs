@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.FileProviders;
 using SylviaNG.Community.Application.Extensions;
+using SylviaNG.Community.Hubs;
 using SylviaNG.Community.Infrastructure.Extensions;
 using SylviaNG.Community.Middlewares;
 using SylviaNG.Community.SharedKernel.Utils;
@@ -15,14 +18,22 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddGrpcServices(builder.Configuration);
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, NotificationUserIdProvider>();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        // SignalR's default client sends credentialed (withCredentials: true) requests
+        // for the hub negotiate handshake, which the CORS spec forbids combining with a
+        // wildcard Access-Control-Allow-Origin. Reflecting the request origin via
+        // SetIsOriginAllowed lets AllowCredentials() be added while still accepting any
+        // origin, so hub connections (NotificationHub/FeedHub) can actually establish.
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -66,8 +77,9 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 
-// Add Keycloak Authentication
-builder.Services.AddKeycloakJwtAuthentication(builder.Configuration);
+// Add Keycloak Authentication (with a Development-only header-based fallback scheme
+// so frontend apps without a real login flow yet can still exercise authorization)
+builder.Services.AddKeycloakJwtAuthentication(builder.Configuration, builder.Environment);
 
 builder.Services.AddAuthorizationPolicies();
 
@@ -101,6 +113,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 
+var uploadsRootPath = Path.Combine(app.Environment.ContentRootPath, builder.Configuration["FileStorage:LocalRootPath"] ?? "wwwroot/uploads");
+Directory.CreateDirectory(uploadsRootPath); // PhysicalFileProvider throws if the directory doesn't exist yet
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsRootPath),
+    RequestPath = "/uploads"
+});
+
 app.UseMiddleware<ResponseWrappingMiddleware>();
 
 app.UseAuthentication();
@@ -109,5 +130,7 @@ app.UseAuthorization();
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/community/hubs/notifications");
+app.MapHub<FeedHub>("/community/hubs/feed");
 
 app.Run();

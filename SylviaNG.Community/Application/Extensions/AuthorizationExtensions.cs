@@ -8,7 +8,9 @@ namespace SylviaNG.Community.Application.Extensions
         {
             services.AddAuthorization(options =>
             {
-                // Add community-specific authorization policies here
+                // Employee Profiles & Directory (Feature 1): HR/Admin-only actions
+                // (add employee, management list, deactivate).
+                options.AddPolicy("HRAdminOnly", policy => policy.RequireRole("HR", "Admin"));
             });
 
             return services;

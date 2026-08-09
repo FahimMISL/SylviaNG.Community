@@ -18,3 +18,48 @@ public enum AnnouncementTypeEnum
     Emergency,
     Achievement
 }
+
+public enum ContactVisibilityEnum
+{
+    Private,
+    Public
+}
+
+public enum VisibilityEnum
+{
+    Everyone,
+    Department,
+    Branch
+}
+
+public enum ReactionTypeEnum
+{
+    Like,
+    Love,
+    Care,
+    Haha,
+    Wow,
+    Sad,
+    Angry
+}
+
+public enum GroupVisibilityEnum
+{
+    Public,
+    Private
+}
+
+public enum GroupMemberRoleEnum
+{
+    Member,
+    Contributor,
+    GroupAdmin,
+    Creator
+}
+
+public enum GroupJoinRequestStatusEnum
+{
+    Pending,
+    Approved,
+    Rejected
+}

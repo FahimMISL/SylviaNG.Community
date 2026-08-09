@@ -42,3 +42,24 @@ public enum ReactionTypeEnum
     Sad,
     Angry
 }
+
+public enum GroupVisibilityEnum
+{
+    Public,
+    Private
+}
+
+public enum GroupMemberRoleEnum
+{
+    Member,
+    Contributor,
+    GroupAdmin,
+    Creator
+}
+
+public enum GroupJoinRequestStatusEnum
+{
+    Pending,
+    Approved,
+    Rejected
+}

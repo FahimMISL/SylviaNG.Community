@@ -22,6 +22,8 @@ namespace SylviaNG.Community.Infrastructure.Repositories
                 query = query.Where(r => r.RecipientId == recipientId.Value);
 
             request.SearchProperties ??= new[] { nameof(Recognition.AwardTitle), nameof(Recognition.Message) };
+            request.SortBy ??= nameof(Recognition.CreatedAt);
+            request.SortDirection ??= "desc";
 
             return await query.ToPaginatedResultAsync(request);
         }

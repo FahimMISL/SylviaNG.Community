@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.Surveys.Commands.SurveyAudienceAdd;
 using SylviaNG.Community.Application.Features.Surveys.Commands.SurveyClose;
 using SylviaNG.Community.Application.Features.Surveys.Commands.SurveyCreate;
+using SylviaNG.Community.Application.Features.Surveys.Commands.SurveyDelete;
 using SylviaNG.Community.Application.Features.Surveys.Commands.SurveyPublish;
 using SylviaNG.Community.Application.Features.Surveys.Commands.SurveyQuestionAdd;
 using SylviaNG.Community.Application.Features.Surveys.Commands.SurveyQuestionDelete;
@@ -16,6 +17,7 @@ using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetAllPaged;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetById;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyQuestionGetAll;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyResponseGetAllPaged;
+using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyResultsGet;
 using SylviaNG.Community.SharedKernel.Pagination;
 
 namespace SylviaNG.Community.Controllers
@@ -74,6 +76,18 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult> Close(long surveyId)
         {
             await _mediator.Send(new SurveyCloseCommand(surveyId));
+            return Ok();
+        }
+
+        /// <summary>
+        /// Permanently deletes a survey. Closed surveys cannot be deleted (US-5.8) -
+        /// SurveyService.DeleteAsync rejects the request with a validation error.
+        /// </summary>
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpDelete("{surveyId}")]
+        public async Task<ActionResult> Delete(long surveyId)
+        {
+            await _mediator.Send(new SurveyDeleteCommand(surveyId));
             return Ok();
         }
 
@@ -140,6 +154,14 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<PagedResult<SurveySubmissionResponse>>> GetResponses(long surveyId, [FromQuery] PagedRequest request)
         {
             var result = await _mediator.Send(new SurveyResponseGetAllPagedQuery(surveyId, request));
+            return Ok(result);
+        }
+
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpGet("{surveyId}/results")]
+        public async Task<ActionResult<SurveyResultsResponse>> GetResults(long surveyId)
+        {
+            var result = await _mediator.Send(new SurveyResultsGetQuery(surveyId));
             return Ok(result);
         }
     }

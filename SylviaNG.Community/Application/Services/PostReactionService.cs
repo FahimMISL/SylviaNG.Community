@@ -12,17 +12,20 @@ namespace SylviaNG.Community.Application.Services
     {
         private readonly IPostReactionRepository _reactionRepository;
         private readonly IPostRepository _postRepository;
+        private readonly IEmployeeRepository _employeeRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
 
         public PostReactionService(
             IPostReactionRepository reactionRepository,
             IPostRepository postRepository,
+            IEmployeeRepository employeeRepository,
             IUnitOfWork unitOfWork,
             INotificationService notificationService)
         {
             _reactionRepository = reactionRepository;
             _postRepository = postRepository;
+            _employeeRepository = employeeRepository;
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
         }
@@ -46,10 +49,12 @@ namespace SylviaNG.Community.Application.Services
 
                 if (post.EmployeeId != request.EmployeeId)
                 {
+                    var reactorName = (await _employeeRepository.GetByIdAsync(request.EmployeeId))?.EmployeeName ?? "Someone";
+
                     await _notificationService.CreateAsync(new NotificationCreateRequest
                     {
                         EmployeeId = post.EmployeeId,
-                        Title = "Someone reacted to your post",
+                        Title = $"{reactorName} reacted to your post",
                         Category = "PostReaction",
                         RelatedEntityType = "Post",
                         RelatedEntityId = postId

@@ -12,9 +12,8 @@ namespace SylviaNG.Community.Application.Features.Recognitions.Commands.Recognit
             RuleFor(x => x.Request.RecipientId)
                 .GreaterThan(0).WithMessage("RecipientId is required.");
 
-            RuleFor(x => x.Request.BadgeId)
-                .GreaterThan(0).WithMessage("BadgeId must be a positive id.")
-                .When(x => x.Request.BadgeId.HasValue);
+            RuleForEach(x => x.Request.BadgeIds)
+                .GreaterThan(0).WithMessage("Each BadgeId must be a positive id.");
 
             RuleFor(x => x.Request.RecognitionType)
                 .NotEmpty().WithMessage("RecognitionType is required.")

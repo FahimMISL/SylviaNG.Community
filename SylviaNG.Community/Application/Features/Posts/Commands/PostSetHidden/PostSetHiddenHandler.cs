@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Posts.Commands.PostSetHidden
 
         public async Task Handle(PostSetHiddenCommand command, CancellationToken cancellationToken)
         {
-            await _postService.SetHiddenAsync(command.PostId, command.IsHidden);
+            await _postService.SetHiddenAsync(command.PostId, command.IsHidden, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

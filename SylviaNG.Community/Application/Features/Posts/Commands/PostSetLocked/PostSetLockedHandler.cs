@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Posts.Commands.PostSetLocked
 
         public async Task Handle(PostSetLockedCommand command, CancellationToken cancellationToken)
         {
-            await _postService.SetLockedAsync(command.PostId, command.IsLocked);
+            await _postService.SetLockedAsync(command.PostId, command.IsLocked, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

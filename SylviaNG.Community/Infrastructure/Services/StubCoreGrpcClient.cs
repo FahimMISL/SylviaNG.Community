@@ -5,7 +5,7 @@ namespace SylviaNG.Community.Infrastructure.Services
 {
     // Local stand-in for the external Core microservice's gRPC BatchLookup. Used when
     // GrpcServices:CoreService:UseStub is enabled because the real Core service (which owns
-    // department/designation/site/grade master data) isn't reachable in this environment.
+    // department/designation/site master data) isn't reachable in this environment.
     // Generates deterministic, human-readable names by id so the UI shows plausible values
     // instead of falling back to "Department #1" style placeholders.
     public class StubCoreGrpcClient : ICoreGrpcClient
@@ -28,11 +28,6 @@ namespace SylviaNG.Community.Infrastructure.Services
             "Head Office - Dhaka", "Branch - Chattogram", "Branch - Sylhet", "Regional Office - Khulna"
         };
 
-        private static readonly string[] GradeNames =
-        {
-            "Grade A", "Grade B", "Grade C", "Grade D"
-        };
-
         public Task<CoreBatchLookupResult> GetSitesAsync(List<long> siteIds)
         {
             return Task.FromResult(new CoreBatchLookupResult
@@ -44,14 +39,12 @@ namespace SylviaNG.Community.Infrastructure.Services
         public Task<CoreBatchLookupResult> GetMasterDataAsync(
             List<long>? departmentIds = null,
             List<long>? designationIds = null,
-            List<long>? gradeIds = null,
             List<long>? siteIds = null)
         {
             return Task.FromResult(new CoreBatchLookupResult
             {
                 Departments = ToLookup(departmentIds, DepartmentNames, "DEPT"),
                 Designations = ToLookup(designationIds, DesignationNames, "DESIG"),
-                Grades = ToLookup(gradeIds, GradeNames, "GRADE"),
                 Sites = ToLookup(siteIds, SiteNames, "SITE")
             });
         }

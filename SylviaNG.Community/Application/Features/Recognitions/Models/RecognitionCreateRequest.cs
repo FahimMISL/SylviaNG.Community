@@ -3,7 +3,7 @@ namespace SylviaNG.Community.Application.Features.Recognitions.Models
     public class RecognitionCreateRequest
     {
         public long RecipientId { get; set; }
-        public long? BadgeId { get; set; }
+        public List<long> BadgeIds { get; set; } = new();
         public string RecognitionType { get; set; } = string.Empty;
         public string? CoreValue { get; set; }
         public string? AwardTitle { get; set; }

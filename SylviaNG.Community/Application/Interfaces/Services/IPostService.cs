@@ -10,7 +10,7 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         Task DeleteAsync(long postId, long callerEmployeeId, bool isHrOrAdmin);
         Task<PostResponse> GetByIdAsync(long postId);
         Task<PagedResult<PostResponse>> GetFeedPaginatedAsync(PostFilterRequest request, long callerEmployeeId);
-        Task SetLockedAsync(long postId, bool isLocked);
-        Task SetHiddenAsync(long postId, bool isHidden);
+        Task SetLockedAsync(long postId, bool isLocked, long callerEmployeeId, bool isHrOrAdmin);
+        Task SetHiddenAsync(long postId, bool isHidden, long callerEmployeeId, bool isHrOrAdmin);
     }
 }

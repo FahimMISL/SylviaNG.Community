@@ -41,8 +41,10 @@ public class SurveyResponseSubmitValidatorTests
     }
 
     [Fact]
-    public void Validate_WithNoAnswers_ShouldHaveError()
+    public void Validate_WithNoAnswers_ShouldHaveNoErrors()
     {
+        // Empty Answers is the "Mark as Completed" submission for an external survey (no
+        // CES-native questions to answer) - this must stay valid, not rejected.
         var command = new SurveyResponseSubmitCommand(1, new SurveySubmissionRequest
         {
             EmployeeId = 5,
@@ -51,8 +53,7 @@ public class SurveyResponseSubmitValidatorTests
 
         var result = _validator.Validate(command);
 
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "Request.Answers");
+        result.IsValid.Should().BeTrue();
     }
 
     [Fact]

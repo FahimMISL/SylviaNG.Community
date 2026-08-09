@@ -1,4 +1,5 @@
 using SylviaNG.Community.Application.Common.Exceptions;
+using SylviaNG.Community.Application.Features.Surveys;
 using SylviaNG.Community.Application.Features.Surveys.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
@@ -20,6 +21,7 @@ namespace SylviaNG.Community.Application.Services
         private readonly ISurveyOptionRepository _surveyOptionRepository;
         private readonly ISurveyResponseRepository _surveyResponseRepository;
         private readonly ISurveyAnswerRepository _surveyAnswerRepository;
+        private readonly IEmployeeRepository _employeeRepository;
         private readonly IUnitOfWork _unitOfWork;
 
         public SurveyService(
@@ -29,6 +31,7 @@ namespace SylviaNG.Community.Application.Services
             ISurveyOptionRepository surveyOptionRepository,
             ISurveyResponseRepository surveyResponseRepository,
             ISurveyAnswerRepository surveyAnswerRepository,
+            IEmployeeRepository employeeRepository,
             IUnitOfWork unitOfWork)
         {
             _surveyRepository = surveyRepository;
@@ -37,6 +40,7 @@ namespace SylviaNG.Community.Application.Services
             _surveyOptionRepository = surveyOptionRepository;
             _surveyResponseRepository = surveyResponseRepository;
             _surveyAnswerRepository = surveyAnswerRepository;
+            _employeeRepository = employeeRepository;
             _unitOfWork = unitOfWork;
         }
 
@@ -82,6 +86,23 @@ namespace SylviaNG.Community.Application.Services
             entity.Status = "Closed";
             entity.ClosedAt = DateTime.UtcNow;
             _surveyRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task DeleteAsync(long surveyId)
+        {
+            var entity = await _surveyRepository.GetByIdAsync(surveyId)
+                ?? throw new NotFoundException("Survey", surveyId);
+
+            if (entity.Status == "Closed")
+            {
+                throw new FluentValidation.ValidationException(new[]
+                {
+                    new FluentValidation.Results.ValidationFailure(nameof(entity.Status), "Closed surveys cannot be deleted.")
+                });
+            }
+
+            _surveyRepository.Delete(entity);
             await _unitOfWork.SaveChangesAsync();
         }
 
@@ -248,6 +269,76 @@ namespace SylviaNG.Community.Application.Services
                 TotalCount = pagedResult.TotalCount,
                 PageNumber = pagedResult.PageNumber,
                 PageSize = pagedResult.PageSize
+            };
+        }
+
+        public async Task<SurveyResultsResponse> GetResultsAsync(long surveyId)
+        {
+            _ = await _surveyRepository.GetByIdAsync(surveyId)
+                ?? throw new NotFoundException("Survey", surveyId);
+
+            var responses = await _surveyResponseRepository.GetAllBySurveyIdAsync(surveyId);
+            var totalResponses = responses.Count;
+
+            var responseIds = responses.Select(r => r.ResponseId).ToList();
+            var answers = responseIds.Count > 0
+                ? await _surveyAnswerRepository.GetByResponseIdsAsync(responseIds)
+                : new List<SurveyAnswer>();
+            var answersByQuestion = answers.GroupBy(a => a.QuestionId).ToDictionary(g => g.Key, g => g.ToList());
+
+            var questions = await _surveyQuestionRepository.GetBySurveyIdAsync(surveyId);
+            var questionIds = questions.Select(q => q.QuestionId).ToList();
+            var options = questionIds.Count > 0
+                ? await _surveyOptionRepository.GetByQuestionIdsAsync(questionIds)
+                : new List<SurveyOption>();
+            var optionsByQuestion = options.GroupBy(o => o.QuestionId).ToDictionary(g => g.Key, g => g.ToList());
+
+            var questionResults = questions.Select(q =>
+            {
+                var qAnswers = answersByQuestion.TryGetValue(q.QuestionId, out var ans) ? ans : new List<SurveyAnswer>();
+                var qOptions = optionsByQuestion.TryGetValue(q.QuestionId, out var opts) ? opts : new List<SurveyOption>();
+
+                var optionResults = qOptions.Select(o =>
+                {
+                    var count = qAnswers.Count(a => a.OptionId == o.OptionId);
+                    return new SurveyOptionResultResponse
+                    {
+                        OptionId = o.OptionId,
+                        OptionText = o.OptionText,
+                        Count = count,
+                        Percentage = totalResponses > 0 ? Math.Round(100m * count / totalResponses, 1) : 0m
+                    };
+                }).ToList();
+
+                var textAnswers = qAnswers
+                    .Where(a => a.OptionId == null && !string.IsNullOrWhiteSpace(a.AnswerText))
+                    .Select(a => a.AnswerText!)
+                    .ToList();
+
+                return new SurveyQuestionResultResponse
+                {
+                    QuestionId = q.QuestionId,
+                    QuestionText = q.QuestionText,
+                    QuestionType = q.QuestionType,
+                    Options = optionResults,
+                    TextAnswers = textAnswers
+                };
+            }).ToList();
+
+            decimal? participationRate = null;
+            var audience = await _surveyAudienceRepository.GetBySurveyIdAsync(surveyId);
+            if (audience.Any(a => a.AudienceType == SurveyAudienceTypes.EntireCompany))
+            {
+                var totalEmployees = await _employeeRepository.CountActiveAsync();
+                participationRate = totalEmployees > 0 ? Math.Round(100m * totalResponses / totalEmployees, 1) : 0m;
+            }
+
+            return new SurveyResultsResponse
+            {
+                SurveyId = surveyId,
+                TotalResponses = totalResponses,
+                ParticipationRate = participationRate,
+                Questions = questionResults
             };
         }
     }

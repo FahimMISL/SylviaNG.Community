@@ -26,12 +26,6 @@ namespace SylviaNG.Community.Infrastructure.Configurations
 
             builder.HasIndex(r => r.SenderId);
             builder.HasIndex(r => r.RecipientId);
-            builder.HasIndex(r => r.BadgeId);
-
-            builder.HasOne<Badge>()
-                .WithMany()
-                .HasForeignKey(r => r.BadgeId)
-                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

@@ -15,6 +15,7 @@ namespace SylviaNG.Community.Tests.Services;
 public class MentionServiceTests
 {
     private readonly Mock<IMentionRepository> _mentionRepositoryMock;
+    private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly MentionService _service;
@@ -22,10 +23,11 @@ public class MentionServiceTests
     public MentionServiceTests()
     {
         _mentionRepositoryMock = new Mock<IMentionRepository>();
+        _employeeRepositoryMock = new Mock<IEmployeeRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _notificationServiceMock = new Mock<INotificationService>();
         _notificationServiceMock.Setup(n => n.CreateAsync(It.IsAny<NotificationCreateRequest>())).ReturnsAsync(1L);
-        _service = new MentionService(_mentionRepositoryMock.Object, _unitOfWorkMock.Object, _notificationServiceMock.Object);
+        _service = new MentionService(_mentionRepositoryMock.Object, _employeeRepositoryMock.Object, _unitOfWorkMock.Object, _notificationServiceMock.Object);
     }
 
     [Fact]

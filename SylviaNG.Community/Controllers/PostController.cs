@@ -1,5 +1,4 @@
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.Posts.Commands.PostCreate;
 using SylviaNG.Community.Application.Features.Posts.Commands.PostDelete;
@@ -67,23 +66,26 @@ namespace SylviaNG.Community.Controllers
 
         /// <summary>
         /// Moderation action: lock/unlock a post so it no longer accepts new comments/edits.
+        /// HR/Admin can do this for any post; a group post's own Creator/GroupAdmin/Contributor
+        /// can also do it, scoped to that group - enforced in PostService, not here.
         /// </summary>
-        [Authorize(Policy = "HRAdminOnly")]
         [HttpPut("{postId}/lock")]
         public async Task<ActionResult> SetLocked(long postId, [FromQuery] bool isLocked = true)
         {
-            await _mediator.Send(new PostSetLockedCommand(postId, isLocked));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new PostSetLockedCommand(postId, isLocked, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
 
         /// <summary>
-        /// Moderation action: hide/unhide a post from the feed.
+        /// Moderation action: hide/unhide a post from the feed. Same authorization rule as
+        /// SetLocked above.
         /// </summary>
-        [Authorize(Policy = "HRAdminOnly")]
         [HttpPut("{postId}/hide")]
         public async Task<ActionResult> SetHidden(long postId, [FromQuery] bool isHidden = true)
         {
-            await _mediator.Send(new PostSetHiddenCommand(postId, isHidden));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new PostSetHiddenCommand(postId, isHidden, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
     }

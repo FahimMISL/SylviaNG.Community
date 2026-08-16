@@ -7,5 +7,6 @@ namespace SylviaNG.Community.Application.Interfaces.Repositories
     public interface IConversationRepository : IRepository<Conversation>
     {
         Task<PagedResult<Conversation>> GetPaginatedForEmployeeAsync(long employeeId, PagedRequest request);
+        Task<List<Conversation>> GetByListingIdAsync(long listingId);
     }
 }

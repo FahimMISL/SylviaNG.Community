@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.Marketplace.Commands.ListingApprove;
 using SylviaNG.Community.Application.Features.Marketplace.Commands.ListingCreate;
+using SylviaNG.Community.Application.Features.Marketplace.Commands.ListingDelete;
 using SylviaNG.Community.Application.Features.Marketplace.Commands.ListingImageAdd;
 using SylviaNG.Community.Application.Features.Marketplace.Commands.ListingImageRemove;
 using SylviaNG.Community.Application.Features.Marketplace.Commands.ListingReject;
@@ -47,7 +48,7 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<long>> Create([FromBody] ListingCreateRequest request)
         {
             var sellerId = _currentUserService.EmployeeId ?? 0;
-            var id = await _mediator.Send(new ListingCreateCommand(sellerId, request));
+            var id = await _mediator.Send(new ListingCreateCommand(sellerId, _currentUserService.IsHrOrAdmin, request));
             return Ok(id);
         }
 
@@ -56,6 +57,14 @@ namespace SylviaNG.Community.Controllers
         {
             var callerId = _currentUserService.EmployeeId ?? 0;
             await _mediator.Send(new ListingUpdateCommand(listingId, request, callerId, _currentUserService.IsHrOrAdmin));
+            return Ok();
+        }
+
+        [HttpDelete("{listingId}")]
+        public async Task<ActionResult> Delete(long listingId)
+        {
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new ListingDeleteCommand(listingId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
 

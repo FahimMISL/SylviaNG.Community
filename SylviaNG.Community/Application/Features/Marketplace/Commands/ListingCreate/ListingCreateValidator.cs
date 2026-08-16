@@ -27,6 +27,9 @@ namespace SylviaNG.Community.Application.Features.Marketplace.Commands.ListingCr
             RuleFor(x => x.Request.Currency)
                 .NotEmpty().WithMessage("Currency is required.")
                 .MaximumLength(10).WithMessage("Currency must not exceed 10 characters.");
+
+            RuleFor(x => x.Request.Quantity)
+                .GreaterThanOrEqualTo(1).WithMessage("Quantity must be at least 1.");
         }
     }
 }

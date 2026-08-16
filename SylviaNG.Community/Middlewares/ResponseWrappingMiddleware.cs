@@ -49,6 +49,21 @@ namespace SylviaNG.Community.Middlewares
                     return;
                 }
 
+                // Skip wrapping non-JSON responses (e.g. file downloads with an explicit
+                // Content-Type like application/octet-stream). Reading raw binary bytes as
+                // text and re-serializing them as a JSON string would corrupt the payload and
+                // overwrite the real Content-Type/Content-Disposition the action set. A null/
+                // empty ContentType keeps today's behavior (still wrapped) - every existing
+                // JSON endpoint falls into that case, so this doesn't change their behavior.
+                if (!string.IsNullOrEmpty(context.Response.ContentType) &&
+                    !context.Response.ContentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.Body = originalBodyStream;
+                    responseBody.Seek(0, SeekOrigin.Begin);
+                    await responseBody.CopyToAsync(originalBodyStream);
+                    return;
+                }
+
                 responseBody.Seek(0, SeekOrigin.Begin);
                 var bodyText = await new StreamReader(context.Response.Body).ReadToEndAsync();
                 context.Response.Body.Seek(0, SeekOrigin.Begin);

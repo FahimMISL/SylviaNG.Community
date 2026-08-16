@@ -28,7 +28,7 @@ namespace SylviaNG.Community.Controllers
             [FromQuery] long? senderId,
             [FromQuery] long? recipientId)
         {
-            var result = await _mediator.Send(new RecognitionGetAllPagedQuery(request, senderId, recipientId));
+            var result = await _mediator.Send(new RecognitionGetAllPagedQuery(request, senderId, recipientId, _currentUserService.EmployeeId, _currentUserService.IsHrOrAdmin));
             return Ok(result);
         }
 

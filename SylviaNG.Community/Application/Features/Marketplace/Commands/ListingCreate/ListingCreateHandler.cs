@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Marketplace.Commands.ListingCr
 
         public async Task<long> Handle(ListingCreateCommand command, CancellationToken cancellationToken)
         {
-            return await _marketplaceService.CreateListingAsync(command.SellerId, command.Request);
+            return await _marketplaceService.CreateListingAsync(command.SellerId, command.IsHrOrAdmin, command.Request);
         }
     }
 }

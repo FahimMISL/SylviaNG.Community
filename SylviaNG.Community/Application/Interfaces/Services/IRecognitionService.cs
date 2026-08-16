@@ -9,7 +9,7 @@ namespace SylviaNG.Community.Application.Interfaces.Services
     {
         Task<long> CreateAsync(RecognitionCreateRequest request, long callerEmployeeId, bool isHrOrAdmin);
         Task<RecognitionResponse> GetByIdAsync(long recognitionId);
-        Task<PagedResult<RecognitionResponse>> GetPaginatedAsync(PagedRequest request, long? senderId = null, long? recipientId = null);
+        Task<PagedResult<RecognitionResponse>> GetPaginatedAsync(PagedRequest request, long? senderId = null, long? recipientId = null, long? viewerEmployeeId = null, bool viewerIsHrAdmin = false);
         Task<long> AddReactionAsync(long recognitionId, RecognitionReactionAddRequest request, long callerEmployeeId);
         Task RemoveReactionAsync(long recognitionId, long employeeId, long callerEmployeeId, bool isHrOrAdmin);
         Task<List<RecognitionReactionResponse>> GetReactionsAsync(long recognitionId);

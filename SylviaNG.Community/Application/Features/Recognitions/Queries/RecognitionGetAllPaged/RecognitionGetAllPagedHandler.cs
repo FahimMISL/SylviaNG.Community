@@ -16,7 +16,7 @@ namespace SylviaNG.Community.Application.Features.Recognitions.Queries.Recogniti
 
         public async Task<PagedResult<RecognitionResponse>> Handle(RecognitionGetAllPagedQuery query, CancellationToken cancellationToken)
         {
-            return await _recognitionService.GetPaginatedAsync(query.Request, query.SenderId, query.RecipientId);
+            return await _recognitionService.GetPaginatedAsync(query.Request, query.SenderId, query.RecipientId, query.ViewerEmployeeId, query.ViewerIsHrAdmin);
         }
     }
 }

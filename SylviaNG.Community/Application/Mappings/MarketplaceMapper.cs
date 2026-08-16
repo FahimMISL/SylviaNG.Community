@@ -18,8 +18,7 @@ namespace SylviaNG.Community.Application.Mappings
                 Price = request.Price,
                 Currency = request.Currency,
                 Location = request.Location,
-                Status = "Active",
-                ApprovalStatus = "Pending"
+                Quantity = request.Quantity
             };
         }
 
@@ -33,6 +32,7 @@ namespace SylviaNG.Community.Application.Mappings
             if (request.Price.HasValue) entity.Price = request.Price.Value;
             if (request.Currency != null) entity.Currency = request.Currency;
             if (request.Location != null) entity.Location = request.Location;
+            if (request.Quantity.HasValue) entity.Quantity = request.Quantity.Value;
             if (request.Status != null) entity.Status = request.Status;
         }
 
@@ -50,6 +50,7 @@ namespace SylviaNG.Community.Application.Mappings
                 Price = entity.Price,
                 Currency = entity.Currency,
                 Location = entity.Location,
+                Quantity = entity.Quantity,
                 Status = entity.Status,
                 ApprovalStatus = entity.ApprovalStatus,
                 ApprovedBy = entity.ApprovedBy,
@@ -169,6 +170,77 @@ namespace SylviaNG.Community.Application.Mappings
                 Status = entity.Status,
                 ReviewedBy = entity.ReviewedBy,
                 ReviewedAt = entity.ReviewedAt
+            };
+        }
+
+        public static Purchase ToEntity(this PurchaseCreateRequest request, long buyerId, Listing listing)
+        {
+            return new Purchase
+            {
+                ListingId = request.ListingId,
+                BuyerId = buyerId,
+                Quantity = request.Quantity,
+                UnitPrice = listing.Price,
+                Currency = listing.Currency
+            };
+        }
+
+        public static PurchaseResponse ToResponse(this Purchase entity)
+        {
+            return new PurchaseResponse
+            {
+                PurchaseId = entity.PurchaseId,
+                ListingId = entity.ListingId,
+                BuyerId = entity.BuyerId,
+                Quantity = entity.Quantity,
+                UnitPrice = entity.UnitPrice,
+                Currency = entity.Currency,
+                CreatedAt = entity.CreatedAt
+            };
+        }
+
+        public static Review ToEntity(this ReviewCreateRequest request, long reviewerId)
+        {
+            return new Review
+            {
+                ListingId = request.ListingId,
+                ReviewerId = reviewerId,
+                Rating = request.Rating,
+                Comment = request.Comment
+            };
+        }
+
+        public static ReviewResponse ToResponse(this Review entity)
+        {
+            return new ReviewResponse
+            {
+                ReviewId = entity.ReviewId,
+                ListingId = entity.ListingId,
+                ReviewerId = entity.ReviewerId,
+                Rating = entity.Rating,
+                Comment = entity.Comment,
+                CreatedAt = entity.CreatedAt
+            };
+        }
+
+        public static ReviewImage ToEntity(this ReviewImageAddRequest request, long reviewId)
+        {
+            return new ReviewImage
+            {
+                ReviewId = reviewId,
+                ImageUrl = request.ImageUrl,
+                DisplayOrder = request.DisplayOrder
+            };
+        }
+
+        public static ReviewImageResponse ToResponse(this ReviewImage entity)
+        {
+            return new ReviewImageResponse
+            {
+                ImageId = entity.ImageId,
+                ReviewId = entity.ReviewId,
+                ImageUrl = entity.ImageUrl,
+                DisplayOrder = entity.DisplayOrder
             };
         }
     }

@@ -11,7 +11,7 @@ public class ListingCreateValidatorTests
     [Fact]
     public void Validate_WithValidRequest_ShouldHaveNoErrors()
     {
-        var command = new ListingCreateCommand(10, new ListingCreateRequest
+        var command = new ListingCreateCommand(10, false, new ListingCreateRequest
         {
             ListingType = "Item",
             Title = "Old bicycle",
@@ -28,7 +28,7 @@ public class ListingCreateValidatorTests
     [Fact]
     public void Validate_WithEmptyTitle_ShouldHaveError()
     {
-        var command = new ListingCreateCommand(10, new ListingCreateRequest
+        var command = new ListingCreateCommand(10, false, new ListingCreateRequest
         {
             ListingType = "Item",
             Title = "",
@@ -46,7 +46,7 @@ public class ListingCreateValidatorTests
     [Fact]
     public void Validate_WithNegativePrice_ShouldHaveError()
     {
-        var command = new ListingCreateCommand(10, new ListingCreateRequest
+        var command = new ListingCreateCommand(10, false, new ListingCreateRequest
         {
             ListingType = "Item",
             Title = "Old bicycle",
@@ -64,7 +64,7 @@ public class ListingCreateValidatorTests
     [Fact]
     public void Validate_WithZeroSellerId_ShouldHaveError()
     {
-        var command = new ListingCreateCommand(0, new ListingCreateRequest
+        var command = new ListingCreateCommand(0, false, new ListingCreateRequest
         {
             ListingType = "Item",
             Title = "Old bicycle",

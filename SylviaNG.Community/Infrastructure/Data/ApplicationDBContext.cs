@@ -110,6 +110,9 @@ namespace SylviaNG.Community.Infrastructure.Data
         public DbSet<ConversationParticipant> ConversationParticipants { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<MarketplaceReport> MarketplaceReports { get; set; }
+        public DbSet<Purchase> Purchases { get; set; }
+        public DbSet<Review> Reviews { get; set; }
+        public DbSet<ReviewImage> ReviewImages { get; set; }
 
         // Module 8 - Task Management ("Task" is qualified to avoid ambiguity with System.Threading.Tasks.Task)
         public DbSet<RecurringTask> RecurringTasks { get; set; }

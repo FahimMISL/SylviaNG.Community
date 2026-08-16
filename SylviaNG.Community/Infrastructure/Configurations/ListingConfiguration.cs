@@ -39,6 +39,10 @@ namespace SylviaNG.Community.Infrastructure.Configurations
             builder.Property(l => l.Location)
                 .HasMaxLength(200);
 
+            builder.Property(l => l.Quantity)
+                .IsRequired()
+                .HasDefaultValue(1);
+
             builder.Property(l => l.Status)
                 .IsRequired()
                 .HasMaxLength(50);

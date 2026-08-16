@@ -7,6 +7,7 @@ using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Services;
 using SylviaNG.Community.Domain.Entities;
 using SylviaNG.Community.SharedKernel.Generic;
+using SylviaNG.Community.SharedKernel.Pagination;
 using Task = System.Threading.Tasks.Task;
 
 namespace SylviaNG.Community.Tests.Services;
@@ -114,6 +115,41 @@ public class RecognitionServiceTests
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task GetPaginatedAsync_ShouldPassViewerContextToRepository()
+    {
+        // Arrange
+        var request = new PagedRequest();
+        var emptyResult = new PagedResult<Recognition> { Data = new List<Recognition>(), TotalCount = 0, PageNumber = 1, PageSize = 10 };
+        _recognitionRepositoryMock
+            .Setup(r => r.GetPaginatedAsync(request, null, 5, 5, false))
+            .ReturnsAsync(emptyResult);
+
+        // Act
+        var result = await _service.GetPaginatedAsync(request, senderId: null, recipientId: 5, viewerEmployeeId: 5, viewerIsHrAdmin: false);
+
+        // Assert
+        result.Data.Should().BeEmpty();
+        _recognitionRepositoryMock.Verify(r => r.GetPaginatedAsync(request, null, 5, 5, false), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPaginatedAsync_ForHrAdminViewer_ShouldPassViewerIsHrAdminTrue()
+    {
+        // Arrange
+        var request = new PagedRequest();
+        var emptyResult = new PagedResult<Recognition> { Data = new List<Recognition>(), TotalCount = 0, PageNumber = 1, PageSize = 10 };
+        _recognitionRepositoryMock
+            .Setup(r => r.GetPaginatedAsync(request, null, 5, 99, true))
+            .ReturnsAsync(emptyResult);
+
+        // Act
+        await _service.GetPaginatedAsync(request, senderId: null, recipientId: 5, viewerEmployeeId: 99, viewerIsHrAdmin: true);
+
+        // Assert
+        _recognitionRepositoryMock.Verify(r => r.GetPaginatedAsync(request, null, 5, 99, true), Times.Once);
     }
 
     [Fact]

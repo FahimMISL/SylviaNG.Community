@@ -82,8 +82,8 @@ public class FileUploadControllerTests : IDisposable
     [Fact]
     public async Task Upload_WithFileExceedingMaxSize_ShouldReturnBadRequest()
     {
-        // Arrange - 26 MB, one over the 25 MB limit
-        var oversizedContent = new string('a', 26 * 1024 * 1024);
+        // Arrange - 11 MB, one over the 10 MB image limit
+        var oversizedContent = new string('a', 11 * 1024 * 1024);
         var file = BuildFormFile("big.png", oversizedContent);
 
         // Act
@@ -94,6 +94,37 @@ public class FileUploadControllerTests : IDisposable
         var badRequest = (BadRequestObjectResult)result.Result!;
         badRequest.Value.Should().BeOfType<string>().Which.Should().Contain("maximum allowed size");
         _mediatorMock.Verify(m => m.Send(It.IsAny<FileStorageCreateCommand>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task Upload_WithVideoOverImageLimitButUnderVideoLimit_ShouldSucceed()
+    {
+        // Arrange - 20 MB: over the 10 MB image cap, but videos get a 150 MB cap.
+        var content = new string('a', 20 * 1024 * 1024);
+        var file = BuildFormFile("clip.mp4", content, contentType: "video/mp4");
+        _mediatorMock.Setup(m => m.Send(It.IsAny<FileStorageCreateCommand>(), default)).ReturnsAsync(7L);
+
+        // Act
+        var result = await _controller.Upload(file, "Post", null);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task Upload_WithImageOverVideoTierButUnderNothing_ShouldReturnBadRequest()
+    {
+        // Arrange - images are capped at 10 MB even though videos/documents allow more.
+        var content = new string('a', 15 * 1024 * 1024);
+        var file = BuildFormFile("photo.jpg", content);
+
+        // Act
+        var result = await _controller.Upload(file, "Post", null);
+
+        // Assert
+        result.Result.Should().BeOfType<BadRequestObjectResult>();
+        var badRequest = (BadRequestObjectResult)result.Result!;
+        badRequest.Value.Should().BeOfType<string>().Which.Should().Contain("10 MB");
     }
 
     [Fact]

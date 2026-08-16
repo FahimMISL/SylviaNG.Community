@@ -12,6 +12,7 @@ namespace SylviaNG.Community.Application.Features.Marketplace.Models
         public decimal Price { get; set; }
         public string Currency { get; set; } = string.Empty;
         public string? Location { get; set; }
+        public int Quantity { get; set; }
         public string Status { get; set; } = string.Empty;
         public string ApprovalStatus { get; set; } = string.Empty;
         public long? ApprovedBy { get; set; }
@@ -19,5 +20,7 @@ namespace SylviaNG.Community.Application.Features.Marketplace.Models
         public string? RejectionReason { get; set; }
         public long? CreatedBy { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public double? AverageRating { get; set; }
+        public int ReviewCount { get; set; }
     }
 }

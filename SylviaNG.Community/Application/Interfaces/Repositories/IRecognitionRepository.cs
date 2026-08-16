@@ -6,6 +6,6 @@ namespace SylviaNG.Community.Application.Interfaces.Repositories
 {
     public interface IRecognitionRepository : IRepository<Recognition>
     {
-        Task<PagedResult<Recognition>> GetPaginatedAsync(PagedRequest request, long? senderId = null, long? recipientId = null);
+        Task<PagedResult<Recognition>> GetPaginatedAsync(PagedRequest request, long? senderId = null, long? recipientId = null, long? viewerEmployeeId = null, bool viewerIsHrAdmin = false);
     }
 }

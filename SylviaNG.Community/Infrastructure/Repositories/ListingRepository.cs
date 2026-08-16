@@ -21,6 +21,8 @@ namespace SylviaNG.Community.Infrastructure.Repositories
 
             if (!string.IsNullOrEmpty(request.Status))
                 query = query.Where(l => l.Status == request.Status);
+            else
+                query = query.Where(l => l.Status != "Removed");
 
             if (!string.IsNullOrEmpty(request.ApprovalStatus))
                 query = query.Where(l => l.ApprovalStatus == request.ApprovalStatus);

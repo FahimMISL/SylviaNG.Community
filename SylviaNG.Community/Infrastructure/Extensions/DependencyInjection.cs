@@ -128,6 +128,9 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             services.AddScoped<IConversationParticipantRepository, ConversationParticipantRepository>();
             services.AddScoped<IMessageRepository, MessageRepository>();
             services.AddScoped<IMarketplaceReportRepository, MarketplaceReportRepository>();
+            services.AddScoped<IPurchaseRepository, PurchaseRepository>();
+            services.AddScoped<IReviewRepository, ReviewRepository>();
+            services.AddScoped<IReviewImageRepository, ReviewImageRepository>();
 
             // Module 8 - Task Management
             services.AddScoped<IRecurringTaskRepository, RecurringTaskRepository>();

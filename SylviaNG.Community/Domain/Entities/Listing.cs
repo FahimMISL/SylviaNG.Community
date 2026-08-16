@@ -18,6 +18,7 @@ public class Listing : Audit
     public decimal Price { get; set; }
     public string Currency { get; set; } = string.Empty;
     public string? Location { get; set; }
+    public int Quantity { get; set; } = 1;
     public new string Status { get; set; } = string.Empty;
     public string ApprovalStatus { get; set; } = string.Empty;
     public long? ApprovedBy { get; set; }

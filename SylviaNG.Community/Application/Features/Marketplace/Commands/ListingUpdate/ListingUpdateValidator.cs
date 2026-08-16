@@ -13,6 +13,10 @@ namespace SylviaNG.Community.Application.Features.Marketplace.Commands.ListingUp
             RuleFor(x => x.Request.Price)
                 .GreaterThanOrEqualTo(0).WithMessage("Price must not be negative.")
                 .When(x => x.Request.Price.HasValue);
+
+            RuleFor(x => x.Request.Quantity)
+                .GreaterThanOrEqualTo(1).WithMessage("Quantity must be at least 1.")
+                .When(x => x.Request.Quantity.HasValue);
         }
     }
 }

@@ -14,7 +14,8 @@ namespace SylviaNG.Community.Application.Mappings
                 SurveyType = request.SurveyType,
                 Status = "Draft",
                 IsAnonymous = request.IsAnonymous,
-                IsMandatory = request.IsMandatory
+                IsMandatory = request.IsMandatory,
+                ExternalUrl = request.ExternalUrl
             };
         }
 
@@ -25,6 +26,12 @@ namespace SylviaNG.Community.Application.Mappings
             if (request.SurveyType != null) entity.SurveyType = request.SurveyType;
             if (request.IsAnonymous.HasValue) entity.IsAnonymous = request.IsAnonymous.Value;
             if (request.IsMandatory.HasValue) entity.IsMandatory = request.IsMandatory.Value;
+            // Unlike the other nullable fields above (where null means "leave unchanged"), ExternalUrl
+            // drives real functional branching (native vs. external survey) rather than being purely
+            // cosmetic like Description - so an empty string is treated as an explicit "clear it" signal,
+            // otherwise switching a survey from external back to native mode would leave it stuck pointing
+            // at the old link with no way to unset it through this endpoint.
+            if (request.ExternalUrl != null) entity.ExternalUrl = string.IsNullOrEmpty(request.ExternalUrl) ? null : request.ExternalUrl;
         }
 
         public static SurveyDetailResponse ToResponse(this Survey entity)
@@ -40,7 +47,8 @@ namespace SylviaNG.Community.Application.Mappings
                 IsMandatory = entity.IsMandatory,
                 CreatedBy = entity.CreatedBy,
                 PublishedAt = entity.PublishedAt,
-                ClosedAt = entity.ClosedAt
+                ClosedAt = entity.ClosedAt,
+                ExternalUrl = entity.ExternalUrl
             };
         }
 

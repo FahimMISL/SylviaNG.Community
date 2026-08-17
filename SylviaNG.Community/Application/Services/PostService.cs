@@ -3,8 +3,11 @@ using SylviaNG.Community.Application.Features.Posts.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Application.Mappings;
+using SylviaNG.Community.Domain.Entities;
+using SylviaNG.Community.Domain.Enums;
 using SylviaNG.Community.SharedKernel.Generic;
 using SylviaNG.Community.SharedKernel.Pagination;
+using Task = System.Threading.Tasks.Task;
 
 namespace SylviaNG.Community.Application.Services
 {
@@ -12,19 +15,33 @@ namespace SylviaNG.Community.Application.Services
     {
         private readonly IPostRepository _postRepository;
         private readonly IEmployeeRepository _employeeRepository;
+        private readonly IGroupMemberRepository _groupMemberRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMentionService _mentionService;
 
-        public PostService(IPostRepository postRepository, IEmployeeRepository employeeRepository, IUnitOfWork unitOfWork, IMentionService mentionService)
+        public PostService(
+            IPostRepository postRepository,
+            IEmployeeRepository employeeRepository,
+            IGroupMemberRepository groupMemberRepository,
+            IUnitOfWork unitOfWork,
+            IMentionService mentionService)
         {
             _postRepository = postRepository;
             _employeeRepository = employeeRepository;
+            _groupMemberRepository = groupMemberRepository;
             _unitOfWork = unitOfWork;
             _mentionService = mentionService;
         }
 
         public async Task<long> CreateAsync(PostCreateRequest request)
         {
+            if (request.GroupId.HasValue)
+            {
+                var membership = await _groupMemberRepository.GetActiveAsync(request.GroupId.Value, request.EmployeeId);
+                if (membership == null)
+                    throw new ForbiddenException("You must be a member of this group to post in it.");
+            }
+
             var entity = request.ToEntity();
             await _postRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
@@ -57,7 +74,7 @@ namespace SylviaNG.Community.Application.Services
             var entity = await _postRepository.GetByIdAsync(postId)
                 ?? throw new NotFoundException("Post", postId);
 
-            if (!isHrOrAdmin && entity.EmployeeId != callerEmployeeId)
+            if (!isHrOrAdmin && entity.EmployeeId != callerEmployeeId && !await IsGroupModeratorAsync(entity, callerEmployeeId))
                 throw new ForbiddenException("You can only delete your own post.");
 
             _postRepository.Delete(entity);
@@ -86,24 +103,44 @@ namespace SylviaNG.Community.Application.Services
             };
         }
 
-        public async Task SetLockedAsync(long postId, bool isLocked)
+        public async Task SetLockedAsync(long postId, bool isLocked, long callerEmployeeId, bool isHrOrAdmin)
         {
             var entity = await _postRepository.GetByIdAsync(postId)
                 ?? throw new NotFoundException("Post", postId);
+
+            if (!isHrOrAdmin && !await IsGroupModeratorAsync(entity, callerEmployeeId))
+                throw new ForbiddenException("You don't have permission to lock/unlock this post.");
 
             entity.IsLocked = isLocked;
             _postRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task SetHiddenAsync(long postId, bool isHidden)
+        public async Task SetHiddenAsync(long postId, bool isHidden, long callerEmployeeId, bool isHrOrAdmin)
         {
             var entity = await _postRepository.GetByIdAsync(postId)
                 ?? throw new NotFoundException("Post", postId);
 
+            if (!isHrOrAdmin && !await IsGroupModeratorAsync(entity, callerEmployeeId))
+                throw new ForbiddenException("You don't have permission to hide/unhide this post.");
+
             entity.IsHidden = isHidden;
             _postRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// A post's own group's Creator/GroupAdmin/Contributor can moderate (hide/lock/delete) posts
+        /// within that group, in addition to global HR/Admin - scoped to that single group, not
+        /// company-wide. Non-group posts (GroupId null) are never covered by this check.
+        /// </summary>
+        private async Task<bool> IsGroupModeratorAsync(Post entity, long callerEmployeeId)
+        {
+            if (!entity.GroupId.HasValue)
+                return false;
+
+            var membership = await _groupMemberRepository.GetActiveAsync(entity.GroupId.Value, callerEmployeeId);
+            return membership != null && membership.Role is GroupMemberRoleEnum.Creator or GroupMemberRoleEnum.GroupAdmin or GroupMemberRoleEnum.Contributor;
         }
     }
 }

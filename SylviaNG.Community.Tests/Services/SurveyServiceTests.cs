@@ -18,6 +18,7 @@ public class SurveyServiceTests
     private readonly Mock<ISurveyOptionRepository> _surveyOptionRepositoryMock;
     private readonly Mock<ISurveyResponseRepository> _surveyResponseRepositoryMock;
     private readonly Mock<ISurveyAnswerRepository> _surveyAnswerRepositoryMock;
+    private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly SurveyService _service;
 
@@ -29,6 +30,7 @@ public class SurveyServiceTests
         _surveyOptionRepositoryMock = new Mock<ISurveyOptionRepository>();
         _surveyResponseRepositoryMock = new Mock<ISurveyResponseRepository>();
         _surveyAnswerRepositoryMock = new Mock<ISurveyAnswerRepository>();
+        _employeeRepositoryMock = new Mock<IEmployeeRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
 
         _service = new SurveyService(
@@ -38,6 +40,7 @@ public class SurveyServiceTests
             _surveyOptionRepositoryMock.Object,
             _surveyResponseRepositoryMock.Object,
             _surveyAnswerRepositoryMock.Object,
+            _employeeRepositoryMock.Object,
             _unitOfWorkMock.Object);
     }
 
@@ -56,6 +59,21 @@ public class SurveyServiceTests
 
         result.Should().Be(1);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task CreateAsync_WithExternalUrl_ShouldPersistExternalUrl()
+    {
+        var request = new SurveyCreateRequest { Title = "External Pulse", SurveyType = "Pulse", ExternalUrl = "https://forms.google.com/abc123" };
+        Survey? added = null;
+
+        _surveyRepositoryMock.Setup(r => r.ExistsByTitleAsync(request.Title, null)).ReturnsAsync(false);
+        _surveyRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Survey>()))
+            .Callback<Survey>(s => { s.SurveyId = 1; added = s; });
+
+        await _service.CreateAsync(request);
+
+        added!.ExternalUrl.Should().Be("https://forms.google.com/abc123");
     }
 
     [Fact]
@@ -93,6 +111,40 @@ public class SurveyServiceTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task UpdateAsync_WithExternalUrl_ShouldApplyExternalUrl()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Old", SurveyType = "Pulse", Status = "Draft" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+
+        await _service.UpdateAsync(1, new SurveyUpdateRequest { ExternalUrl = "https://forms.google.com/xyz789" });
+
+        survey.ExternalUrl.Should().Be("https://forms.google.com/xyz789");
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateAsync_WithEmptyExternalUrl_ShouldClearExternalUrl()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Old", SurveyType = "Pulse", Status = "Draft", ExternalUrl = "https://forms.google.com/old" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+
+        await _service.UpdateAsync(1, new SurveyUpdateRequest { ExternalUrl = "" });
+
+        survey.ExternalUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateAsync_WithNullExternalUrl_ShouldLeaveExternalUrlUnchanged()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Old", SurveyType = "Pulse", Status = "Draft", ExternalUrl = "https://forms.google.com/old" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+
+        await _service.UpdateAsync(1, new SurveyUpdateRequest { Title = "New Title" });
+
+        survey.ExternalUrl.Should().Be("https://forms.google.com/old");
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task PublishAsync_WhenNotFound_ShouldThrowNotFoundException()
     {
         _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Survey?)null);
@@ -125,6 +177,40 @@ public class SurveyServiceTests
 
         survey.Status.Should().Be("Closed");
         survey.ClosedAt.Should().NotBeNull();
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task DeleteAsync_WhenNotFound_ShouldThrowNotFoundException()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Survey?)null);
+
+        var act = () => _service.DeleteAsync(1);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task DeleteAsync_WhenClosed_ShouldThrowValidationException()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Closed" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+
+        var act = () => _service.DeleteAsync(1);
+
+        await act.Should().ThrowAsync<FluentValidation.ValidationException>();
+        _surveyRepositoryMock.Verify(r => r.Delete(It.IsAny<Survey>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task DeleteAsync_WhenDraft_ShouldDeleteAndSave()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Draft" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+
+        await _service.DeleteAsync(1);
+
+        _surveyRepositoryMock.Verify(r => r.Delete(survey), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
@@ -397,6 +483,89 @@ public class SurveyServiceTests
         result.TotalCount.Should().Be(1);
         result.Data.Should().ContainSingle();
         result.Data[0].Answers.Should().ContainSingle();
+    }
+
+    #endregion
+
+    #region Results
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetResultsAsync_WhenSurveyNotFound_ShouldThrowNotFoundException()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Survey?)null);
+
+        var act = () => _service.GetResultsAsync(1);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetResultsAsync_WithDepartmentScopedAudience_ShouldLeaveParticipationRateNull()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse" });
+
+        _surveyResponseRepositoryMock.Setup(r => r.GetAllBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyResponse>
+        {
+            new() { ResponseId = 20, SurveyId = 1, EmployeeId = 5 },
+            new() { ResponseId = 21, SurveyId = 1, EmployeeId = 6 }
+        });
+        _surveyAnswerRepositoryMock.Setup(r => r.GetByResponseIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new List<SurveyAnswer>
+        {
+            new() { AnswerId = 1, ResponseId = 20, QuestionId = 1, OptionId = 10 },
+            new() { AnswerId = 2, ResponseId = 21, QuestionId = 1, OptionId = 11 },
+            new() { AnswerId = 3, ResponseId = 20, QuestionId = 2, AnswerText = "Great" }
+        });
+        _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyQuestion>
+        {
+            new() { QuestionId = 1, SurveyId = 1, QuestionText = "Favorite color?", QuestionType = "SingleChoice" },
+            new() { QuestionId = 2, SurveyId = 1, QuestionText = "Any feedback?", QuestionType = "Text" }
+        });
+        _surveyOptionRepositoryMock.Setup(r => r.GetByQuestionIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new List<SurveyOption>
+        {
+            new() { OptionId = 10, QuestionId = 1, OptionText = "Red" },
+            new() { OptionId = 11, QuestionId = 1, OptionText = "Blue" }
+        });
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyAudience>
+        {
+            new() { AudienceId = 1, SurveyId = 1, AudienceType = "Department", DepartmentId = 2 }
+        });
+
+        var result = await _service.GetResultsAsync(1);
+
+        result.TotalResponses.Should().Be(2);
+        result.ParticipationRate.Should().BeNull();
+        _employeeRepositoryMock.Verify(r => r.CountActiveAsync(), Times.Never);
+
+        var choiceQuestion = result.Questions.Should().Contain(q => q.QuestionId == 1).Subject;
+        choiceQuestion.Options.Should().HaveCount(2);
+        choiceQuestion.Options.Single(o => o.OptionId == 10).Count.Should().Be(1);
+        choiceQuestion.Options.Single(o => o.OptionId == 10).Percentage.Should().Be(50m);
+        choiceQuestion.Options.Single(o => o.OptionId == 11).Percentage.Should().Be(50m);
+
+        var textQuestion = result.Questions.Should().Contain(q => q.QuestionId == 2).Subject;
+        textQuestion.TextAnswers.Should().ContainSingle().Which.Should().Be("Great");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetResultsAsync_WithEntireCompanyAudience_ShouldComputeParticipationRate()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse" });
+        _surveyResponseRepositoryMock.Setup(r => r.GetAllBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyResponse>
+        {
+            new() { ResponseId = 20, SurveyId = 1, EmployeeId = 5 }
+        });
+        _surveyAnswerRepositoryMock.Setup(r => r.GetByResponseIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new List<SurveyAnswer>());
+        _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyQuestion>());
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyAudience>
+        {
+            new() { AudienceId = 1, SurveyId = 1, AudienceType = "EntireCompany" }
+        });
+        _employeeRepositoryMock.Setup(r => r.CountActiveAsync()).ReturnsAsync(10);
+
+        var result = await _service.GetResultsAsync(1);
+
+        result.TotalResponses.Should().Be(1);
+        result.ParticipationRate.Should().Be(10m);
     }
 
     #endregion

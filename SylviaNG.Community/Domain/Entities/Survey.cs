@@ -18,4 +18,13 @@ public class Survey : Audit
     public bool IsMandatory { get; set; }
     public DateTime? PublishedAt { get; set; }
     public DateTime? ClosedAt { get; set; }
+
+    /// <summary>
+    /// When set, this survey has no locally-built SurveyQuestion rows - instead it links out to
+    /// an external survey (e.g. a Google Form). "Taking" it means opening this URL and then
+    /// self-reporting completion via the existing SubmitResponse endpoint with an empty answer
+    /// set, so participation still shows up in SurveyResultsResponse without any new tracking
+    /// mechanism.
+    /// </summary>
+    public string? ExternalUrl { get; set; }
 }

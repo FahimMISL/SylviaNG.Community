@@ -27,6 +27,12 @@ namespace SylviaNG.Community.Infrastructure.Configurations
             builder.HasIndex(p => p.Type);
             builder.HasIndex(p => p.Visibility);
             builder.HasIndex(p => p.IsHidden);
+            builder.HasIndex(p => p.GroupId);
+
+            builder.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(p => p.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

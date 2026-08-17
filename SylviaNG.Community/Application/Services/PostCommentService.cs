@@ -14,6 +14,7 @@ namespace SylviaNG.Community.Application.Services
     {
         private readonly IPostCommentRepository _commentRepository;
         private readonly IPostRepository _postRepository;
+        private readonly IEmployeeRepository _employeeRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
         private readonly IMentionService _mentionService;
@@ -21,12 +22,14 @@ namespace SylviaNG.Community.Application.Services
         public PostCommentService(
             IPostCommentRepository commentRepository,
             IPostRepository postRepository,
+            IEmployeeRepository employeeRepository,
             IUnitOfWork unitOfWork,
             INotificationService notificationService,
             IMentionService mentionService)
         {
             _commentRepository = commentRepository;
             _postRepository = postRepository;
+            _employeeRepository = employeeRepository;
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _mentionService = mentionService;
@@ -52,30 +55,35 @@ namespace SylviaNG.Community.Application.Services
             await _commentRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
-            if (post.EmployeeId != request.EmployeeId)
+            if ((post.EmployeeId != request.EmployeeId) || (parent != null && parent.EmployeeId != request.EmployeeId && parent.EmployeeId != post.EmployeeId))
             {
-                await _notificationService.CreateAsync(new NotificationCreateRequest
-                {
-                    EmployeeId = post.EmployeeId,
-                    Title = "New comment on your post",
-                    Message = request.Content,
-                    Category = "PostComment",
-                    RelatedEntityType = "Post",
-                    RelatedEntityId = postId
-                });
-            }
+                var commenterName = (await _employeeRepository.GetByIdAsync(request.EmployeeId))?.EmployeeName ?? "Someone";
 
-            if (parent != null && parent.EmployeeId != request.EmployeeId && parent.EmployeeId != post.EmployeeId)
-            {
-                await _notificationService.CreateAsync(new NotificationCreateRequest
+                if (post.EmployeeId != request.EmployeeId)
                 {
-                    EmployeeId = parent.EmployeeId,
-                    Title = "New reply to your comment",
-                    Message = request.Content,
-                    Category = "CommentReply",
-                    RelatedEntityType = "PostComment",
-                    RelatedEntityId = parent.CommentId
-                });
+                    await _notificationService.CreateAsync(new NotificationCreateRequest
+                    {
+                        EmployeeId = post.EmployeeId,
+                        Title = $"{commenterName} commented on your post",
+                        Message = request.Content,
+                        Category = "PostComment",
+                        RelatedEntityType = "Post",
+                        RelatedEntityId = postId
+                    });
+                }
+
+                if (parent != null && parent.EmployeeId != request.EmployeeId && parent.EmployeeId != post.EmployeeId)
+                {
+                    await _notificationService.CreateAsync(new NotificationCreateRequest
+                    {
+                        EmployeeId = parent.EmployeeId,
+                        Title = $"{commenterName} replied to your comment",
+                        Message = request.Content,
+                        Category = "CommentReply",
+                        RelatedEntityType = "PostComment",
+                        RelatedEntityId = parent.CommentId
+                    });
+                }
             }
 
             await _mentionService.CreateMentionsAsync("PostComment", entity.CommentId, request.EmployeeId, request.MentionedEmployeeIds);

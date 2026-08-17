@@ -11,12 +11,18 @@ namespace SylviaNG.Community.Application.Services
     public class MentionService : IMentionService
     {
         private readonly IMentionRepository _mentionRepository;
+        private readonly IEmployeeRepository _employeeRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
 
-        public MentionService(IMentionRepository mentionRepository, IUnitOfWork unitOfWork, INotificationService notificationService)
+        public MentionService(
+            IMentionRepository mentionRepository,
+            IEmployeeRepository employeeRepository,
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService)
         {
             _mentionRepository = mentionRepository;
+            _employeeRepository = employeeRepository;
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
         }
@@ -27,10 +33,12 @@ namespace SylviaNG.Community.Application.Services
             await _mentionRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
+            var mentionedByName = (await _employeeRepository.GetByIdAsync(entity.MentionedBy))?.EmployeeName ?? "Someone";
+
             await _notificationService.CreateAsync(new NotificationCreateRequest
             {
                 EmployeeId = entity.MentionedEmployeeId,
-                Title = "You were mentioned",
+                Title = $"{mentionedByName} mentioned you",
                 Category = entity.EntityType == "PostComment" ? "CommentMention" : "Mention",
                 RelatedEntityType = entity.EntityType,
                 RelatedEntityId = entity.EntityId

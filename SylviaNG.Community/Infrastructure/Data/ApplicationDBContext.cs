@@ -59,6 +59,12 @@ namespace SylviaNG.Community.Infrastructure.Data
         public DbSet<Team> Teams { get; set; }
         public DbSet<TeamMember> TeamMembers { get; set; }
 
+        // Organization master data (Department/Branch/Designation/Role)
+        public DbSet<Department> Departments { get; set; }
+        public DbSet<Branch> Branches { get; set; }
+        public DbSet<Designation> Designations { get; set; }
+        public DbSet<Role> Roles { get; set; }
+
         // Module 2 - Profile tagging
         public DbSet<Skill> Skills { get; set; }
         public DbSet<EmployeeSkill> EmployeeSkills { get; set; }
@@ -66,9 +72,11 @@ namespace SylviaNG.Community.Infrastructure.Data
         public DbSet<EmployeeInterest> EmployeeInterests { get; set; }
         public DbSet<Badge> Badges { get; set; }
         public DbSet<EmployeeBadge> EmployeeBadges { get; set; }
+        public DbSet<EmployeeContactLink> EmployeeContactLinks { get; set; }
 
         // Module 5 - Recognition
         public DbSet<Recognition> Recognitions { get; set; }
+        public DbSet<RecognitionBadge> RecognitionBadges { get; set; }
         public DbSet<RecognitionReaction> RecognitionReactions { get; set; }
         public DbSet<RecognitionComment> RecognitionComments { get; set; }
 
@@ -128,6 +136,11 @@ namespace SylviaNG.Community.Infrastructure.Data
         public DbSet<ElectionAudienceTarget> ElectionAudienceTargets { get; set; }
         public DbSet<ElectionCandidate> ElectionCandidates { get; set; }
         public DbSet<ElectionVote> ElectionVotes { get; set; }
+
+        // Module 4 - Social Feed (Interest-Based Groups)
+        public DbSet<Group> Groups { get; set; }
+        public DbSet<GroupMember> GroupMembers { get; set; }
+        public DbSet<GroupJoinRequest> GroupJoinRequests { get; set; }
 
         #endregion
 

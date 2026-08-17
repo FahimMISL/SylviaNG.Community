@@ -23,6 +23,8 @@ namespace SylviaNG.Community.Infrastructure.Repositories
                 query = query.Where(n => n.Category == request.Category);
 
             request.SearchProperties ??= new[] { nameof(Notification.Title), nameof(Notification.Message) };
+            request.SortBy ??= nameof(Notification.CreatedAt);
+            request.SortDirection ??= "desc";
 
             return await query.ToPaginatedResultAsync(request);
         }

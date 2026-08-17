@@ -17,6 +17,7 @@ public class PostServiceTests
 {
     private readonly Mock<IPostRepository> _postRepositoryMock;
     private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
+    private readonly Mock<IGroupMemberRepository> _groupMemberRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IMentionService> _mentionServiceMock;
     private readonly PostService _service;
@@ -25,9 +26,10 @@ public class PostServiceTests
     {
         _postRepositoryMock = new Mock<IPostRepository>();
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
+        _groupMemberRepositoryMock = new Mock<IGroupMemberRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _mentionServiceMock = new Mock<IMentionService>();
-        _service = new PostService(_postRepositoryMock.Object, _employeeRepositoryMock.Object, _unitOfWorkMock.Object, _mentionServiceMock.Object);
+        _service = new PostService(_postRepositoryMock.Object, _employeeRepositoryMock.Object, _groupMemberRepositoryMock.Object, _unitOfWorkMock.Object, _mentionServiceMock.Object);
     }
 
     [Fact]
@@ -66,6 +68,38 @@ public class PostServiceTests
 
         // Assert
         _mentionServiceMock.Verify(m => m.CreateMentionsAsync("Post", 10, 1, request.MentionedEmployeeIds), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithGroupIdWhenNotAMember_ShouldThrowForbiddenException()
+    {
+        // Arrange
+        var request = new PostCreateRequest { EmployeeId = 1, GroupId = 3, Type = "Update", Visibility = VisibilityEnum.Everyone };
+        _groupMemberRepositoryMock.Setup(r => r.GetActiveAsync(3, 1)).ReturnsAsync((GroupMember?)null);
+
+        // Act
+        var act = () => _service.CreateAsync(request);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _postRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Post>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithGroupIdWhenActiveMember_ShouldSucceed()
+    {
+        // Arrange
+        var request = new PostCreateRequest { EmployeeId = 1, GroupId = 3, Type = "Update", Visibility = VisibilityEnum.Everyone };
+        _groupMemberRepositoryMock.Setup(r => r.GetActiveAsync(3, 1))
+            .ReturnsAsync(new GroupMember { GroupId = 3, EmployeeId = 1, IsActive = true });
+        _postRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Post>()))
+            .Callback<Post>(p => p.PostId = 20);
+
+        // Act
+        var result = await _service.CreateAsync(request);
+
+        // Assert
+        result.Should().Be(20);
     }
 
     [Fact]
@@ -278,7 +312,7 @@ public class PostServiceTests
         _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(post);
 
         // Act
-        await _service.SetLockedAsync(1, true);
+        await _service.SetLockedAsync(1, true, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Assert
         post.IsLocked.Should().BeTrue();
@@ -293,7 +327,7 @@ public class PostServiceTests
         _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(post);
 
         // Act
-        await _service.SetHiddenAsync(1, true);
+        await _service.SetHiddenAsync(1, true, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Assert
         post.IsHidden.Should().BeTrue();

@@ -17,6 +17,7 @@ public class CommentReactionServiceTests
 {
     private readonly Mock<ICommentReactionRepository> _reactionRepositoryMock;
     private readonly Mock<IPostCommentRepository> _commentRepositoryMock;
+    private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly CommentReactionService _service;
@@ -25,10 +26,11 @@ public class CommentReactionServiceTests
     {
         _reactionRepositoryMock = new Mock<ICommentReactionRepository>();
         _commentRepositoryMock = new Mock<IPostCommentRepository>();
+        _employeeRepositoryMock = new Mock<IEmployeeRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _notificationServiceMock = new Mock<INotificationService>();
         _notificationServiceMock.Setup(n => n.CreateAsync(It.IsAny<NotificationCreateRequest>())).ReturnsAsync(1L);
-        _service = new CommentReactionService(_reactionRepositoryMock.Object, _commentRepositoryMock.Object, _unitOfWorkMock.Object, _notificationServiceMock.Object);
+        _service = new CommentReactionService(_reactionRepositoryMock.Object, _commentRepositoryMock.Object, _employeeRepositoryMock.Object, _unitOfWorkMock.Object, _notificationServiceMock.Object);
     }
 
     [Fact]

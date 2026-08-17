@@ -13,5 +13,11 @@ namespace SylviaNG.Community.Application.Interfaces.Repositories
         /// Shared by the Directory (activeOnly: true) and HR/Admin Management (activeOnly: false) endpoints.
         /// </summary>
         Task<PagedResult<Employee>> GetPaginatedAsync(EmployeeFilterRequest request, bool activeOnly);
+
+        /// <summary>
+        /// Total active employee count, used as the participation-rate denominator for
+        /// EntireCompany-scoped survey results.
+        /// </summary>
+        Task<int> CountActiveAsync();
     }
 }

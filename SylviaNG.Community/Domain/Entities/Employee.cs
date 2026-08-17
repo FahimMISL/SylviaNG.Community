@@ -26,7 +26,6 @@ public class Employee : Audit
     public ContactVisibilityEnum PhoneVisibility { get; set; } = ContactVisibilityEnum.Private;
     public ContactVisibilityEnum EmailVisibility { get; set; } = ContactVisibilityEnum.Private;
     public ContactVisibilityEnum ExtensionVisibility { get; set; } = ContactVisibilityEnum.Private;
-    public long? GradeId { get; set; }
     public string? Division { get; set; }
     public string? Bio { get; set; }
     public string? Skills { get; set; }

@@ -2,7 +2,8 @@ namespace SylviaNG.Community.Application.Features.Tasks.Models
 {
     public class TaskCreateRequest
     {
-        public long TeamId { get; set; }
+        /// <summary>Null creates an individual (non-team) task, assigned directly to an employee (US-7.6).</summary>
+        public long? TeamId { get; set; }
         public long AssignedBy { get; set; }
         public long AssignedTo { get; set; }
         public long? RecurringTaskId { get; set; }

@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Surveys.Commands.SurveyRespons
 
         public async Task<long> Handle(SurveyResponseSubmitCommand command, CancellationToken cancellationToken)
         {
-            return await _surveyService.SubmitResponseAsync(command.SurveyId, command.Request);
+            return await _surveyService.SubmitResponseAsync(command.SurveyId, command.Request, command.EmployeeId);
         }
     }
 }

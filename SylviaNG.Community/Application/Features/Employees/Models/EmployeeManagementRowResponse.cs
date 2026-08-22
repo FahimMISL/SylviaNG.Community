@@ -17,5 +17,9 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
         public long? SiteId { get; set; }
         public string? SiteName { get; set; }
         public bool IsActive { get; set; }
+
+        /// <summary>True when this employee already has a Keycloak login account - determines
+        /// whether the UI offers "Grant Access" or "Reset Password".</summary>
+        public bool HasCredential { get; set; }
     }
 }

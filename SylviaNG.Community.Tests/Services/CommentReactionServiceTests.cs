@@ -67,15 +67,16 @@ public class CommentReactionServiceTests
     public async Task AddOrToggleAsync_WhenReactorIsNotCommentAuthor_ShouldNotifyCommentAuthor()
     {
         // Arrange
-        _commentRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new PostComment { CommentId = 1, EmployeeId = 9 });
+        _commentRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new PostComment { CommentId = 1, PostId = 5, EmployeeId = 9 });
         _reactionRepositoryMock.Setup(r => r.GetAsync(1, 2)).ReturnsAsync((CommentReaction?)null);
 
         // Act
         await _service.AddOrToggleAsync(1, new CommentReactionAddRequest { EmployeeId = 2, ReactionType = ReactionTypeEnum.Love });
 
-        // Assert
+        // Assert - points at the parent post (5), not the comment itself (1), since there's
+        // no standalone comment page to navigate to.
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(
-            r => r.EmployeeId == 9 && r.Category == "CommentReaction" && r.RelatedEntityId == 1)), Times.Once);
+            r => r.EmployeeId == 9 && r.Category == "CommentReaction" && r.RelatedEntityType == "Post" && r.RelatedEntityId == 5)), Times.Once);
     }
 
     [Fact]

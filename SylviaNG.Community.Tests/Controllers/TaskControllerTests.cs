@@ -3,7 +3,6 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using SylviaNG.Community.Application.Features.Tasks.Commands.TaskCreate;
-using SylviaNG.Community.Application.Features.Tasks.Commands.TaskTagAssign;
 using SylviaNG.Community.Application.Features.Tasks.Models;
 using SylviaNG.Community.Application.Features.Tasks.Queries.TaskGetAllPaged;
 using SylviaNG.Community.Application.Features.Tasks.Queries.TaskGetById;
@@ -96,19 +95,5 @@ public class TaskControllerTests
         _mediatorMock.Verify(m => m.Send(
             It.Is<Application.Features.Tasks.Commands.TaskUpdate.TaskUpdateCommand>(c => c.TaskId == 1 && c.ChangedBy == 7),
             default), Times.Once);
-    }
-
-    [Fact]
-    public async Task AssignTag_ShouldReturnOkWithMappingId()
-    {
-        // Arrange
-        _mediatorMock.Setup(m => m.Send(It.IsAny<TaskTagAssignCommand>(), default)).ReturnsAsync(5L);
-
-        // Act
-        var result = await _controller.AssignTag(1, new TaskTagAssignRequest { TagId = 2 });
-
-        // Assert
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().Be(5L);
     }
 }

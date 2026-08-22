@@ -11,7 +11,20 @@ namespace SylviaNG.Community.Application.Features.Surveys.Commands.SurveyQuestio
 
             RuleFor(x => x.Request.QuestionType)
                 .NotEmpty().WithMessage("QuestionType is required.")
-                .MaximumLength(50).WithMessage("QuestionType must not exceed 50 characters.");
+                .Must(t => SurveyQuestionTypes.All.Contains(t))
+                .WithMessage($"QuestionType must be one of: {string.Join(", ", SurveyQuestionTypes.All)}.");
+
+            RuleFor(x => x.Request.Options)
+                .Must(options => options.Count > 0)
+                .When(x => SurveyQuestionTypes.ChoiceTypes.Contains(x.Request.QuestionType))
+                .WithMessage("Choice-type questions require at least one option.");
+
+            RuleFor(x => x.Request.Options)
+                .Must(options => options
+                    .Select(o => o.OptionText.Trim().ToLowerInvariant())
+                    .Distinct()
+                    .Count() == options.Count)
+                .WithMessage("Duplicate option text is not allowed within a question.");
 
             RuleForEach(x => x.Request.Options)
                 .ChildRules(option =>

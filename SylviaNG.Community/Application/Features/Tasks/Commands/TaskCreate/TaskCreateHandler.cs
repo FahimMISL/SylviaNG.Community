@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Tasks.Commands.TaskCreate
 
         public async Task<long> Handle(TaskCreateCommand command, CancellationToken cancellationToken)
         {
-            return await _taskService.CreateAsync(command.Request);
+            return await _taskService.CreateAsync(command.Request, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

@@ -1,6 +1,7 @@
 using Finbuckle.MultiTenant.AspNetCore.Extensions;
 using Finbuckle.MultiTenant.Extensions;
 using Microsoft.EntityFrameworkCore;
+using SylviaNG.Community.Application.Interfaces.Externals;
 using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Infrastructure.Authentication;
@@ -75,6 +76,11 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             services.AddScoped<ITeamRepository, TeamRepository>();
             services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
+            services.AddScoped<IEmployeeKeycloakAccountRepository, EmployeeKeycloakAccountRepository>();
+
+            // Real Keycloak user provisioning for HR/Admin-created employee login credentials
+            // (distinct from the local Credential/InMemoryCredentialRepository login system below).
+            services.AddHttpClient<IKeycloakAdminClient, KeycloakAdminClient>();
 
             // Organization master data (Department/Branch/Designation/Role)
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
@@ -147,8 +153,6 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             services.AddScoped<ITaskCommentRepository, TaskCommentRepository>();
             services.AddScoped<ITaskAttachmentRepository, TaskAttachmentRepository>();
             services.AddScoped<ITaskHistoryRepository, TaskHistoryRepository>();
-            services.AddScoped<ITaskTagRepository, TaskTagRepository>();
-            services.AddScoped<ITaskTagMappingRepository, TaskTagMappingRepository>();
 
             // Module 10 - Voting/Election
             services.AddScoped<IElectionRepository, ElectionRepository>();

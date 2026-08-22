@@ -180,11 +180,12 @@ public class PostCommentServiceTests
         // Act
         await _service.AddAsync(1, request);
 
-        // Assert
+        // Assert - both notifications point at the post (1), not the comment (99), since
+        // there's no standalone comment page to navigate to.
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(
-            r => r.EmployeeId == 9 && r.Category == "PostComment")), Times.Once);
+            r => r.EmployeeId == 9 && r.Category == "PostComment" && r.RelatedEntityType == "Post" && r.RelatedEntityId == 1)), Times.Once);
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(
-            r => r.EmployeeId == 7 && r.Category == "CommentReply" && r.RelatedEntityId == 99)), Times.Once);
+            r => r.EmployeeId == 7 && r.Category == "CommentReply" && r.RelatedEntityType == "Post" && r.RelatedEntityId == 1)), Times.Once);
     }
 
     [Fact]

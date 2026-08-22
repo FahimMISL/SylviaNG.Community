@@ -16,6 +16,7 @@ public class EmployeeServiceTests
 {
     private readonly Mock<IEmployeeRepository> _repositoryMock;
     private readonly Mock<IEmployeeContactLinkRepository> _contactLinkRepositoryMock;
+    private readonly Mock<IEmployeeKeycloakAccountRepository> _keycloakAccountRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<ICoreGrpcClient> _coreGrpcClientMock;
     private readonly EmployeeService _service;
@@ -25,9 +26,17 @@ public class EmployeeServiceTests
         _repositoryMock = new Mock<IEmployeeRepository>();
         _contactLinkRepositoryMock = new Mock<IEmployeeContactLinkRepository>();
         _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(It.IsAny<long>())).ReturnsAsync(new List<EmployeeContactLink>());
+        _keycloakAccountRepositoryMock = new Mock<IEmployeeKeycloakAccountRepository>();
+        _keycloakAccountRepositoryMock.Setup(r => r.GetEmployeeIdsWithAccountsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new HashSet<long>());
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _coreGrpcClientMock = new Mock<ICoreGrpcClient>();
-        _service = new EmployeeService(_repositoryMock.Object, _contactLinkRepositoryMock.Object, _unitOfWorkMock.Object, _coreGrpcClientMock.Object, Mock.Of<ILogger<EmployeeService>>());
+        _service = new EmployeeService(
+            _repositoryMock.Object,
+            _contactLinkRepositoryMock.Object,
+            _keycloakAccountRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _coreGrpcClientMock.Object,
+            Mock.Of<ILogger<EmployeeService>>());
     }
 
     [Fact]

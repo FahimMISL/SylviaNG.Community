@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Tasks.Commands.TaskDelete
 
         public async Task Handle(TaskDeleteCommand command, CancellationToken cancellationToken)
         {
-            await _taskService.DeleteAsync(command.TaskId);
+            await _taskService.DeleteAsync(command.TaskId, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

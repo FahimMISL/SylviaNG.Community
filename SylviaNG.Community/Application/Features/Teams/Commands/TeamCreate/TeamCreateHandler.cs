@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Teams.Commands.TeamCreate
 
         public async Task<long> Handle(TeamCreateCommand command, CancellationToken cancellationToken)
         {
-            return await _teamService.CreateAsync(command.Request);
+            return await _teamService.CreateAsync(command.Request, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

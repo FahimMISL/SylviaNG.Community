@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Tasks.Commands.TaskUpdate
 
         public async Task Handle(TaskUpdateCommand command, CancellationToken cancellationToken)
         {
-            await _taskService.UpdateAsync(command.TaskId, command.Request, command.ChangedBy);
+            await _taskService.UpdateAsync(command.TaskId, command.Request, command.ChangedBy, command.IsHrOrAdmin);
         }
     }
 }

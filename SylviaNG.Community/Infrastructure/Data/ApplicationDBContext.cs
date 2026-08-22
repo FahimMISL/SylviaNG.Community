@@ -1,7 +1,9 @@
+using System.Reflection;
 using Finbuckle.MultiTenant.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using SylviaNG.Community.Domain.Entities;
 using SylviaNG.Community.Domain.Events;
+using SylviaNG.Community.SharedKernel.Audit;
 
 namespace SylviaNG.Community.Infrastructure.Data
 {
@@ -58,6 +60,7 @@ namespace SylviaNG.Community.Infrastructure.Data
         public DbSet<Employee> Employees { get; set; }
         public DbSet<Team> Teams { get; set; }
         public DbSet<TeamMember> TeamMembers { get; set; }
+        public DbSet<EmployeeKeycloakAccount> EmployeeKeycloakAccounts { get; set; }
 
         // Organization master data (Department/Branch/Designation/Role)
         public DbSet<Department> Departments { get; set; }
@@ -128,8 +131,6 @@ namespace SylviaNG.Community.Infrastructure.Data
         public DbSet<TaskComment> TaskComments { get; set; }
         public DbSet<TaskAttachment> TaskAttachments { get; set; }
         public DbSet<TaskHistory> TaskHistories { get; set; }
-        public DbSet<TaskTag> TaskTags { get; set; }
-        public DbSet<TaskTagMapping> TaskTagMappings { get; set; }
 
         // Module 10 - Voting/Election
         public DbSet<Election> Elections { get; set; }
@@ -154,6 +155,32 @@ namespace SylviaNG.Community.Infrastructure.Data
 
             // Ignore DomainEvents collection (used for in-memory event handling, not database persistence)
             modelBuilder.Ignore<DomainEvent>();
+
+            // Every Audit-derived entity is scoped to the current tenant and excludes soft-deleted
+            // rows by default. Applied reflectively over every entity type in the model (rather than
+            // one HasQueryFilter call per entity) because HasQueryFilter requires a compile-time
+            // generic argument per entity - see ApplyTenantAndSoftDeleteFilter below.
+            var applyFilterMethod = typeof(ApplicationDBContext)
+                .GetMethod(nameof(ApplyTenantAndSoftDeleteFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                if (!typeof(Audit).IsAssignableFrom(entityType.ClrType)) continue;
+
+                applyFilterMethod.MakeGenericMethod(entityType.ClrType).Invoke(this, new object[] { modelBuilder });
+            }
+        }
+
+        /// <summary>
+        /// TenantId is compared against CurrentTenantId (a property, not a captured constant) so EF
+        /// re-evaluates it per query against this DbContext instance, not once at model-build time -
+        /// each request gets its own scoped ApplicationDBContext, so this reflects that request's
+        /// caller. DeletedAt == null excludes soft-deleted rows; no code path sets DeletedAt today
+        /// (Repository&lt;T&gt;.Delete is a hard delete), so this is forward-looking, not a behavior
+        /// change against current data.
+        /// </summary>
+        private void ApplyTenantAndSoftDeleteFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : Audit
+        {
+            modelBuilder.Entity<TEntity>().HasQueryFilter(e => e.TenantId == CurrentTenantId && e.DeletedAt == null);
         }
     }
 }

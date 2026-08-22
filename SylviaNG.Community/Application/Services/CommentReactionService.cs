@@ -52,8 +52,11 @@ namespace SylviaNG.Community.Application.Services
                         EmployeeId = comment.EmployeeId,
                         Title = $"{reactorName} reacted to your comment",
                         Category = "CommentReaction",
-                        RelatedEntityType = "PostComment",
-                        RelatedEntityId = commentId
+                        // Points at the parent Post, not the comment itself - there's no
+                        // standalone comment page/route, but the feed already deep-links to
+                        // a specific post via ?postId=.
+                        RelatedEntityType = "Post",
+                        RelatedEntityId = comment.PostId
                     });
                 }
 

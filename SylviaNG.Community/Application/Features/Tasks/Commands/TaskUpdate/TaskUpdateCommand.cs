@@ -13,12 +13,14 @@ namespace SylviaNG.Community.Application.Features.Tasks.Commands.TaskUpdate
         /// TaskHistory.ChangedBy when this update triggers a history entry.
         /// </summary>
         public long? ChangedBy { get; set; }
+        public bool IsHrOrAdmin { get; set; }
 
-        public TaskUpdateCommand(long taskId, TaskUpdateRequest request, long? changedBy)
+        public TaskUpdateCommand(long taskId, TaskUpdateRequest request, long? changedBy, bool isHrOrAdmin)
         {
             TaskId = taskId;
             Request = request;
             ChangedBy = changedBy;
+            IsHrOrAdmin = isHrOrAdmin;
         }
     }
 }

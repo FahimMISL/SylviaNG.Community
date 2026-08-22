@@ -37,11 +37,15 @@ namespace SylviaNG.Community.Infrastructure.Configurations
             builder.HasIndex(t => t.Priority);
             builder.HasIndex(t => t.DueDate);
 
-            // Team is the owning aggregate for tasks - cascade delete mirrors TeamMemberConfiguration.
+            // Team is the owning aggregate for team-assigned tasks; null TeamId means an individual
+            // (non-team) task (US-7.6/7.7), so the FK is optional. SetNull (not Cascade) because a
+            // nullable FK can't cascade-delete - deleting the team detaches its tasks instead of
+            // deleting them.
             builder.HasOne<Team>()
                 .WithMany()
                 .HasForeignKey(t => t.TeamId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // Optional link back to the recurrence definition that generated this task.
             // Restrict (not Cascade/SetNull) to avoid multi-path cascade-delete cycles on

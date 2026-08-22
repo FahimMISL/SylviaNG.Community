@@ -1,5 +1,4 @@
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.Teams.Commands.TeamCreate;
 using SylviaNG.Community.Application.Features.Teams.Commands.TeamDelete;
@@ -10,6 +9,7 @@ using SylviaNG.Community.Application.Features.Teams.Models;
 using SylviaNG.Community.Application.Features.Teams.Queries.TeamGetAllPaged;
 using SylviaNG.Community.Application.Features.Teams.Queries.TeamGetById;
 using SylviaNG.Community.Application.Features.Teams.Queries.TeamMemberGetAll;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.SharedKernel.Pagination;
 
 namespace SylviaNG.Community.Controllers
@@ -19,10 +19,12 @@ namespace SylviaNG.Community.Controllers
     public class TeamController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public TeamController(IMediator mediator)
+        public TeamController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet("paged")]
@@ -39,27 +41,27 @@ namespace SylviaNG.Community.Controllers
             return Ok(result);
         }
 
-        [Authorize(Policy = "HRAdminOnly")]
         [HttpPost]
         public async Task<ActionResult<long>> Create([FromBody] TeamCreateRequest request)
         {
-            var id = await _mediator.Send(new TeamCreateCommand(request));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            var id = await _mediator.Send(new TeamCreateCommand(request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok(id);
         }
 
-        [Authorize(Policy = "HRAdminOnly")]
         [HttpPut("{teamId}")]
         public async Task<ActionResult> Update(long teamId, [FromBody] TeamUpdateRequest request)
         {
-            await _mediator.Send(new TeamUpdateCommand(teamId, request));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new TeamUpdateCommand(teamId, request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
 
-        [Authorize(Policy = "HRAdminOnly")]
         [HttpDelete("{teamId}")]
         public async Task<ActionResult> Delete(long teamId)
         {
-            await _mediator.Send(new TeamDeleteCommand(teamId));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new TeamDeleteCommand(teamId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
 
@@ -70,19 +72,19 @@ namespace SylviaNG.Community.Controllers
             return Ok(result);
         }
 
-        [Authorize(Policy = "HRAdminOnly")]
         [HttpPost("{teamId}/members")]
         public async Task<ActionResult<long>> AddMember(long teamId, [FromBody] TeamMemberAddRequest request)
         {
-            var id = await _mediator.Send(new TeamMemberAddCommand(teamId, request));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            var id = await _mediator.Send(new TeamMemberAddCommand(teamId, request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok(id);
         }
 
-        [Authorize(Policy = "HRAdminOnly")]
         [HttpDelete("{teamId}/members/{employeeId}")]
         public async Task<ActionResult> RemoveMember(long teamId, long employeeId)
         {
-            await _mediator.Send(new TeamMemberRemoveCommand(teamId, employeeId));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new TeamMemberRemoveCommand(teamId, employeeId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
     }

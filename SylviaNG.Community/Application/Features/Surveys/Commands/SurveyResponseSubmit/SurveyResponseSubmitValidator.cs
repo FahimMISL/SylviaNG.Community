@@ -6,8 +6,8 @@ namespace SylviaNG.Community.Application.Features.Surveys.Commands.SurveyRespons
     {
         public SurveyResponseSubmitValidator()
         {
-            RuleFor(x => x.Request.EmployeeId)
-                .GreaterThan(0).WithMessage("EmployeeId is required.");
+            // EmployeeId is resolved server-side from ICurrentUserService by SurveyController,
+            // not taken from the request body - see SurveyResponseSubmitCommand.EmployeeId.
 
             // Answers may legitimately be empty: external surveys (Survey.ExternalUrl set) have no
             // CES-native SurveyQuestion rows at all, so "taking" one submits a response with zero

@@ -12,7 +12,7 @@ public class TeamCreateValidatorTests
     public void Validate_WithValidRequest_ShouldHaveNoErrors()
     {
         // Arrange
-        var command = new TeamCreateCommand(new TeamCreateRequest { Name = "Engineering" });
+        var command = new TeamCreateCommand(new TeamCreateRequest { Name = "Engineering" }, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Act
         var result = _validator.Validate(command);
@@ -25,7 +25,7 @@ public class TeamCreateValidatorTests
     public void Validate_WithEmptyName_ShouldHaveError()
     {
         // Arrange
-        var command = new TeamCreateCommand(new TeamCreateRequest { Name = "" });
+        var command = new TeamCreateCommand(new TeamCreateRequest { Name = "" }, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Act
         var result = _validator.Validate(command);

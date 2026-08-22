@@ -5,5 +5,6 @@ namespace SylviaNG.Community.Application.Features.Surveys.Models
         public long QuestionId { get; set; }
         public long? OptionId { get; set; }
         public string? AnswerText { get; set; }
+        public int? RatingValue { get; set; }
     }
 }

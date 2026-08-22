@@ -40,6 +40,11 @@ namespace SylviaNG.Community.Middlewares
                 _logger.LogWarning(ex, "Forbidden.");
                 await HandleExceptionAsync(context, StatusCodes.Status403Forbidden, ex.Message);
             }
+            catch (ExternalServiceException ex)
+            {
+                _logger.LogError(ex, "Downstream external service failure.");
+                await HandleExceptionAsync(context, StatusCodes.Status502BadGateway, ex.Message);
+            }
             catch (FluentValidation.ValidationException ex)
             {
                 _logger.LogWarning(ex, "Validation failed.");

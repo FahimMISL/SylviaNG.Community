@@ -13,31 +13,15 @@ public class SurveyResponseSubmitValidatorTests
     {
         var command = new SurveyResponseSubmitCommand(1, new SurveySubmissionRequest
         {
-            EmployeeId = 5,
             Answers = new List<SurveyAnswerSubmitRequest>
             {
                 new() { QuestionId = 1, OptionId = 10 }
             }
-        });
+        }, 5);
 
         var result = _validator.Validate(command);
 
         result.IsValid.Should().BeTrue();
-    }
-
-    [Fact]
-    public void Validate_WithNoEmployeeId_ShouldHaveError()
-    {
-        var command = new SurveyResponseSubmitCommand(1, new SurveySubmissionRequest
-        {
-            EmployeeId = 0,
-            Answers = new List<SurveyAnswerSubmitRequest> { new() { QuestionId = 1, AnswerText = "Yes" } }
-        });
-
-        var result = _validator.Validate(command);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "Request.EmployeeId");
     }
 
     [Fact]
@@ -47,9 +31,8 @@ public class SurveyResponseSubmitValidatorTests
         // CES-native questions to answer) - this must stay valid, not rejected.
         var command = new SurveyResponseSubmitCommand(1, new SurveySubmissionRequest
         {
-            EmployeeId = 5,
             Answers = new List<SurveyAnswerSubmitRequest>()
-        });
+        }, 5);
 
         var result = _validator.Validate(command);
 
@@ -61,9 +44,8 @@ public class SurveyResponseSubmitValidatorTests
     {
         var command = new SurveyResponseSubmitCommand(1, new SurveySubmissionRequest
         {
-            EmployeeId = 5,
             Answers = new List<SurveyAnswerSubmitRequest> { new() { QuestionId = 1 } }
-        });
+        }, 5);
 
         var result = _validator.Validate(command);
 

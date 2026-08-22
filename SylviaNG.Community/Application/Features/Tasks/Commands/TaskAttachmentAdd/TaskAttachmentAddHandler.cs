@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Tasks.Commands.TaskAttachmentA
 
         public async Task<long> Handle(TaskAttachmentAddCommand command, CancellationToken cancellationToken)
         {
-            return await _taskService.AddAttachmentAsync(command.TaskId, command.Request);
+            return await _taskService.AddAttachmentAsync(command.TaskId, command.Request, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

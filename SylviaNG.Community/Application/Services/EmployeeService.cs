@@ -16,6 +16,7 @@ namespace SylviaNG.Community.Application.Services
     {
         private readonly IEmployeeRepository _employeeRepository;
         private readonly IEmployeeContactLinkRepository _employeeContactLinkRepository;
+        private readonly IEmployeeKeycloakAccountRepository _employeeKeycloakAccountRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICoreGrpcClient _coreGrpcClient;
         private readonly ILogger<EmployeeService> _logger;
@@ -23,12 +24,14 @@ namespace SylviaNG.Community.Application.Services
         public EmployeeService(
             IEmployeeRepository employeeRepository,
             IEmployeeContactLinkRepository employeeContactLinkRepository,
+            IEmployeeKeycloakAccountRepository employeeKeycloakAccountRepository,
             IUnitOfWork unitOfWork,
             ICoreGrpcClient coreGrpcClient,
             ILogger<EmployeeService> logger)
         {
             _employeeRepository = employeeRepository;
             _employeeContactLinkRepository = employeeContactLinkRepository;
+            _employeeKeycloakAccountRepository = employeeKeycloakAccountRepository;
             _unitOfWork = unitOfWork;
             _coreGrpcClient = coreGrpcClient;
             _logger = logger;
@@ -175,10 +178,11 @@ namespace SylviaNG.Community.Application.Services
         {
             var paged = await _employeeRepository.GetPaginatedAsync(request, activeOnly: false);
             var lookups = await ResolveLookupsAsync(paged.Data);
+            var employeeIdsWithCredentials = await _employeeKeycloakAccountRepository.GetEmployeeIdsWithAccountsAsync(paged.Data.Select(e => e.EmployeeId));
 
             return new PagedResult<EmployeeManagementRowResponse>
             {
-                Data = paged.Data.Select(e => e.ToManagementRow(lookups)).ToList(),
+                Data = paged.Data.Select(e => e.ToManagementRow(lookups, employeeIdsWithCredentials)).ToList(),
                 TotalCount = paged.TotalCount,
                 PageNumber = paged.PageNumber,
                 PageSize = paged.PageSize

@@ -32,6 +32,7 @@ namespace SylviaNG.Community.Application.Extensions
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ITeamService, TeamService>();
+            services.AddScoped<IEmployeeCredentialService, EmployeeCredentialService>();
 
             // Organization master data (Department/Branch/Designation/Role)
             services.AddScoped<IDepartmentService, DepartmentService>();
@@ -75,7 +76,6 @@ namespace SylviaNG.Community.Application.Extensions
 
             // Module 8 - Task Management
             services.AddScoped<ITaskService, TaskService>();
-            services.AddScoped<ITaskTagService, TaskTagService>();
             services.AddScoped<IRecurringTaskService, RecurringTaskService>();
 
             // Module 10 - Voting/Election

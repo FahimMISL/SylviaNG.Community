@@ -22,7 +22,7 @@ public class TaskCreateValidatorTests
     public void Validate_WithValidRequest_ShouldHaveNoErrors()
     {
         // Arrange
-        var command = new TaskCreateCommand(ValidRequest());
+        var command = new TaskCreateCommand(ValidRequest(), callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Act
         var result = _validator.Validate(command);
@@ -37,7 +37,7 @@ public class TaskCreateValidatorTests
         // Arrange
         var request = ValidRequest();
         request.Title = "";
-        var command = new TaskCreateCommand(request);
+        var command = new TaskCreateCommand(request, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Act
         var result = _validator.Validate(command);
@@ -53,7 +53,7 @@ public class TaskCreateValidatorTests
         // Arrange
         var request = ValidRequest();
         request.TeamId = 0;
-        var command = new TaskCreateCommand(request);
+        var command = new TaskCreateCommand(request, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Act
         var result = _validator.Validate(command);
@@ -69,7 +69,7 @@ public class TaskCreateValidatorTests
         // Arrange
         var request = ValidRequest();
         request.AssignedTo = 0;
-        var command = new TaskCreateCommand(request);
+        var command = new TaskCreateCommand(request, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Act
         var result = _validator.Validate(command);
@@ -85,7 +85,7 @@ public class TaskCreateValidatorTests
         // Arrange
         var request = ValidRequest();
         request.Priority = "";
-        var command = new TaskCreateCommand(request);
+        var command = new TaskCreateCommand(request, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Act
         var result = _validator.Validate(command);
@@ -101,7 +101,7 @@ public class TaskCreateValidatorTests
         // Arrange
         var request = ValidRequest();
         request.ReminderDays = -1;
-        var command = new TaskCreateCommand(request);
+        var command = new TaskCreateCommand(request, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Act
         var result = _validator.Validate(command);
@@ -109,5 +109,55 @@ public class TaskCreateValidatorTests
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Request.ReminderDays");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(15)]
+    public void Validate_WithReminderDaysOutsideOneToFourteen_ShouldHaveError(int reminderDays)
+    {
+        // Arrange
+        var request = ValidRequest();
+        request.ReminderDays = reminderDays;
+        var command = new TaskCreateCommand(request, callerEmployeeId: 1, isHrOrAdmin: true);
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Request.ReminderDays");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(14)]
+    public void Validate_WithReminderDaysAtBoundary_ShouldHaveNoErrors(int reminderDays)
+    {
+        // Arrange
+        var request = ValidRequest();
+        request.ReminderDays = reminderDays;
+        var command = new TaskCreateCommand(request, callerEmployeeId: 1, isHrOrAdmin: true);
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_WithNoTeamId_ShouldHaveNoErrors()
+    {
+        // Arrange - US-7.6: an individual task has no TeamId.
+        var request = ValidRequest();
+        request.TeamId = null;
+        var command = new TaskCreateCommand(request, callerEmployeeId: 1, isHrOrAdmin: true);
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
     }
 }

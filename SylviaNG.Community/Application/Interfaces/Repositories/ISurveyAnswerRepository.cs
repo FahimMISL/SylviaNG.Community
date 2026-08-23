@@ -7,5 +7,6 @@ namespace SylviaNG.Community.Application.Interfaces.Repositories
     {
         Task<List<SurveyAnswer>> GetByResponseIdAsync(long responseId);
         Task<List<SurveyAnswer>> GetByResponseIdsAsync(IEnumerable<long> responseIds);
+        Task<bool> ExistsForQuestionAsync(long questionId);
     }
 }

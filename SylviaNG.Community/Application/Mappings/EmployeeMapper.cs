@@ -30,6 +30,9 @@ namespace SylviaNG.Community.Application.Mappings
             entity.Interests = request.Interests;
             entity.Achievements = request.Achievements;
             entity.CommunityContributions = request.CommunityContributions;
+            entity.Phone = request.Phone;
+            entity.Email = request.Email;
+            entity.Extension = request.Extension;
             entity.PhoneVisibility = request.PhoneVisibility;
             entity.EmailVisibility = request.EmailVisibility;
             entity.ExtensionVisibility = request.ExtensionVisibility;
@@ -39,7 +42,8 @@ namespace SylviaNG.Community.Application.Mappings
             this Employee entity,
             long? viewerEmployeeId,
             bool viewerIsHrAdmin,
-            CoreBatchLookupResult lookups)
+            CoreBatchLookupResult lookups,
+            List<EmployeeContactLink> contactLinks)
         {
             var isOwnProfile = viewerEmployeeId.HasValue && viewerEmployeeId.Value == entity.EmployeeId;
             var canSeePrivate = isOwnProfile || viewerIsHrAdmin;
@@ -55,8 +59,6 @@ namespace SylviaNG.Community.Application.Mappings
                 DepartmentName = FindName(lookups.Departments, entity.DepartmentId),
                 SiteId = entity.SiteId,
                 SiteName = FindName(lookups.Sites, entity.SiteId),
-                GradeId = entity.GradeId,
-                GradeName = FindName(lookups.Grades, entity.GradeId),
                 Division = entity.Division,
                 Bio = entity.Bio,
                 Skills = SplitList(entity.Skills),
@@ -74,6 +76,15 @@ namespace SylviaNG.Community.Application.Mappings
                 PhoneVisibility = entity.PhoneVisibility,
                 EmailVisibility = entity.EmailVisibility,
                 ExtensionVisibility = entity.ExtensionVisibility,
+                ContactLinks = contactLinks
+                    .Where(cl => canSeePrivate || cl.Visibility == ContactVisibilityEnum.Public)
+                    .Select(cl => new EmployeeContactLinkResponse
+                    {
+                        Id = cl.EmployeeContactLinkId,
+                        Platform = cl.Platform,
+                        Url = cl.Url,
+                        Visibility = cl.Visibility
+                    }).ToList(),
                 IsOwnProfile = isOwnProfile
             };
         }
@@ -93,7 +104,7 @@ namespace SylviaNG.Community.Application.Mappings
             Skills = SplitList(entity.Skills)
         };
 
-        public static EmployeeManagementRowResponse ToManagementRow(this Employee entity, CoreBatchLookupResult lookups) => new()
+        public static EmployeeManagementRowResponse ToManagementRow(this Employee entity, CoreBatchLookupResult lookups, HashSet<long> employeeIdsWithCredentials) => new()
         {
             EmployeeId = entity.EmployeeId,
             EmployeeCode = entity.EmployeeCode,
@@ -105,7 +116,8 @@ namespace SylviaNG.Community.Application.Mappings
             DepartmentName = FindName(lookups.Departments, entity.DepartmentId),
             SiteId = entity.SiteId,
             SiteName = FindName(lookups.Sites, entity.SiteId),
-            IsActive = entity.IsActive
+            IsActive = entity.IsActive,
+            HasCredential = employeeIdsWithCredentials.Contains(entity.EmployeeId)
         };
 
         private static string? FindName(List<EntityIdNameCodeResponse> items, long? id) =>

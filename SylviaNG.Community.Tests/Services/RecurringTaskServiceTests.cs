@@ -50,4 +50,21 @@ public class RecurringTaskServiceTests
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
     }
+
+    [Fact]
+    public async System.Threading.Tasks.Task DeleteAsync_ShouldDeactivateRatherThanHardDelete()
+    {
+        // Arrange - US-7.12: cancelling the series stops future generation but must not remove
+        // the row, since already-generated Task rows point back to it via RecurringTaskId.
+        var entity = new RecurringTask { RecurringTaskId = 1, Frequency = "Weekly", IntervalValue = 1, IsActive = true };
+        _recurringTaskRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        // Act
+        await _service.DeleteAsync(1);
+
+        // Assert
+        entity.IsActive.Should().BeFalse();
+        _recurringTaskRepositoryMock.Verify(r => r.Update(entity), Times.Once);
+        _recurringTaskRepositoryMock.Verify(r => r.Delete(It.IsAny<RecurringTask>()), Times.Never);
+    }
 }

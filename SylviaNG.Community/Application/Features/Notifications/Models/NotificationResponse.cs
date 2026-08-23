@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using SylviaNG.Community.SharedKernel.Utils;
+
 namespace SylviaNG.Community.Application.Features.Notifications.Models
 {
     public class NotificationResponse
@@ -10,7 +13,9 @@ namespace SylviaNG.Community.Application.Features.Notifications.Models
         public string? RelatedEntityType { get; set; }
         public long? RelatedEntityId { get; set; }
         public bool IsRead { get; set; }
+        [JsonConverter(typeof(NullableUtcDateTimeJsonConverter))]
         public DateTime? ReadAt { get; set; }
+        [JsonConverter(typeof(NullableUtcDateTimeJsonConverter))]
         public DateTime? CreatedAt { get; set; }
     }
 }

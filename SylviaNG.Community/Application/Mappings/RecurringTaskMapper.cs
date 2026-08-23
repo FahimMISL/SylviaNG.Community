@@ -38,5 +38,18 @@ namespace SylviaNG.Community.Application.Mappings
                 IsActive = entity.IsActive
             };
         }
+
+        /// <summary>US-7.12: computes the next occurrence's due date from a completed instance's date.
+        /// Unrecognized frequency values fall back to daily, matching Frequency's free-text nature
+        /// (no enum/constants exist for it elsewhere in this codebase).</summary>
+        public static DateTime GetNextOccurrence(DateTime fromDate, string frequency, int intervalValue)
+        {
+            return frequency.Trim().ToLowerInvariant() switch
+            {
+                "weekly" => fromDate.AddDays(7 * intervalValue),
+                "monthly" => fromDate.AddMonths(intervalValue),
+                _ => fromDate.AddDays(intervalValue) // "daily" and any unrecognized value
+            };
+        }
     }
 }

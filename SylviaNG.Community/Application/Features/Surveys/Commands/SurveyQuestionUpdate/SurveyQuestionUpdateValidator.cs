@@ -7,7 +7,8 @@ namespace SylviaNG.Community.Application.Features.Surveys.Commands.SurveyQuestio
         public SurveyQuestionUpdateValidator()
         {
             RuleFor(x => x.Request.QuestionType)
-                .MaximumLength(50).WithMessage("QuestionType must not exceed 50 characters.")
+                .Must(t => SurveyQuestionTypes.All.Contains(t))
+                .WithMessage($"QuestionType must be one of: {string.Join(", ", SurveyQuestionTypes.All)}.")
                 .When(x => x.Request.QuestionType != null);
         }
     }

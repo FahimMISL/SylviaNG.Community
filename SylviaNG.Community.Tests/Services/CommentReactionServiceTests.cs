@@ -17,6 +17,7 @@ public class CommentReactionServiceTests
 {
     private readonly Mock<ICommentReactionRepository> _reactionRepositoryMock;
     private readonly Mock<IPostCommentRepository> _commentRepositoryMock;
+    private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly CommentReactionService _service;
@@ -25,10 +26,11 @@ public class CommentReactionServiceTests
     {
         _reactionRepositoryMock = new Mock<ICommentReactionRepository>();
         _commentRepositoryMock = new Mock<IPostCommentRepository>();
+        _employeeRepositoryMock = new Mock<IEmployeeRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _notificationServiceMock = new Mock<INotificationService>();
         _notificationServiceMock.Setup(n => n.CreateAsync(It.IsAny<NotificationCreateRequest>())).ReturnsAsync(1L);
-        _service = new CommentReactionService(_reactionRepositoryMock.Object, _commentRepositoryMock.Object, _unitOfWorkMock.Object, _notificationServiceMock.Object);
+        _service = new CommentReactionService(_reactionRepositoryMock.Object, _commentRepositoryMock.Object, _employeeRepositoryMock.Object, _unitOfWorkMock.Object, _notificationServiceMock.Object);
     }
 
     [Fact]
@@ -65,15 +67,16 @@ public class CommentReactionServiceTests
     public async Task AddOrToggleAsync_WhenReactorIsNotCommentAuthor_ShouldNotifyCommentAuthor()
     {
         // Arrange
-        _commentRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new PostComment { CommentId = 1, EmployeeId = 9 });
+        _commentRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new PostComment { CommentId = 1, PostId = 5, EmployeeId = 9 });
         _reactionRepositoryMock.Setup(r => r.GetAsync(1, 2)).ReturnsAsync((CommentReaction?)null);
 
         // Act
         await _service.AddOrToggleAsync(1, new CommentReactionAddRequest { EmployeeId = 2, ReactionType = ReactionTypeEnum.Love });
 
-        // Assert
+        // Assert - points at the parent post (5), not the comment itself (1), since there's
+        // no standalone comment page to navigate to.
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(
-            r => r.EmployeeId == 9 && r.Category == "CommentReaction" && r.RelatedEntityId == 1)), Times.Once);
+            r => r.EmployeeId == 9 && r.Category == "CommentReaction" && r.RelatedEntityType == "Post" && r.RelatedEntityId == 5)), Times.Once);
     }
 
     [Fact]

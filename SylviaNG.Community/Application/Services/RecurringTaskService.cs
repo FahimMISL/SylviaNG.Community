@@ -38,12 +38,15 @@ namespace SylviaNG.Community.Application.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
+        /// <summary>US-7.12: "cancel the series" deactivates rather than hard-deletes, so already-generated
+        /// Task rows (which point back via Task.RecurringTaskId) are unaffected - only future generation stops.</summary>
         public async Task DeleteAsync(long recurringTaskId)
         {
             var entity = await _recurringTaskRepository.GetByIdAsync(recurringTaskId)
                 ?? throw new NotFoundException("RecurringTask", recurringTaskId);
 
-            _recurringTaskRepository.Delete(entity);
+            entity.IsActive = false;
+            _recurringTaskRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
         }
 

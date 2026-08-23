@@ -32,6 +32,13 @@ namespace SylviaNG.Community.Application.Extensions
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ITeamService, TeamService>();
+            services.AddScoped<IEmployeeCredentialService, EmployeeCredentialService>();
+
+            // Organization master data (Department/Branch/Designation/Role)
+            services.AddScoped<IDepartmentService, DepartmentService>();
+            services.AddScoped<IBranchService, BranchService>();
+            services.AddScoped<IDesignationService, DesignationService>();
+            services.AddScoped<IRoleService, RoleService>();
 
             // Module 2 - Profile tagging
             services.AddScoped<ISkillService, SkillService>();
@@ -69,11 +76,13 @@ namespace SylviaNG.Community.Application.Extensions
 
             // Module 8 - Task Management
             services.AddScoped<ITaskService, TaskService>();
-            services.AddScoped<ITaskTagService, TaskTagService>();
             services.AddScoped<IRecurringTaskService, RecurringTaskService>();
 
             // Module 10 - Voting/Election
             services.AddScoped<IElectionService, ElectionService>();
+
+            // Module 4 - Social Feed (Interest-Based Groups)
+            services.AddScoped<IGroupService, GroupService>();
 
             // Provide access to HttpContext for request metadata enrichment
             services.AddHttpContextAccessor();

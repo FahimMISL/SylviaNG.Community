@@ -9,6 +9,7 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         Task UpdateAsync(long surveyId, SurveyUpdateRequest request);
         Task PublishAsync(long surveyId);
         Task CloseAsync(long surveyId);
+        Task DeleteAsync(long surveyId);
         Task<SurveyDetailResponse> GetByIdAsync(long surveyId);
         Task<PagedResult<SurveyDetailResponse>> GetPaginatedAsync(PagedRequest request);
 
@@ -20,7 +21,8 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         Task<long> AddAudienceAsync(long surveyId, SurveyAudienceCreateRequest request);
         Task<List<SurveyAudienceResponse>> GetAudienceAsync(long surveyId);
 
-        Task<long> SubmitResponseAsync(long surveyId, SurveySubmissionRequest request);
+        Task<long> SubmitResponseAsync(long surveyId, SurveySubmissionRequest request, long employeeId);
         Task<PagedResult<SurveySubmissionResponse>> GetResponsesAsync(long surveyId, PagedRequest request);
+        Task<SurveyResultsResponse> GetResultsAsync(long surveyId);
     }
 }

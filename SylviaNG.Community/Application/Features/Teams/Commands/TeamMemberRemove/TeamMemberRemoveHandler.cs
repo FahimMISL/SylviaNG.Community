@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Teams.Commands.TeamMemberRemov
 
         public async Task Handle(TeamMemberRemoveCommand command, CancellationToken cancellationToken)
         {
-            await _teamService.RemoveMemberAsync(command.TeamId, command.EmployeeId);
+            await _teamService.RemoveMemberAsync(command.TeamId, command.EmployeeId, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

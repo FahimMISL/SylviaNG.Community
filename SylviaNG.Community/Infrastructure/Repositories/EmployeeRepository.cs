@@ -18,6 +18,25 @@ namespace SylviaNG.Community.Infrastructure.Repositories
                 .AnyAsync(e => e.Email == email && (!excludeId.HasValue || e.EmployeeId != excludeId.Value));
         }
 
+        public async Task<int> CountActiveAsync()
+        {
+            return await _dbSet.CountAsync(e => e.IsActive);
+        }
+
+        public async Task<int> CountActiveByDepartmentOrSiteIdsAsync(IEnumerable<long> departmentIds, IEnumerable<long> siteIds)
+        {
+            var departmentIdSet = departmentIds.ToList();
+            var siteIdSet = siteIds.ToList();
+
+            return await _dbSet
+                .Where(e => e.IsActive &&
+                    ((e.DepartmentId.HasValue && departmentIdSet.Contains(e.DepartmentId.Value)) ||
+                     (e.SiteId.HasValue && siteIdSet.Contains(e.SiteId.Value))))
+                .Select(e => e.EmployeeId)
+                .Distinct()
+                .CountAsync();
+        }
+
         public async Task<PagedResult<Employee>> GetPaginatedAsync(EmployeeFilterRequest request, bool activeOnly)
         {
             var query = _dbSet.AsQueryable();

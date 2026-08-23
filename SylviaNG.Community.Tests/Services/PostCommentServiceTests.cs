@@ -16,6 +16,7 @@ public class PostCommentServiceTests
 {
     private readonly Mock<IPostCommentRepository> _commentRepositoryMock;
     private readonly Mock<IPostRepository> _postRepositoryMock;
+    private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly Mock<IMentionService> _mentionServiceMock;
@@ -25,11 +26,12 @@ public class PostCommentServiceTests
     {
         _commentRepositoryMock = new Mock<IPostCommentRepository>();
         _postRepositoryMock = new Mock<IPostRepository>();
+        _employeeRepositoryMock = new Mock<IEmployeeRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _notificationServiceMock = new Mock<INotificationService>();
         _notificationServiceMock.Setup(n => n.CreateAsync(It.IsAny<NotificationCreateRequest>())).ReturnsAsync(1L);
         _mentionServiceMock = new Mock<IMentionService>();
-        _service = new PostCommentService(_commentRepositoryMock.Object, _postRepositoryMock.Object, _unitOfWorkMock.Object, _notificationServiceMock.Object, _mentionServiceMock.Object);
+        _service = new PostCommentService(_commentRepositoryMock.Object, _postRepositoryMock.Object, _employeeRepositoryMock.Object, _unitOfWorkMock.Object, _notificationServiceMock.Object, _mentionServiceMock.Object);
     }
 
     [Fact]
@@ -178,11 +180,12 @@ public class PostCommentServiceTests
         // Act
         await _service.AddAsync(1, request);
 
-        // Assert
+        // Assert - both notifications point at the post (1), not the comment (99), since
+        // there's no standalone comment page to navigate to.
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(
-            r => r.EmployeeId == 9 && r.Category == "PostComment")), Times.Once);
+            r => r.EmployeeId == 9 && r.Category == "PostComment" && r.RelatedEntityType == "Post" && r.RelatedEntityId == 1)), Times.Once);
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(
-            r => r.EmployeeId == 7 && r.Category == "CommentReply" && r.RelatedEntityId == 99)), Times.Once);
+            r => r.EmployeeId == 7 && r.Category == "CommentReply" && r.RelatedEntityType == "Post" && r.RelatedEntityId == 1)), Times.Once);
     }
 
     [Fact]

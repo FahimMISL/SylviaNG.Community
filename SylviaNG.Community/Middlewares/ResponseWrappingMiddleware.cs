@@ -13,6 +13,18 @@ namespace SylviaNG.Community.Middlewares
 
         public async Task InvokeAsync(HttpContext context)
         {
+            // SignalR hub endpoints (negotiate/connect) are not ApiResponse<T>-shaped and must
+            // never be touched here: this middleware rewrites the body without updating
+            // Content-Length, and the negotiate response sets that header itself based on its
+            // own (smaller) payload - rewriting it without matching Content-Length causes the
+            // browser to reject the response with ERR_CONTENT_LENGTH_MISMATCH, breaking the
+            // SignalR connection before it ever starts.
+            if (context.Request.Path.StartsWithSegments("/community/hubs"))
+            {
+                await _next(context);
+                return;
+            }
+
             var originalBodyStream = context.Response.Body;
 
             using var responseBody = new MemoryStream();

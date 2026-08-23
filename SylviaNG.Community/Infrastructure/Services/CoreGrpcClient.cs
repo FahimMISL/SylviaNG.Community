@@ -52,7 +52,6 @@ namespace SylviaNG.Community.Infrastructure.Services
         public async Task<CoreBatchLookupResult> GetMasterDataAsync(
             List<long>? departmentIds = null,
             List<long>? designationIds = null,
-            List<long>? gradeIds = null,
             List<long>? siteIds = null)
         {
             try
@@ -60,7 +59,6 @@ namespace SylviaNG.Community.Infrastructure.Services
                 var request = new BatchLookupRequest();
                 if (departmentIds is { Count: > 0 }) request.DepartmentIds.AddRange(departmentIds);
                 if (designationIds is { Count: > 0 }) request.DesignationIds.AddRange(designationIds);
-                if (gradeIds is { Count: > 0 }) request.GradeIds.AddRange(gradeIds);
                 if (siteIds is { Count: > 0 }) request.SiteIds.AddRange(siteIds);
 
                 var response = await _client.BatchLookupAsync(request);
@@ -78,12 +76,6 @@ namespace SylviaNG.Community.Infrastructure.Services
                         EntityId = d.Id,
                         Name = d.Name,
                         Code = d.Code
-                    }).ToList(),
-                    Grades = response.Grades.Select(g => new EntityIdNameCodeResponse
-                    {
-                        EntityId = g.Id,
-                        Name = g.Name,
-                        Code = g.Code
                     }).ToList(),
                     Sites = response.Sites.Select(s => new EntityIdNameCodeResponse
                     {

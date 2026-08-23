@@ -13,7 +13,6 @@ namespace SylviaNG.Community.Application.Mappings
             {
                 SenderId = senderId,
                 RecipientId = request.RecipientId,
-                BadgeId = request.BadgeId,
                 RecognitionType = request.RecognitionType,
                 CoreValue = request.CoreValue,
                 AwardTitle = request.AwardTitle,
@@ -23,17 +22,14 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
-        public static RecognitionResponse ToResponse(this Recognition entity, Badge? badge = null)
+        public static RecognitionResponse ToResponse(this Recognition entity, IEnumerable<Badge>? badges = null)
         {
             return new RecognitionResponse
             {
                 RecognitionId = entity.RecognitionId,
                 SenderId = entity.SenderId,
                 RecipientId = entity.RecipientId,
-                BadgeId = entity.BadgeId,
-                BadgeName = badge?.Name,
-                BadgeIcon = badge?.Icon,
-                BadgeColor = badge?.Color,
+                Badges = badges?.Select(b => b.ToResponse()).ToList() ?? new(),
                 RecognitionType = entity.RecognitionType,
                 CoreValue = entity.CoreValue,
                 AwardTitle = entity.AwardTitle,

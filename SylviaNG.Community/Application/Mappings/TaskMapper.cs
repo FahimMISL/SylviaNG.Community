@@ -19,7 +19,8 @@ namespace SylviaNG.Community.Application.Mappings
                 Priority = request.Priority,
                 TaskStatus = request.Status,
                 DueDate = request.DueDate,
-                ReminderDays = request.ReminderDays
+                // US-7.9: reminder window defaults to 2 days when the caller doesn't set one.
+                ReminderDays = request.ReminderDays ?? 2
             };
         }
 
@@ -52,8 +53,30 @@ namespace SylviaNG.Community.Application.Mappings
                 DueDate = entity.DueDate,
                 ReminderDays = entity.ReminderDays,
                 CreatedBy = entity.CreatedBy,
-                CreatedAt = entity.CreatedAt
+                CreatedAt = entity.CreatedAt,
+                DerivedStatus = ComputeDerivedStatus(entity)
             };
+        }
+
+        /// <summary>US-7.9: Due Soon is distinct from Overdue - within the reminder window but not yet
+        /// past the due date. No due date means neither can apply.</summary>
+        private static string ComputeDerivedStatus(TaskEntity entity)
+        {
+            if (string.Equals(entity.TaskStatus, "Completed", StringComparison.OrdinalIgnoreCase))
+                return "Completed";
+
+            if (!entity.DueDate.HasValue)
+                return "OnTrack";
+
+            var now = DateTime.UtcNow;
+            if (entity.DueDate.Value < now)
+                return "Overdue";
+
+            var reminderDays = entity.ReminderDays ?? 2;
+            if ((entity.DueDate.Value - now).TotalDays <= reminderDays)
+                return "DueSoon";
+
+            return "OnTrack";
         }
 
         public static TaskComment ToEntity(this TaskCommentAddRequest request, long taskId)

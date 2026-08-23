@@ -6,7 +6,6 @@ namespace SylviaNG.Community.Application.Features.Surveys.Models
     /// </summary>
     public class SurveySubmissionRequest
     {
-        public long EmployeeId { get; set; }
         public List<SurveyAnswerSubmitRequest> Answers { get; set; } = new();
     }
 }

@@ -20,8 +20,6 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
         public string? DepartmentName { get; set; }
         public long? SiteId { get; set; }
         public string? SiteName { get; set; }
-        public long? GradeId { get; set; }
-        public string? GradeName { get; set; }
         public string? Division { get; set; }
 
         public string? Bio { get; set; }
@@ -41,6 +39,7 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
         public ContactVisibilityEnum PhoneVisibility { get; set; }
         public ContactVisibilityEnum EmailVisibility { get; set; }
         public ContactVisibilityEnum ExtensionVisibility { get; set; }
+        public List<EmployeeContactLinkResponse> ContactLinks { get; set; } = new();
 
         public bool IsOwnProfile { get; set; }
     }

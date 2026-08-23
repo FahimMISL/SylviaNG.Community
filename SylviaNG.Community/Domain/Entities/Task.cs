@@ -12,7 +12,9 @@ namespace SylviaNG.Community.Domain.Entities;
 public class Task : Audit
 {
     public long TaskId { get; set; }
-    public long TeamId { get; set; }
+
+    /// <summary>Null for an individual (non-team) task assigned directly to an employee (US-7.6/7.7).</summary>
+    public long? TeamId { get; set; }
     public long AssignedBy { get; set; }
     public long AssignedTo { get; set; }
     public long? RecurringTaskId { get; set; }

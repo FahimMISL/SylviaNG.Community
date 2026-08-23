@@ -8,5 +8,9 @@ namespace SylviaNG.Community.Application.Interfaces.Repositories
     {
         Task<bool> ExistsByNameAsync(string name, long? excludeId = null);
         Task<PagedResult<Team>> GetPaginatedAsync(PagedRequest request);
+
+        /// <summary>True when the employee currently supervises at least one active team - the
+        /// spec's definition of "Supervisor" (not a separate role/claim, see US-7.1).</summary>
+        Task<bool> ExistsBySupervisorIdAsync(long employeeId);
     }
 }

@@ -1,6 +1,7 @@
 using Finbuckle.MultiTenant.AspNetCore.Extensions;
 using Finbuckle.MultiTenant.Extensions;
 using Microsoft.EntityFrameworkCore;
+using SylviaNG.Community.Application.Interfaces.Externals;
 using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Infrastructure.Authentication;
@@ -42,6 +43,7 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             // Register Audit Infrastructure (database-agnostic)
             services.AddHttpContextAccessor();
             services.AddSingleton<UtcDateTimeInterceptor>();
+            services.AddSingleton<AuditInterceptor>();
 
             // Configure database provider with audit interceptor
             services.AddDbContext<ApplicationDBContext>((sp, options) =>
@@ -65,7 +67,7 @@ namespace SylviaNG.Community.Infrastructure.Extensions
                 }
 
                 // Apply audit interceptor once (works with any database)
-                options.AddInterceptors(sp.GetRequiredService<UtcDateTimeInterceptor>());
+                options.AddInterceptors(sp.GetRequiredService<UtcDateTimeInterceptor>(), sp.GetRequiredService<AuditInterceptor>());
             });
 
             // Register your repositories here
@@ -74,6 +76,17 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             services.AddScoped<ITeamRepository, TeamRepository>();
             services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
+            services.AddScoped<IEmployeeKeycloakAccountRepository, EmployeeKeycloakAccountRepository>();
+
+            // Real Keycloak user provisioning for HR/Admin-created employee login credentials
+            // (distinct from the local Credential/InMemoryCredentialRepository login system below).
+            services.AddHttpClient<IKeycloakAdminClient, KeycloakAdminClient>();
+
+            // Organization master data (Department/Branch/Designation/Role)
+            services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+            services.AddScoped<IBranchRepository, BranchRepository>();
+            services.AddScoped<IDesignationRepository, DesignationRepository>();
+            services.AddScoped<IRoleRepository, RoleRepository>();
 
             // Module 2 - Profile tagging
             services.AddScoped<ISkillRepository, SkillRepository>();
@@ -82,9 +95,11 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             services.AddScoped<IEmployeeInterestRepository, EmployeeInterestRepository>();
             services.AddScoped<IBadgeRepository, BadgeRepository>();
             services.AddScoped<IEmployeeBadgeRepository, EmployeeBadgeRepository>();
+            services.AddScoped<IEmployeeContactLinkRepository, EmployeeContactLinkRepository>();
 
             // Module 5 - Recognition
             services.AddScoped<IRecognitionRepository, RecognitionRepository>();
+            services.AddScoped<IRecognitionBadgeRepository, RecognitionBadgeRepository>();
             services.AddScoped<IRecognitionReactionRepository, RecognitionReactionRepository>();
             services.AddScoped<IRecognitionCommentRepository, RecognitionCommentRepository>();
 
@@ -138,14 +153,17 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             services.AddScoped<ITaskCommentRepository, TaskCommentRepository>();
             services.AddScoped<ITaskAttachmentRepository, TaskAttachmentRepository>();
             services.AddScoped<ITaskHistoryRepository, TaskHistoryRepository>();
-            services.AddScoped<ITaskTagRepository, TaskTagRepository>();
-            services.AddScoped<ITaskTagMappingRepository, TaskTagMappingRepository>();
 
             // Module 10 - Voting/Election
             services.AddScoped<IElectionRepository, ElectionRepository>();
             services.AddScoped<IElectionAudienceTargetRepository, ElectionAudienceTargetRepository>();
             services.AddScoped<IElectionCandidateRepository, ElectionCandidateRepository>();
             services.AddScoped<IElectionVoteRepository, ElectionVoteRepository>();
+
+            // Module 4 - Social Feed (Interest-Based Groups)
+            services.AddScoped<IGroupRepository, GroupRepository>();
+            services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
+            services.AddScoped<IGroupJoinRequestRepository, GroupJoinRequestRepository>();
 
             // No database is provisioned yet - login credentials are a static in-memory list
             // (see InMemoryCredentialRepository) instead of an EF-backed table.

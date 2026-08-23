@@ -14,7 +14,8 @@ namespace SylviaNG.Community.Application.Mappings
                 SurveyType = request.SurveyType,
                 Status = "Draft",
                 IsAnonymous = request.IsAnonymous,
-                IsMandatory = request.IsMandatory
+                IsMandatory = request.IsMandatory,
+                ExternalUrl = request.ExternalUrl
             };
         }
 
@@ -25,6 +26,12 @@ namespace SylviaNG.Community.Application.Mappings
             if (request.SurveyType != null) entity.SurveyType = request.SurveyType;
             if (request.IsAnonymous.HasValue) entity.IsAnonymous = request.IsAnonymous.Value;
             if (request.IsMandatory.HasValue) entity.IsMandatory = request.IsMandatory.Value;
+            // Unlike the other nullable fields above (where null means "leave unchanged"), ExternalUrl
+            // drives real functional branching (native vs. external survey) rather than being purely
+            // cosmetic like Description - so an empty string is treated as an explicit "clear it" signal,
+            // otherwise switching a survey from external back to native mode would leave it stuck pointing
+            // at the old link with no way to unset it through this endpoint.
+            if (request.ExternalUrl != null) entity.ExternalUrl = string.IsNullOrEmpty(request.ExternalUrl) ? null : request.ExternalUrl;
         }
 
         public static SurveyDetailResponse ToResponse(this Survey entity)
@@ -40,7 +47,8 @@ namespace SylviaNG.Community.Application.Mappings
                 IsMandatory = entity.IsMandatory,
                 CreatedBy = entity.CreatedBy,
                 PublishedAt = entity.PublishedAt,
-                ClosedAt = entity.ClosedAt
+                ClosedAt = entity.ClosedAt,
+                ExternalUrl = entity.ExternalUrl
             };
         }
 
@@ -122,12 +130,12 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
-        public static SurveyResponse ToEntity(this SurveySubmissionRequest request, long surveyId)
+        public static SurveyResponse ToEntity(this SurveySubmissionRequest request, long surveyId, long employeeId)
         {
             return new SurveyResponse
             {
                 SurveyId = surveyId,
-                EmployeeId = request.EmployeeId,
+                EmployeeId = employeeId,
                 SubmittedAt = DateTime.UtcNow,
                 CompletionStatus = "Completed"
             };
@@ -140,7 +148,8 @@ namespace SylviaNG.Community.Application.Mappings
                 ResponseId = responseId,
                 QuestionId = request.QuestionId,
                 OptionId = request.OptionId,
-                AnswerText = request.AnswerText
+                AnswerText = request.AnswerText,
+                RatingValue = request.RatingValue
             };
         }
 
@@ -152,17 +161,18 @@ namespace SylviaNG.Community.Application.Mappings
                 ResponseId = entity.ResponseId,
                 QuestionId = entity.QuestionId,
                 OptionId = entity.OptionId,
-                AnswerText = entity.AnswerText
+                AnswerText = entity.AnswerText,
+                RatingValue = entity.RatingValue
             };
         }
 
-        public static SurveySubmissionResponse ToResponse(this SurveyResponse entity, List<SurveyAnswer>? answers = null)
+        public static SurveySubmissionResponse ToResponse(this SurveyResponse entity, bool isAnonymous, List<SurveyAnswer>? answers = null)
         {
             return new SurveySubmissionResponse
             {
                 ResponseId = entity.ResponseId,
                 SurveyId = entity.SurveyId,
-                EmployeeId = entity.EmployeeId,
+                EmployeeId = isAnonymous ? null : entity.EmployeeId,
                 SubmittedAt = entity.SubmittedAt,
                 CompletionStatus = entity.CompletionStatus,
                 Answers = (answers ?? new List<SurveyAnswer>()).Select(a => a.ToResponse()).ToList()

@@ -107,7 +107,17 @@ public class EmployeeControllerTests
         // Arrange
         _currentUserMock.SetupGet(c => c.EmployeeId).Returns(1);
 
-        var request = new EmployeeUpdateProfileRequest { Bio = "Updated bio" };
+        var request = new EmployeeUpdateProfileRequest
+        {
+            Bio = "Updated bio",
+            Phone = "+880-1710-000001",
+            Email = "ayesha.rahman@sylviang.example",
+            Extension = "1001",
+            ContactLinks = new List<EmployeeContactLinkItem>
+            {
+                new() { Id = null, Platform = "LinkedIn", Url = "https://linkedin.com/in/ayesha", Visibility = SylviaNG.Community.Domain.Enums.ContactVisibilityEnum.Public }
+            }
+        };
         EmployeeUpdateProfileCommand? capturedCommand = null;
 
         _mediatorMock.Setup(m => m.Send(It.IsAny<EmployeeUpdateProfileCommand>(), default))
@@ -122,6 +132,8 @@ public class EmployeeControllerTests
         capturedCommand.Should().NotBeNull();
         capturedCommand!.EmployeeId.Should().Be(1);
         capturedCommand.ViewerEmployeeId.Should().Be(1);
+        capturedCommand.Request.Phone.Should().Be("+880-1710-000001");
+        capturedCommand.Request.ContactLinks.Should().ContainSingle(l => l.Platform == "LinkedIn");
     }
 
     [Fact]

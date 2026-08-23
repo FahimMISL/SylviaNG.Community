@@ -17,6 +17,5 @@ namespace SylviaNG.Community.Application.Common.Models
         public List<EntityIdNameCodeResponse> Sites { get; set; } = new();
         public List<EntityIdNameCodeResponse> Departments { get; set; } = new();
         public List<EntityIdNameCodeResponse> Designations { get; set; } = new();
-        public List<EntityIdNameCodeResponse> Grades { get; set; } = new();
     }
 }

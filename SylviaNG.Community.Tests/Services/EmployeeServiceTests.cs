@@ -15,6 +15,8 @@ namespace SylviaNG.Community.Tests.Services;
 public class EmployeeServiceTests
 {
     private readonly Mock<IEmployeeRepository> _repositoryMock;
+    private readonly Mock<IEmployeeContactLinkRepository> _contactLinkRepositoryMock;
+    private readonly Mock<IEmployeeKeycloakAccountRepository> _keycloakAccountRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<ICoreGrpcClient> _coreGrpcClientMock;
     private readonly EmployeeService _service;
@@ -22,9 +24,19 @@ public class EmployeeServiceTests
     public EmployeeServiceTests()
     {
         _repositoryMock = new Mock<IEmployeeRepository>();
+        _contactLinkRepositoryMock = new Mock<IEmployeeContactLinkRepository>();
+        _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(It.IsAny<long>())).ReturnsAsync(new List<EmployeeContactLink>());
+        _keycloakAccountRepositoryMock = new Mock<IEmployeeKeycloakAccountRepository>();
+        _keycloakAccountRepositoryMock.Setup(r => r.GetEmployeeIdsWithAccountsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new HashSet<long>());
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _coreGrpcClientMock = new Mock<ICoreGrpcClient>();
-        _service = new EmployeeService(_repositoryMock.Object, _unitOfWorkMock.Object, _coreGrpcClientMock.Object, Mock.Of<ILogger<EmployeeService>>());
+        _service = new EmployeeService(
+            _repositoryMock.Object,
+            _contactLinkRepositoryMock.Object,
+            _keycloakAccountRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _coreGrpcClientMock.Object,
+            Mock.Of<ILogger<EmployeeService>>());
     }
 
     [Fact]
@@ -244,5 +256,194 @@ public class EmployeeServiceTests
         // Assert
         result.Phone.Should().Be("+880-1710-000001");
         result.IsOwnProfile.Should().BeTrue();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateProfileAsync_ShouldApplyPhoneEmailExtensionValues()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, Phone = "old", Email = "old@example.com", Extension = "1000" };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        var request = new EmployeeUpdateProfileRequest { Phone = "+880-1710-999999", Email = "new@example.com", Extension = "2000" };
+
+        // Act
+        await _service.UpdateProfileAsync(employeeId: 1, request, viewerEmployeeId: 1);
+
+        // Assert
+        entity.Phone.Should().Be("+880-1710-999999");
+        entity.Email.Should().Be("new@example.com");
+        entity.Extension.Should().Be("2000");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateProfileAsync_WithNewContactLinks_ShouldAddThem()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1 };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+        _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(1)).ReturnsAsync(new List<EmployeeContactLink>());
+
+        var request = new EmployeeUpdateProfileRequest
+        {
+            ContactLinks = new List<EmployeeContactLinkItem>
+            {
+                new() { Id = null, Platform = "LinkedIn", Url = "https://linkedin.com/in/ayesha", Visibility = ContactVisibilityEnum.Public }
+            }
+        };
+
+        // Act
+        await _service.UpdateProfileAsync(employeeId: 1, request, viewerEmployeeId: 1);
+
+        // Assert
+        _contactLinkRepositoryMock.Verify(r => r.AddAsync(It.Is<EmployeeContactLink>(l =>
+            l.EmployeeId == 1 && l.Platform == "LinkedIn" && l.Url == "https://linkedin.com/in/ayesha" && l.Visibility == ContactVisibilityEnum.Public)), Times.Once);
+        _contactLinkRepositoryMock.Verify(r => r.Update(It.IsAny<EmployeeContactLink>()), Times.Never);
+        _contactLinkRepositoryMock.Verify(r => r.DeleteRange(It.IsAny<IEnumerable<EmployeeContactLink>>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateProfileAsync_WithExistingContactLinkId_ShouldUpdateInPlace()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1 };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        var existingLink = new EmployeeContactLink { EmployeeContactLinkId = 10, EmployeeId = 1, Platform = "LinkedIn", Url = "https://linkedin.com/in/old", Visibility = ContactVisibilityEnum.Private };
+        _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(1)).ReturnsAsync(new List<EmployeeContactLink> { existingLink });
+
+        var request = new EmployeeUpdateProfileRequest
+        {
+            ContactLinks = new List<EmployeeContactLinkItem>
+            {
+                new() { Id = 10, Platform = "LinkedIn", Url = "https://linkedin.com/in/new", Visibility = ContactVisibilityEnum.Public }
+            }
+        };
+
+        // Act
+        await _service.UpdateProfileAsync(employeeId: 1, request, viewerEmployeeId: 1);
+
+        // Assert
+        existingLink.Url.Should().Be("https://linkedin.com/in/new");
+        existingLink.Visibility.Should().Be(ContactVisibilityEnum.Public);
+        _contactLinkRepositoryMock.Verify(r => r.Update(existingLink), Times.Once);
+        _contactLinkRepositoryMock.Verify(r => r.AddAsync(It.IsAny<EmployeeContactLink>()), Times.Never);
+        _contactLinkRepositoryMock.Verify(r => r.DeleteRange(It.IsAny<IEnumerable<EmployeeContactLink>>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateProfileAsync_WithMissingContactLinkId_ShouldRemoveIt()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1 };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        var linkToRemove = new EmployeeContactLink { EmployeeContactLinkId = 10, EmployeeId = 1, Platform = "LinkedIn", Url = "https://linkedin.com/in/old" };
+        _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(1)).ReturnsAsync(new List<EmployeeContactLink> { linkToRemove });
+
+        var request = new EmployeeUpdateProfileRequest { ContactLinks = new List<EmployeeContactLinkItem>() };
+
+        // Act
+        await _service.UpdateProfileAsync(employeeId: 1, request, viewerEmployeeId: 1);
+
+        // Assert
+        _contactLinkRepositoryMock.Verify(r => r.DeleteRange(It.Is<IEnumerable<EmployeeContactLink>>(list => list.Single() == linkToRemove)), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateProfileAsync_WithMixedContactLinkDiff_ShouldAddUpdateAndRemoveInOneCall()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1 };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        var toUpdate = new EmployeeContactLink { EmployeeContactLinkId = 10, EmployeeId = 1, Platform = "LinkedIn", Url = "https://linkedin.com/in/old" };
+        var toRemove = new EmployeeContactLink { EmployeeContactLinkId = 20, EmployeeId = 1, Platform = "Facebook", Url = "https://facebook.com/old" };
+        _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(1)).ReturnsAsync(new List<EmployeeContactLink> { toUpdate, toRemove });
+
+        var request = new EmployeeUpdateProfileRequest
+        {
+            ContactLinks = new List<EmployeeContactLinkItem>
+            {
+                new() { Id = 10, Platform = "LinkedIn", Url = "https://linkedin.com/in/new", Visibility = ContactVisibilityEnum.Public },
+                new() { Id = null, Platform = "GitHub", Url = "https://github.com/ayesha", Visibility = ContactVisibilityEnum.Public }
+            }
+        };
+
+        // Act
+        await _service.UpdateProfileAsync(employeeId: 1, request, viewerEmployeeId: 1);
+
+        // Assert
+        _contactLinkRepositoryMock.Verify(r => r.Update(toUpdate), Times.Once);
+        _contactLinkRepositoryMock.Verify(r => r.AddAsync(It.Is<EmployeeContactLink>(l => l.Platform == "GitHub")), Times.Once);
+        _contactLinkRepositoryMock.Verify(r => r.DeleteRange(It.Is<IEnumerable<EmployeeContactLink>>(list => list.Single() == toRemove)), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateProfileAsync_WithContactLinkIdNotBelongingToEmployee_ShouldSkipSilently()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1 };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+        _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(1)).ReturnsAsync(new List<EmployeeContactLink>());
+
+        var request = new EmployeeUpdateProfileRequest
+        {
+            ContactLinks = new List<EmployeeContactLinkItem>
+            {
+                new() { Id = 999, Platform = "LinkedIn", Url = "https://linkedin.com/in/someone-elses", Visibility = ContactVisibilityEnum.Public }
+            }
+        };
+
+        // Act
+        var act = () => _service.UpdateProfileAsync(employeeId: 1, request, viewerEmployeeId: 1);
+
+        // Assert
+        await act.Should().NotThrowAsync();
+        _contactLinkRepositoryMock.Verify(r => r.Update(It.IsAny<EmployeeContactLink>()), Times.Never);
+        _contactLinkRepositoryMock.Verify(r => r.AddAsync(It.IsAny<EmployeeContactLink>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_ShouldPopulateContactLinksFromRepository()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1 };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        var links = new List<EmployeeContactLink>
+        {
+            new() { EmployeeContactLinkId = 10, EmployeeId = 1, Platform = "LinkedIn", Url = "https://linkedin.com/in/ayesha", Visibility = ContactVisibilityEnum.Public }
+        };
+        _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(1)).ReturnsAsync(links);
+
+        // Act
+        var result = await _service.GetByIdAsync(employeeId: 1, viewerEmployeeId: 1, viewerIsHrAdmin: false);
+
+        // Assert
+        result.ContactLinks.Should().ContainSingle(l => l.Id == 10 && l.Platform == "LinkedIn" && l.Url == "https://linkedin.com/in/ayesha");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_ForNonOwnerNonHrViewer_ShouldHidePrivateContactLinksEntirely()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1 };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        var links = new List<EmployeeContactLink>
+        {
+            new() { EmployeeContactLinkId = 10, EmployeeId = 1, Platform = "LinkedIn", Url = "https://linkedin.com/in/ayesha", Visibility = ContactVisibilityEnum.Private },
+            new() { EmployeeContactLinkId = 20, EmployeeId = 1, Platform = "GitHub", Url = "https://github.com/ayesha", Visibility = ContactVisibilityEnum.Public }
+        };
+        _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(1)).ReturnsAsync(links);
+
+        // Act - viewer is a different employee (2), not HR/Admin
+        var result = await _service.GetByIdAsync(employeeId: 1, viewerEmployeeId: 2, viewerIsHrAdmin: false);
+
+        // Assert
+        result.ContactLinks.Should().ContainSingle(l => l.Platform == "GitHub", "the LinkedIn link is Private and the viewer is neither the owner nor HR/Admin");
     }
 }

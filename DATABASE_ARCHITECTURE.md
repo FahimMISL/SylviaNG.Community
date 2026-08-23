@@ -84,7 +84,7 @@ A single consolidated EF Core migration, `AddCommunityEngagementModules`, was th
 | 5 | Recognition | `Recognitions`, `RecognitionReactions`, `RecognitionComments` |
 | 6 | Survey & Feedback | `Surveys`, `SurveyAudiences`, `SurveyQuestions`, `SurveyOptions`, `SurveyResponses`, `SurveyAnswers` |
 | 7 | Marketplace | `Listings`, `ListingImages`, `Favorites`, `Conversations`, `ConversationParticipants`, `Messages`, `MarketplaceReports` |
-| 8 | Task Management | `RecurringTasks`, `Tasks`, `TaskComments`, `TaskAttachments`, `TaskHistories`, `TaskTags`, `TaskTagMappings` |
+| 8 | Task Management | `RecurringTasks`, `Tasks`, `TaskComments`, `TaskAttachments`, `TaskHistories` |
 | 9 | System/Admin | `DashboardPreferences`, `ActivityLogs`, `AuditLogs`, `FileStorages` |
 | 10 | Voting/Election | `Elections`, `ElectionAudienceTargets`, `ElectionCandidates`, `ElectionVotes` |
 

@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Tasks.Commands.TaskAttachmentR
 
         public async Task Handle(TaskAttachmentRemoveCommand command, CancellationToken cancellationToken)
         {
-            await _taskService.RemoveAttachmentAsync(command.TaskId, command.AttachmentId);
+            await _taskService.RemoveAttachmentAsync(command.TaskId, command.AttachmentId, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

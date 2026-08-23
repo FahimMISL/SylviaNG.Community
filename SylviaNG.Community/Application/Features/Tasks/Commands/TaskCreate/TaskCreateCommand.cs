@@ -6,10 +6,14 @@ namespace SylviaNG.Community.Application.Features.Tasks.Commands.TaskCreate
     public class TaskCreateCommand : IRequest<long>
     {
         public TaskCreateRequest Request { get; set; }
+        public long? CallerEmployeeId { get; set; }
+        public bool IsHrOrAdmin { get; set; }
 
-        public TaskCreateCommand(TaskCreateRequest request)
+        public TaskCreateCommand(TaskCreateRequest request, long? callerEmployeeId, bool isHrOrAdmin)
         {
             Request = request;
+            CallerEmployeeId = callerEmployeeId;
+            IsHrOrAdmin = isHrOrAdmin;
         }
     }
 }

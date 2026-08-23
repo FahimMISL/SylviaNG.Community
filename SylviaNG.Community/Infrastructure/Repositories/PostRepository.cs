@@ -18,11 +18,35 @@ namespace SylviaNG.Community.Infrastructure.Repositories
         {
             var query = from p in _dbSet
                         join e in _dbContext.Set<Employee>() on p.EmployeeId equals e.EmployeeId
+                        join g in _dbContext.Set<Group>() on p.GroupId equals g.GroupId into groupJoin
+                        from g in groupJoin.DefaultIfEmpty()
                         where !p.IsHidden
-                            && (p.Visibility == VisibilityEnum.Everyone
-                                || (p.Visibility == VisibilityEnum.Department && callerDepartmentId != null && e.DepartmentId == callerDepartmentId)
-                                || (p.Visibility == VisibilityEnum.Branch && callerSiteId != null && e.SiteId == callerSiteId))
+                            && (p.GroupId == null
+                                ? (p.Visibility == VisibilityEnum.Everyone
+                                    || (p.Visibility == VisibilityEnum.Department && callerDepartmentId != null && e.DepartmentId == callerDepartmentId)
+                                    || (p.Visibility == VisibilityEnum.Branch && callerSiteId != null && e.SiteId == callerSiteId))
+                                : g.Visibility == GroupVisibilityEnum.Public)
                         select p;
+
+            if (request.IsAnnouncement.HasValue)
+                query = query.Where(p => p.IsAnnouncement == request.IsAnnouncement.Value);
+
+            if (request.IsPoll.HasValue)
+                query = query.Where(p => p.IsPoll == request.IsPoll.Value);
+
+            if (request.EmployeeId.HasValue)
+                query = query.Where(p => p.EmployeeId == request.EmployeeId.Value);
+
+            request.SearchProperties ??= new[] { nameof(Post.Content) };
+            request.SortBy ??= nameof(Post.CreatedAt);
+            request.SortDirection ??= "desc";
+
+            return await query.ToPaginatedResultAsync(request);
+        }
+
+        public async Task<PagedResult<Post>> GetGroupFeedPaginatedAsync(PostFilterRequest request, long groupId)
+        {
+            var query = _dbSet.Where(p => p.GroupId == groupId && !p.IsHidden);
 
             if (request.IsAnnouncement.HasValue)
                 query = query.Where(p => p.IsAnnouncement == request.IsAnnouncement.Value);

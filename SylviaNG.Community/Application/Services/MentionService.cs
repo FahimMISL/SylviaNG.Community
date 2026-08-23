@@ -11,12 +11,21 @@ namespace SylviaNG.Community.Application.Services
     public class MentionService : IMentionService
     {
         private readonly IMentionRepository _mentionRepository;
+        private readonly IEmployeeRepository _employeeRepository;
+        private readonly IPostCommentRepository _postCommentRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
 
-        public MentionService(IMentionRepository mentionRepository, IUnitOfWork unitOfWork, INotificationService notificationService)
+        public MentionService(
+            IMentionRepository mentionRepository,
+            IEmployeeRepository employeeRepository,
+            IPostCommentRepository postCommentRepository,
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService)
         {
             _mentionRepository = mentionRepository;
+            _employeeRepository = employeeRepository;
+            _postCommentRepository = postCommentRepository;
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
         }
@@ -27,13 +36,22 @@ namespace SylviaNG.Community.Application.Services
             await _mentionRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
+            var mentionedByName = (await _employeeRepository.GetByIdAsync(entity.MentionedBy))?.EmployeeName ?? "Someone";
+
+            // Mentions on a PostComment point at the parent Post instead - there's no
+            // standalone comment page/route, but the feed already deep-links to a specific
+            // post via ?postId=.
+            var (relatedEntityType, relatedEntityId) = entity.EntityType == "PostComment"
+                ? ("Post", (await _postCommentRepository.GetByIdAsync(entity.EntityId))?.PostId ?? entity.EntityId)
+                : (entity.EntityType, entity.EntityId);
+
             await _notificationService.CreateAsync(new NotificationCreateRequest
             {
                 EmployeeId = entity.MentionedEmployeeId,
-                Title = "You were mentioned",
+                Title = $"{mentionedByName} mentioned you",
                 Category = entity.EntityType == "PostComment" ? "CommentMention" : "Mention",
-                RelatedEntityType = entity.EntityType,
-                RelatedEntityId = entity.EntityId
+                RelatedEntityType = relatedEntityType,
+                RelatedEntityId = relatedEntityId
             });
 
             return entity.MentionId;

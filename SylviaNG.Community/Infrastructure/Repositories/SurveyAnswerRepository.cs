@@ -19,5 +19,10 @@ namespace SylviaNG.Community.Infrastructure.Repositories
         {
             return await _dbSet.Where(a => responseIds.Contains(a.ResponseId)).ToListAsync();
         }
+
+        public async Task<bool> ExistsForQuestionAsync(long questionId)
+        {
+            return await _dbSet.AnyAsync(a => a.QuestionId == questionId);
+        }
     }
 }

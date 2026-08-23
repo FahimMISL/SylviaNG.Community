@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Teams.Commands.TeamUpdate
 
         public async Task Handle(TeamUpdateCommand command, CancellationToken cancellationToken)
         {
-            await _teamService.UpdateAsync(command.TeamId, command.Request);
+            await _teamService.UpdateAsync(command.TeamId, command.Request, command.CallerEmployeeId, command.IsHrOrAdmin);
         }
     }
 }

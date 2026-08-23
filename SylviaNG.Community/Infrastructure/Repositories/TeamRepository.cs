@@ -25,5 +25,10 @@ namespace SylviaNG.Community.Infrastructure.Repositories
 
             return await query.ToPaginatedResultAsync(request);
         }
+
+        public async Task<bool> ExistsBySupervisorIdAsync(long employeeId)
+        {
+            return await _dbSet.AnyAsync(t => t.SupervisorId == employeeId && t.IsActive);
+        }
     }
 }

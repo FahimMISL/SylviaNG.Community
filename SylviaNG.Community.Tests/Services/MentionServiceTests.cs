@@ -15,6 +15,8 @@ namespace SylviaNG.Community.Tests.Services;
 public class MentionServiceTests
 {
     private readonly Mock<IMentionRepository> _mentionRepositoryMock;
+    private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
+    private readonly Mock<IPostCommentRepository> _postCommentRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly MentionService _service;
@@ -22,10 +24,17 @@ public class MentionServiceTests
     public MentionServiceTests()
     {
         _mentionRepositoryMock = new Mock<IMentionRepository>();
+        _employeeRepositoryMock = new Mock<IEmployeeRepository>();
+        _postCommentRepositoryMock = new Mock<IPostCommentRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _notificationServiceMock = new Mock<INotificationService>();
         _notificationServiceMock.Setup(n => n.CreateAsync(It.IsAny<NotificationCreateRequest>())).ReturnsAsync(1L);
-        _service = new MentionService(_mentionRepositoryMock.Object, _unitOfWorkMock.Object, _notificationServiceMock.Object);
+        _service = new MentionService(
+            _mentionRepositoryMock.Object,
+            _employeeRepositoryMock.Object,
+            _postCommentRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _notificationServiceMock.Object);
     }
 
     [Fact]
@@ -63,14 +72,16 @@ public class MentionServiceTests
     public async Task CreateAsync_ForCommentEntity_ShouldUseCommentMentionCategory()
     {
         // Arrange
+        _postCommentRepositoryMock.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new PostComment { CommentId = 10, PostId = 99 });
         var request = new MentionCreateRequest { MentionedEmployeeId = 1, MentionedBy = 2, EntityType = "PostComment", EntityId = 10 };
 
         // Act
         await _service.CreateAsync(request);
 
-        // Assert
+        // Assert - points at the parent Post (99), not the comment itself (10), since
+        // there's no standalone comment page to navigate to.
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(
-            r => r.Category == "CommentMention")), Times.Once);
+            r => r.Category == "CommentMention" && r.RelatedEntityType == "Post" && r.RelatedEntityId == 99)), Times.Once);
     }
 
     [Fact]

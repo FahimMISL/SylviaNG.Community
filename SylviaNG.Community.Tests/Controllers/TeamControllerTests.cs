@@ -6,6 +6,7 @@ using SylviaNG.Community.Application.Features.Teams.Commands.TeamCreate;
 using SylviaNG.Community.Application.Features.Teams.Models;
 using SylviaNG.Community.Application.Features.Teams.Queries.TeamGetAllPaged;
 using SylviaNG.Community.Application.Features.Teams.Queries.TeamGetById;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Controllers;
 using SylviaNG.Community.SharedKernel.Pagination;
 
@@ -14,12 +15,14 @@ namespace SylviaNG.Community.Tests.Controllers;
 public class TeamControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock;
+    private readonly Mock<ICurrentUserService> _currentUserServiceMock;
     private readonly TeamController _controller;
 
     public TeamControllerTests()
     {
         _mediatorMock = new Mock<IMediator>();
-        _controller = new TeamController(_mediatorMock.Object);
+        _currentUserServiceMock = new Mock<ICurrentUserService>();
+        _controller = new TeamController(_mediatorMock.Object, _currentUserServiceMock.Object);
     }
 
     [Fact]

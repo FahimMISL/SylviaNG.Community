@@ -18,5 +18,6 @@ namespace SylviaNG.Community.Application.Features.Surveys.Models
         public long? CreatedBy { get; set; }
         public DateTime? PublishedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
+        public string? ExternalUrl { get; set; }
     }
 }

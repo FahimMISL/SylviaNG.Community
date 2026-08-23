@@ -10,6 +10,7 @@ namespace SylviaNG.Community.Application.Mappings
             return new Post
             {
                 EmployeeId = request.EmployeeId,
+                GroupId = request.GroupId,
                 Type = request.Type,
                 Visibility = request.Visibility,
                 Content = request.Content,
@@ -34,6 +35,7 @@ namespace SylviaNG.Community.Application.Mappings
             {
                 PostId = entity.PostId,
                 EmployeeId = entity.EmployeeId,
+                GroupId = entity.GroupId,
                 Type = entity.Type,
                 Visibility = entity.Visibility,
                 Content = entity.Content,

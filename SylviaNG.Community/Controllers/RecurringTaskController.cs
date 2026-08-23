@@ -51,6 +51,8 @@ namespace SylviaNG.Community.Controllers
             return Ok();
         }
 
+        /// <summary>US-7.12: deactivates the series (stops future generation) - already-generated
+        /// Task instances are unaffected, see RecurringTaskService.DeleteAsync.</summary>
         [HttpDelete("{recurringTaskId}")]
         public async Task<ActionResult> Delete(long recurringTaskId)
         {

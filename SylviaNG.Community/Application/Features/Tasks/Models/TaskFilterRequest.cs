@@ -9,6 +9,10 @@ namespace SylviaNG.Community.Application.Features.Tasks.Models
     {
         public string? Status { get; set; }
         public long? AssignedTo { get; set; }
+        public long? AssignedBy { get; set; }
         public long? TeamId { get; set; }
+
+        /// <summary>When true, restricts to individual (non-team) tasks - i.e. TeamId is null (US-7.7).</summary>
+        public bool IndividualOnly { get; set; }
     }
 }

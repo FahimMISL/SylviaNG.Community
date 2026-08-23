@@ -10,7 +10,6 @@ public class Recognition : Audit
     public long RecognitionId { get; set; }
     public long SenderId { get; set; }
     public long RecipientId { get; set; }
-    public long? BadgeId { get; set; }
     public string RecognitionType { get; set; } = string.Empty;
     public string? CoreValue { get; set; }
     public string? AwardTitle { get; set; }

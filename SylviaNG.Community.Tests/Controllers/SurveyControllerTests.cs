@@ -8,6 +8,7 @@ using SylviaNG.Community.Application.Features.Surveys.Models;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetAllPaged;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetById;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyResponseGetAllPaged;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Controllers;
 using SylviaNG.Community.SharedKernel.Pagination;
 
@@ -16,12 +17,14 @@ namespace SylviaNG.Community.Tests.Controllers;
 public class SurveyControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock;
+    private readonly Mock<ICurrentUserService> _currentUserServiceMock;
     private readonly SurveyController _controller;
 
     public SurveyControllerTests()
     {
         _mediatorMock = new Mock<IMediator>();
-        _controller = new SurveyController(_mediatorMock.Object);
+        _currentUserServiceMock = new Mock<ICurrentUserService>();
+        _controller = new SurveyController(_mediatorMock.Object, _currentUserServiceMock.Object);
     }
 
     [Fact]
@@ -66,12 +69,23 @@ public class SurveyControllerTests
     [Fact]
     public async Task SubmitResponse_ShouldReturnOkWithNewResponseId()
     {
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(5);
         _mediatorMock.Setup(m => m.Send(It.IsAny<SurveyResponseSubmitCommand>(), default)).ReturnsAsync(99L);
 
-        var result = await _controller.SubmitResponse(1, new SurveySubmissionRequest { EmployeeId = 5 });
+        var result = await _controller.SubmitResponse(1, new SurveySubmissionRequest());
 
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         okResult.Value.Should().Be(99L);
+    }
+
+    [Fact]
+    public async Task SubmitResponse_WhenNoCurrentEmployeeId_ShouldThrowUnauthorizedException()
+    {
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns((long?)null);
+
+        var act = () => _controller.SubmitResponse(1, new SurveySubmissionRequest());
+
+        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.UnauthorizedException>();
     }
 
     [Fact]

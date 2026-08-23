@@ -9,7 +9,14 @@ namespace SylviaNG.Community.Application.Features.Surveys.Models
     {
         public long ResponseId { get; set; }
         public long SurveyId { get; set; }
-        public long EmployeeId { get; set; }
+
+        /// <summary>
+        /// Null when the parent Survey.IsAnonymous is true - see SurveyMapper.ToResponse(SurveyResponse,...).
+        /// The EmployeeId is still stored on SurveyResponse for anonymous surveys (needed for the
+        /// one-response-per-employee uniqueness constraint) but is never exposed through this DTO.
+        /// </summary>
+        public long? EmployeeId { get; set; }
+
         public DateTime SubmittedAt { get; set; }
         public string CompletionStatus { get; set; } = string.Empty;
         public List<SurveyAnswerResponse> Answers { get; set; } = new();

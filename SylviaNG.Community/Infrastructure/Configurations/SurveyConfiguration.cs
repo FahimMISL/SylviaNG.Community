@@ -22,6 +22,9 @@ namespace SylviaNG.Community.Infrastructure.Configurations
                 .IsRequired()
                 .HasMaxLength(50);
 
+            builder.Property(s => s.ExternalUrl)
+                .HasMaxLength(2048);
+
             builder.Property(s => s.Status)
                 .IsRequired()
                 .HasMaxLength(50);

@@ -25,6 +25,10 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
+        /// <summary>
+        /// Full field update - only safe to call while the election has zero votes cast (US-9.6).
+        /// Once votes exist, ElectionService.UpdateAsync routes through ApplyRestrictedUpdate instead.
+        /// </summary>
         public static void ApplyUpdate(this Election entity, ElectionUpdateRequest request)
         {
             if (request.Title != null) entity.Title = request.Title;
@@ -38,7 +42,32 @@ namespace SylviaNG.Community.Application.Mappings
             if (request.MaxSelection.HasValue) entity.MaxSelection = request.MaxSelection.Value;
             if (request.StartDate.HasValue) entity.StartDate = request.StartDate.Value;
             if (request.EndDate.HasValue) entity.EndDate = request.EndDate;
-            if (request.Status != null) entity.Status = request.Status;
+        }
+
+        /// <summary>
+        /// US-9.6: once at least one vote has been cast, only Title/Description/EndDate remain
+        /// editable - scope, rules, anonymity and candidate-affecting fields are locked.
+        /// </summary>
+        public static void ApplyRestrictedUpdate(this Election entity, ElectionUpdateRequest request)
+        {
+            if (request.Title != null) entity.Title = request.Title;
+            if (request.Description != null) entity.Description = request.Description;
+            if (request.EndDate.HasValue) entity.EndDate = request.EndDate;
+        }
+
+        /// <summary>Field names on ElectionUpdateRequest that are locked once voting has started (US-9.6).</summary>
+        public static List<string> GetLockedFieldsBeingChanged(this ElectionUpdateRequest request)
+        {
+            var locked = new List<string>();
+            if (request.ElectionType != null) locked.Add(nameof(request.ElectionType));
+            if (request.CandidateType != null) locked.Add(nameof(request.CandidateType));
+            if (request.AudienceScope != null) locked.Add(nameof(request.AudienceScope));
+            if (request.IsAnonymous.HasValue) locked.Add(nameof(request.IsAnonymous));
+            if (request.AllowMultipleChoice.HasValue) locked.Add(nameof(request.AllowMultipleChoice));
+            if (request.MinSelection.HasValue) locked.Add(nameof(request.MinSelection));
+            if (request.MaxSelection.HasValue) locked.Add(nameof(request.MaxSelection));
+            if (request.StartDate.HasValue) locked.Add(nameof(request.StartDate));
+            return locked;
         }
 
         public static ElectionResponse ToResponse(this Election entity)
@@ -59,6 +88,24 @@ namespace SylviaNG.Community.Application.Mappings
                 EndDate = entity.EndDate,
                 Status = entity.Status,
                 CreatedBy = entity.CreatedBy
+            };
+        }
+
+        public static ElectionEligibleResponse ToEligibleResponse(this Election entity, bool hasVoted)
+        {
+            return new ElectionEligibleResponse
+            {
+                ElectionId = entity.ElectionId,
+                Title = entity.Title,
+                Description = entity.Description,
+                ElectionType = entity.ElectionType,
+                CandidateType = entity.CandidateType,
+                AllowMultipleChoice = entity.AllowMultipleChoice,
+                MinSelection = entity.MinSelection,
+                MaxSelection = entity.MaxSelection,
+                StartDate = entity.StartDate,
+                EndDate = entity.EndDate,
+                HasVoted = hasVoted
             };
         }
 
@@ -110,15 +157,22 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
-        public static ElectionVote ToEntity(this ElectionVoteCastRequest request, long electionId, long voterId)
+        /// <summary>
+        /// One ElectionVote row per selected candidate in the ballot - all share the same
+        /// VotedAt so they're identifiable as a single atomic submission.
+        /// </summary>
+        public static List<ElectionVote> ToEntities(this ElectionVoteCastRequest request, long electionId, long voterId)
         {
-            return new ElectionVote
-            {
-                ElectionId = electionId,
-                CandidateId = request.CandidateId,
-                VoterId = voterId,
-                VotedAt = DateTime.UtcNow
-            };
+            var votedAt = DateTime.UtcNow;
+            return request.CandidateIds
+                .Select(candidateId => new ElectionVote
+                {
+                    ElectionId = electionId,
+                    CandidateId = candidateId,
+                    VoterId = voterId,
+                    VotedAt = votedAt
+                })
+                .ToList();
         }
 
         /// <summary>

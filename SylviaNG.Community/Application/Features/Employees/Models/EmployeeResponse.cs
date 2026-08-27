@@ -33,6 +33,9 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
         public string? CoverPhotoUrl { get; set; }
         public bool IsActive { get; set; }
 
+        /// <summary>Null unless the viewer is HR/Admin or the profile owner - same gate as Phone/Email/Extension.</summary>
+        public DateOnly? DateOfBirth { get; set; }
+
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? Extension { get; set; }

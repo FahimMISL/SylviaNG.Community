@@ -165,6 +165,10 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
             services.AddScoped<IGroupJoinRequestRepository, GroupJoinRequestRepository>();
 
+            // Feature 8 - Dashboard Widgets (cross-aggregate reads with no home on a single
+            // aggregate's own repository - see IDashboardRepository)
+            services.AddScoped<IDashboardRepository, DashboardRepository>();
+
             // No database is provisioned yet - login credentials are a static in-memory list
             // (see InMemoryCredentialRepository) instead of an EF-backed table.
             services.AddSingleton<ICredentialRepository, InMemoryCredentialRepository>();

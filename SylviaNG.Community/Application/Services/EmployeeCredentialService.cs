@@ -51,7 +51,7 @@ namespace SylviaNG.Community.Application.Services
             var (firstName, lastName) = SplitName(employee.EmployeeName);
 
             var keycloakUserId = await _keycloakAdminClient.CreateUserAsync(
-                request.Username, employee.Email, firstName, lastName, request.TemporaryPassword);
+                request.Username, employee.Email, firstName, lastName, request.TemporaryPassword, request.EmployeeId);
 
             await _keycloakAdminClient.AssignRealmRoleAsync(keycloakUserId, role);
 

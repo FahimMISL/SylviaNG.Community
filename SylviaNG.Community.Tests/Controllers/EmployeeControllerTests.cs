@@ -11,6 +11,8 @@ using SylviaNG.Community.Application.Features.Employees.Models;
 using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetAllForManagement;
 using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetAllPaged;
 using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetById;
+using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetNewJoinees;
+using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetTodayEvents;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Controllers;
 using SylviaNG.Community.SharedKernel.Pagination;
@@ -213,6 +215,40 @@ public class EmployeeControllerTests
 
         // Act
         var result = await _controller.GetManagementPaged(new EmployeeFilterRequest());
+
+        // Assert
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task GetTodayEvents_ShouldReturnOkWithMediatorResult()
+    {
+        // Arrange
+        var expected = new List<TodayEventResponse> { new() { EmployeeId = 1, EmployeeName = "Ayesha Rahman", EventType = SylviaNG.Community.Domain.Enums.TodayEventTypeEnum.Birthday } };
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<EmployeeGetTodayEventsQuery>(), default))
+            .ReturnsAsync(expected);
+
+        // Act
+        var result = await _controller.GetTodayEvents();
+
+        // Assert
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task GetNewJoinees_ShouldReturnOkWithMediatorResult()
+    {
+        // Arrange
+        var expected = new List<NewJoineeResponse> { new() { EmployeeId = 1, EmployeeName = "New Hire", DateOfJoining = new DateOnly(2026, 8, 24) } };
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<EmployeeGetNewJoineesQuery>(), default))
+            .ReturnsAsync(expected);
+
+        // Act
+        var result = await _controller.GetNewJoinees();
 
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;

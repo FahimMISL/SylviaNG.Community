@@ -23,6 +23,7 @@ namespace SylviaNG.Community.Application.Services
         private readonly IReviewRepository _reviewRepository;
         private readonly IReviewImageRepository _reviewImageRepository;
         private readonly IEmployeeRepository _employeeRepository;
+        private readonly IEmployeeKeycloakAccountRepository _employeeKeycloakAccountRepository;
         private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
 
@@ -38,6 +39,7 @@ namespace SylviaNG.Community.Application.Services
             IReviewRepository reviewRepository,
             IReviewImageRepository reviewImageRepository,
             IEmployeeRepository employeeRepository,
+            IEmployeeKeycloakAccountRepository employeeKeycloakAccountRepository,
             INotificationService notificationService,
             IUnitOfWork unitOfWork)
         {
@@ -52,12 +54,36 @@ namespace SylviaNG.Community.Application.Services
             _reviewRepository = reviewRepository;
             _reviewImageRepository = reviewImageRepository;
             _employeeRepository = employeeRepository;
+            _employeeKeycloakAccountRepository = employeeKeycloakAccountRepository;
             _notificationService = notificationService;
             _unitOfWork = unitOfWork;
         }
 
         private async Task<string> GetEmployeeNameAsync(long employeeId) =>
             (await _employeeRepository.GetByIdAsync(employeeId))?.EmployeeName ?? "Someone";
+
+        /// <summary>
+        /// Broadcasts a notification to every employee with an active HR/Admin Keycloak account
+        /// (see EmployeeKeycloakAccount.AssignedRole - the only queryable "who are the moderators"
+        /// source in this codebase, populated by the Grant Access / Reset Password feature). Sends
+        /// nothing, silently, if no one currently holds HR/Admin access.
+        /// </summary>
+        private async System.Threading.Tasks.Task NotifyModeratorsAsync(string title, string message, long listingId)
+        {
+            var moderatorIds = await _employeeKeycloakAccountRepository.GetEmployeeIdsByRolesAsync(new[] { "HR", "Admin" });
+            foreach (var moderatorId in moderatorIds)
+            {
+                await _notificationService.CreateAsync(new NotificationCreateRequest
+                {
+                    EmployeeId = moderatorId,
+                    Title = title,
+                    Message = message,
+                    Category = "Marketplace",
+                    RelatedEntityType = "Listing",
+                    RelatedEntityId = listingId
+                });
+            }
+        }
 
         // ---------------- Listing ----------------
 
@@ -85,6 +111,12 @@ namespace SylviaNG.Community.Application.Services
 
             await _listingRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
+
+            if (entity.ApprovalStatus == "Pending")
+            {
+                var sellerName = await GetEmployeeNameAsync(sellerId);
+                await NotifyModeratorsAsync("New listing pending review", $"{sellerName} submitted \"{entity.Title}\" for review.", entity.ListingId);
+            }
 
             return entity.ListingId;
         }
@@ -182,6 +214,16 @@ namespace SylviaNG.Community.Application.Services
 
             _listingRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
+
+            await _notificationService.CreateAsync(new NotificationCreateRequest
+            {
+                EmployeeId = entity.SellerId,
+                Title = "Your listing was approved",
+                Message = $"\"{entity.Title}\" is now live.",
+                Category = "Marketplace",
+                RelatedEntityType = "Listing",
+                RelatedEntityId = entity.ListingId
+            });
         }
 
         public async System.Threading.Tasks.Task RejectListingAsync(long listingId, long approverId, ListingRejectRequest request)
@@ -196,6 +238,16 @@ namespace SylviaNG.Community.Application.Services
 
             _listingRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
+
+            await _notificationService.CreateAsync(new NotificationCreateRequest
+            {
+                EmployeeId = entity.SellerId,
+                Title = "Your listing was rejected",
+                Message = request.RejectionReason,
+                Category = "Marketplace",
+                RelatedEntityType = "Listing",
+                RelatedEntityId = entity.ListingId
+            });
         }
 
         public async Task<ListingResponse> GetListingByIdAsync(long listingId)
@@ -400,12 +452,15 @@ namespace SylviaNG.Community.Application.Services
 
         public async Task<long> CreateReportAsync(long reportedBy, MarketplaceReportCreateRequest request)
         {
-            _ = await _listingRepository.GetByIdAsync(request.ListingId)
+            var listing = await _listingRepository.GetByIdAsync(request.ListingId)
                 ?? throw new NotFoundException("Listing", request.ListingId);
 
             var entity = request.ToEntity(reportedBy);
             await _marketplaceReportRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
+
+            var reporterName = await GetEmployeeNameAsync(reportedBy);
+            await NotifyModeratorsAsync("Listing reported", $"{reporterName} reported \"{listing.Title}\": {request.Reason}", listing.ListingId);
 
             return entity.ReportId;
         }
@@ -434,6 +489,15 @@ namespace SylviaNG.Community.Application.Services
 
             _marketplaceReportRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
+
+            await _notificationService.CreateAsync(new NotificationCreateRequest
+            {
+                EmployeeId = entity.ReportedBy,
+                Title = $"Your report was {request.Status}",
+                Category = "Marketplace",
+                RelatedEntityType = "Listing",
+                RelatedEntityId = entity.ListingId
+            });
         }
 
         // ---------------- Purchases ----------------
@@ -477,7 +541,7 @@ namespace SylviaNG.Community.Application.Services
                 EmployeeId = listing.SellerId,
                 Title = $"{buyerName} purchased your listing",
                 Message = $"{buyerName} bought {request.Quantity} x \"{listing.Title}\".",
-                Category = "MarketplacePurchase",
+                Category = "Marketplace",
                 RelatedEntityType = "Listing",
                 RelatedEntityId = listing.ListingId
             });

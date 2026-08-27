@@ -20,5 +20,11 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         Task<PagedResult<EmployeeDirectoryCardResponse>> GetDirectoryPaginatedAsync(EmployeeFilterRequest request);
 
         Task<PagedResult<EmployeeManagementRowResponse>> GetManagementPaginatedAsync(EmployeeFilterRequest request);
+
+        /// <summary>Feed sidebar "Today's Events" widget - active employees whose birthday or work anniversary falls on today's date.</summary>
+        Task<List<TodayEventResponse>> GetTodayEventsAsync();
+
+        /// <summary>Feed sidebar "New Joinees" widget - active employees who joined within the last 2 days.</summary>
+        Task<List<NewJoineeResponse>> GetNewJoineesAsync();
     }
 }

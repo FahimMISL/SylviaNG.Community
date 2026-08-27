@@ -20,6 +20,7 @@ namespace SylviaNG.Community.Application.Mappings
             DesignatioId = request.DesignationId,
             DepartmentId = request.DepartmentId,
             SiteId = request.SiteId,
+            DateOfJoining = DateOnly.FromDateTime(request.DateOfJoining),
             IsActive = true
         };
 
@@ -30,6 +31,7 @@ namespace SylviaNG.Community.Application.Mappings
             entity.Interests = request.Interests;
             entity.Achievements = request.Achievements;
             entity.CommunityContributions = request.CommunityContributions;
+            entity.DateOfBirth = request.DateOfBirth.HasValue ? DateOnly.FromDateTime(request.DateOfBirth.Value) : null;
             entity.Phone = request.Phone;
             entity.Email = request.Email;
             entity.Extension = request.Extension;
@@ -70,6 +72,7 @@ namespace SylviaNG.Community.Application.Mappings
                 PhotoUrl = entity.PhotoUrl,
                 CoverPhotoUrl = entity.CoverPhotoUrl,
                 IsActive = entity.IsActive,
+                DateOfBirth = canSeePrivate ? entity.DateOfBirth : null,
                 Phone = canSeePrivate || entity.PhoneVisibility == ContactVisibilityEnum.Public ? entity.Phone : null,
                 Email = canSeePrivate || entity.EmailVisibility == ContactVisibilityEnum.Public ? entity.Email : null,
                 Extension = canSeePrivate || entity.ExtensionVisibility == ContactVisibilityEnum.Public ? entity.Extension : null,
@@ -118,6 +121,23 @@ namespace SylviaNG.Community.Application.Mappings
             SiteName = FindName(lookups.Sites, entity.SiteId),
             IsActive = entity.IsActive,
             HasCredential = employeeIdsWithCredentials.Contains(entity.EmployeeId)
+        };
+
+        public static TodayEventResponse ToTodayEventResponse(this Employee entity, TodayEventTypeEnum eventType, int? yearsOfService = null) => new()
+        {
+            EmployeeId = entity.EmployeeId,
+            EmployeeName = entity.EmployeeName,
+            PhotoUrl = entity.PhotoUrl,
+            EventType = eventType,
+            YearsOfService = yearsOfService
+        };
+
+        public static NewJoineeResponse ToNewJoineeResponse(this Employee entity) => new()
+        {
+            EmployeeId = entity.EmployeeId,
+            EmployeeName = entity.EmployeeName,
+            PhotoUrl = entity.PhotoUrl,
+            DateOfJoining = entity.DateOfJoining!.Value
         };
 
         private static string? FindName(List<EntityIdNameCodeResponse> items, long? id) =>

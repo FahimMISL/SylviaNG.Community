@@ -10,6 +10,8 @@ using SylviaNG.Community.Application.Features.Employees.Models;
 using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetAllForManagement;
 using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetAllPaged;
 using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetById;
+using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetNewJoinees;
+using SylviaNG.Community.Application.Features.Employees.Queries.EmployeeGetTodayEvents;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.SharedKernel.Pagination;
 
@@ -57,6 +59,28 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<EmployeeResponse>> GetById(long employeeId)
         {
             var result = await _mediator.Send(new EmployeeGetByIdQuery(employeeId, _currentUserService.EmployeeId, _currentUserService.IsHrOrAdmin));
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Feed sidebar "Today's Events" widget - active employees whose birthday or work
+        /// anniversary falls on today's date.
+        /// </summary>
+        [HttpGet("today-events")]
+        public async Task<ActionResult<List<TodayEventResponse>>> GetTodayEvents()
+        {
+            var result = await _mediator.Send(new EmployeeGetTodayEventsQuery());
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Feed sidebar "New Joinees" widget - active employees who joined within the last 2
+        /// days. Live-filtered on every call; an employee drops off automatically, no job/flag.
+        /// </summary>
+        [HttpGet("new-joinees")]
+        public async Task<ActionResult<List<NewJoineeResponse>>> GetNewJoinees()
+        {
+            var result = await _mediator.Send(new EmployeeGetNewJoineesQuery());
             return Ok(result);
         }
 

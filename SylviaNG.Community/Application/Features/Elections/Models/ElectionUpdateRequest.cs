@@ -13,11 +13,5 @@ namespace SylviaNG.Community.Application.Features.Elections.Models
         public int? MaxSelection { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
-
-        /// <summary>
-        /// Transitions the election's workflow state - see the Status convention documented
-        /// on the Election entity ("Draft" / "Open" or "Active" / "Closed").
-        /// </summary>
-        public string? Status { get; set; }
     }
 }

@@ -37,6 +37,45 @@ namespace SylviaNG.Community.Infrastructure.Repositories
                 .CountAsync();
         }
 
+        public async Task<List<long>> GetActiveIdsAsync()
+        {
+            return await _dbSet.Where(e => e.IsActive).Select(e => e.EmployeeId).ToListAsync();
+        }
+
+        public async Task<List<long>> GetActiveIdsByDepartmentIdsAsync(IEnumerable<long> departmentIds)
+        {
+            var idSet = departmentIds.ToList();
+            return await _dbSet
+                .Where(e => e.IsActive && e.DepartmentId.HasValue && idSet.Contains(e.DepartmentId.Value))
+                .Select(e => e.EmployeeId)
+                .ToListAsync();
+        }
+
+        public async Task<List<long>> GetActiveIdsBySiteIdsAsync(IEnumerable<long> siteIds)
+        {
+            var idSet = siteIds.ToList();
+            return await _dbSet
+                .Where(e => e.IsActive && e.SiteId.HasValue && idSet.Contains(e.SiteId.Value))
+                .Select(e => e.EmployeeId)
+                .ToListAsync();
+        }
+
+        public async Task<List<long>> FilterActiveIdsAsync(IEnumerable<long> employeeIds)
+        {
+            var idSet = employeeIds.ToList();
+            return await _dbSet
+                .Where(e => e.IsActive && idSet.Contains(e.EmployeeId))
+                .Select(e => e.EmployeeId)
+                .ToListAsync();
+        }
+
+        public async Task<List<Employee>> GetActiveWithBirthdayOrJoiningDateAsync()
+        {
+            return await _dbSet
+                .Where(e => e.IsActive && (e.DateOfBirth != null || e.DateOfJoining != null))
+                .ToListAsync();
+        }
+
         public async Task<PagedResult<Employee>> GetPaginatedAsync(EmployeeFilterRequest request, bool activeOnly)
         {
             var query = _dbSet.AsQueryable();

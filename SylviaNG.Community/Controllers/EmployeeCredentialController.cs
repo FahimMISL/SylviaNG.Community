@@ -19,8 +19,10 @@ namespace SylviaNG.Community.Controllers
         }
 
         /// <summary>
-        /// Provisions a real Keycloak login account for an existing employee (username + temporary
-        /// password, forced change at first login) and assigns a Keycloak realm role. HR/Admin only.
+        /// Provisions a real Keycloak login account for an existing employee (username + password,
+        /// usable to log in immediately - see KeycloakAdminClient.CreateUserAsync for why this
+        /// can't be a forced-change-at-first-login credential) and assigns a Keycloak realm role.
+        /// HR/Admin only.
         /// </summary>
         [Authorize(Policy = "HRAdminOnly")]
         [HttpPost]
@@ -32,8 +34,8 @@ namespace SylviaNG.Community.Controllers
         }
 
         /// <summary>
-        /// Sets a new temporary password for an employee who already has a Keycloak login (forced
-        /// change at next login, same as the initial grant). HR/Admin only.
+        /// Sets a new password for an employee who already has a Keycloak login, usable
+        /// immediately (same reasoning as the initial grant). HR/Admin only.
         /// </summary>
         [Authorize(Policy = "HRAdminOnly")]
         [HttpPut("reset-password")]

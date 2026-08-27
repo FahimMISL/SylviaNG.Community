@@ -5,7 +5,10 @@ using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionAudienceTargetAdd;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCandidateApprove;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCandidateNominate;
+using SylviaNG.Community.Application.Features.Elections.Commands.ElectionClose;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCreate;
+using SylviaNG.Community.Application.Features.Elections.Commands.ElectionDelete;
+using SylviaNG.Community.Application.Features.Elections.Commands.ElectionPublish;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionUpdate;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionVoteCast;
 using SylviaNG.Community.Application.Features.Elections.Models;
@@ -13,6 +16,8 @@ using SylviaNG.Community.Application.Features.Elections.Queries.ElectionAudience
 using SylviaNG.Community.Application.Features.Elections.Queries.ElectionCandidateGetAll;
 using SylviaNG.Community.Application.Features.Elections.Queries.ElectionGetAllPaged;
 using SylviaNG.Community.Application.Features.Elections.Queries.ElectionGetById;
+using SylviaNG.Community.Application.Features.Elections.Queries.ElectionGetEligible;
+using SylviaNG.Community.Application.Features.Elections.Queries.ElectionGetResults;
 using SylviaNG.Community.Application.Features.Elections.Queries.ElectionVoteGetAllPaged;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.SharedKernel.Pagination;
@@ -39,6 +44,18 @@ namespace SylviaNG.Community.Controllers
             return Ok(result);
         }
 
+        // Registered above the "{electionId}" route so "eligible" is never captured by the
+        // long route-parameter binder.
+        [HttpGet("eligible")]
+        public async Task<ActionResult<List<ElectionEligibleResponse>>> GetEligible()
+        {
+            var employeeId = _currentUserService.EmployeeId
+                ?? throw new UnauthorizedException("Only authenticated employees may browse eligible elections.");
+
+            var result = await _mediator.Send(new ElectionGetEligibleQuery(employeeId));
+            return Ok(result);
+        }
+
         [HttpGet("{electionId}")]
         public async Task<ActionResult<ElectionResponse>> GetById(long electionId)
         {
@@ -60,6 +77,38 @@ namespace SylviaNG.Community.Controllers
         {
             await _mediator.Send(new ElectionUpdateCommand(electionId, request));
             return Ok();
+        }
+
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpDelete("{electionId}")]
+        public async Task<ActionResult> Delete(long electionId)
+        {
+            await _mediator.Send(new ElectionDeleteCommand(electionId));
+            return Ok();
+        }
+
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpPut("{electionId}/publish")]
+        public async Task<ActionResult> Publish(long electionId)
+        {
+            await _mediator.Send(new ElectionPublishCommand(electionId));
+            return Ok();
+        }
+
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpPut("{electionId}/close")]
+        public async Task<ActionResult> Close(long electionId)
+        {
+            await _mediator.Send(new ElectionCloseCommand(electionId));
+            return Ok();
+        }
+
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpGet("{electionId}/results")]
+        public async Task<ActionResult<ElectionResultsResponse>> GetResults(long electionId)
+        {
+            var result = await _mediator.Send(new ElectionGetResultsQuery(electionId));
+            return Ok(result);
         }
 
         // Audience targeting - HRAdminOnly, since it controls who an election is visible/open to.
@@ -109,13 +158,13 @@ namespace SylviaNG.Community.Controllers
         // anonymous, which was judged sufficient protection - see the tradeoff comment on
         // ElectionVoteResponse.VoterId.
         [HttpPost("{electionId}/votes")]
-        public async Task<ActionResult<long>> CastVote(long electionId, [FromBody] ElectionVoteCastRequest request)
+        public async Task<ActionResult<List<long>>> CastVote(long electionId, [FromBody] ElectionVoteCastRequest request)
         {
             var voterId = _currentUserService.EmployeeId
                 ?? throw new UnauthorizedException("Only authenticated employees may cast a vote.");
 
-            var id = await _mediator.Send(new ElectionVoteCastCommand(electionId, request, voterId));
-            return Ok(id);
+            var ids = await _mediator.Send(new ElectionVoteCastCommand(electionId, request, voterId));
+            return Ok(ids);
         }
 
         [HttpGet("{electionId}/votes")]

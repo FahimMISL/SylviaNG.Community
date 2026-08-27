@@ -446,4 +446,109 @@ public class EmployeeServiceTests
         // Assert
         result.ContactLinks.Should().ContainSingle(l => l.Platform == "GitHub", "the LinkedIn link is Private and the viewer is neither the owner nor HR/Admin");
     }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetTodayEventsAsync_WithBirthdayMatchingToday_ShouldReturnBirthdayEvent()
+    {
+        // Arrange
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "Ayesha Rahman", DateOfBirth = today.AddYears(-30) };
+        _repositoryMock.Setup(r => r.GetActiveWithBirthdayOrJoiningDateAsync()).ReturnsAsync(new List<Employee> { entity });
+
+        // Act
+        var result = await _service.GetTodayEventsAsync();
+
+        // Assert
+        result.Should().ContainSingle(e => e.EmployeeId == 1 && e.EventType == TodayEventTypeEnum.Birthday && e.YearsOfService == null);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetTodayEventsAsync_WithAnniversaryMatchingToday_ShouldReturnAnniversaryEventWithYearsOfService()
+    {
+        // Arrange
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "Tanvir Hasan", DateOfJoining = today.AddYears(-3) };
+        _repositoryMock.Setup(r => r.GetActiveWithBirthdayOrJoiningDateAsync()).ReturnsAsync(new List<Employee> { entity });
+
+        // Act
+        var result = await _service.GetTodayEventsAsync();
+
+        // Assert
+        result.Should().ContainSingle(e => e.EmployeeId == 1 && e.EventType == TodayEventTypeEnum.Anniversary && e.YearsOfService == 3);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetTodayEventsAsync_WithJoinDateTodayThisYear_ShouldNotCountAsAnniversary()
+    {
+        // Arrange - HR just added this employee today; joining today isn't a "0-year anniversary".
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "New Hire", DateOfJoining = today };
+        _repositoryMock.Setup(r => r.GetActiveWithBirthdayOrJoiningDateAsync()).ReturnsAsync(new List<Employee> { entity });
+
+        // Act
+        var result = await _service.GetTodayEventsAsync();
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetTodayEventsAsync_WithNoMatches_ShouldReturnEmptyList()
+    {
+        // Arrange
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "No Match", DateOfBirth = today.AddDays(5).AddYears(-20) };
+        _repositoryMock.Setup(r => r.GetActiveWithBirthdayOrJoiningDateAsync()).ReturnsAsync(new List<Employee> { entity });
+
+        // Act
+        var result = await _service.GetTodayEventsAsync();
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetNewJoineesAsync_WithEmployeeJoinedToday_ShouldInclude()
+    {
+        // Arrange
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "Joined Today", DateOfJoining = today };
+        _repositoryMock.Setup(r => r.GetActiveWithBirthdayOrJoiningDateAsync()).ReturnsAsync(new List<Employee> { entity });
+
+        // Act
+        var result = await _service.GetNewJoineesAsync();
+
+        // Assert
+        result.Should().ContainSingle(e => e.EmployeeId == 1);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetNewJoineesAsync_WithEmployeeJoinedOneDayAgo_ShouldInclude()
+    {
+        // Arrange
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "Joined Yesterday", DateOfJoining = today.AddDays(-1) };
+        _repositoryMock.Setup(r => r.GetActiveWithBirthdayOrJoiningDateAsync()).ReturnsAsync(new List<Employee> { entity });
+
+        // Act
+        var result = await _service.GetNewJoineesAsync();
+
+        // Assert
+        result.Should().ContainSingle(e => e.EmployeeId == 1);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetNewJoineesAsync_WithEmployeeJoinedTwoDaysAgo_ShouldExclude()
+    {
+        // Arrange - the exact boundary: 2 full days elapsed means it should no longer show.
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "Joined Two Days Ago", DateOfJoining = today.AddDays(-2) };
+        _repositoryMock.Setup(r => r.GetActiveWithBirthdayOrJoiningDateAsync()).ReturnsAsync(new List<Employee> { entity });
+
+        // Act
+        var result = await _service.GetNewJoineesAsync();
+
+        // Assert
+        result.Should().BeEmpty();
+    }
 }

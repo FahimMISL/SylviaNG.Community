@@ -80,9 +80,13 @@ namespace SylviaNG.Community.Application.Extensions
 
             // Module 10 - Voting/Election
             services.AddScoped<IElectionService, ElectionService>();
+            services.AddScoped<IElectionEligibilityService, ElectionEligibilityService>();
 
             // Module 4 - Social Feed (Interest-Based Groups)
             services.AddScoped<IGroupService, GroupService>();
+
+            // Feature 8 - Dashboard Widgets
+            services.AddScoped<IDashboardService, DashboardService>();
 
             // Provide access to HttpContext for request metadata enrichment
             services.AddHttpContextAccessor();

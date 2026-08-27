@@ -23,6 +23,9 @@ namespace SylviaNG.Community.Application.Features.Employees.Commands.EmployeeCre
 
             RuleFor(x => x.Request.SiteId)
                 .GreaterThan(0).WithMessage("Branch is required.");
+
+            RuleFor(x => x.Request.DateOfJoining)
+                .LessThanOrEqualTo(DateTime.Today).WithMessage("Date of joining cannot be in the future.");
         }
     }
 }

@@ -114,4 +114,131 @@ public class EmployeeMapperTests
         // Assert
         response.ContactLinks.Should().ContainSingle(l => l.Platform == "GitHub");
     }
+
+    [Fact]
+    public void ToEntity_ShouldMapDateOfJoining()
+    {
+        // Arrange
+        var request = new EmployeeCreateRequest { EmployeeName = "Ayesha", Email = "a@example.com", DateOfJoining = new DateTime(2026, 3, 15) };
+
+        // Act
+        var entity = request.ToEntity();
+
+        // Assert
+        entity.DateOfJoining.Should().Be(new DateOnly(2026, 3, 15));
+    }
+
+    [Fact]
+    public void ApplyProfileUpdate_ShouldSetDateOfBirth()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, DateOfBirth = null };
+        var request = new EmployeeUpdateProfileRequest { DateOfBirth = new DateTime(1995, 6, 20) };
+
+        // Act
+        entity.ApplyProfileUpdate(request);
+
+        // Assert
+        entity.DateOfBirth.Should().Be(new DateOnly(1995, 6, 20));
+    }
+
+    [Fact]
+    public void ApplyProfileUpdate_WithNullDateOfBirth_ShouldClearIt()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, DateOfBirth = new DateOnly(1995, 6, 20) };
+        var request = new EmployeeUpdateProfileRequest { DateOfBirth = null };
+
+        // Act
+        entity.ApplyProfileUpdate(request);
+
+        // Assert
+        entity.DateOfBirth.Should().BeNull();
+    }
+
+    [Fact]
+    public void ToResponse_WhenViewerIsNotOwnerOrHrAdmin_ShouldHideDateOfBirth()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, DateOfBirth = new DateOnly(1995, 6, 20) };
+
+        // Act
+        var response = entity.ToResponse(viewerEmployeeId: 2, viewerIsHrAdmin: false, new CoreBatchLookupResult(), new List<EmployeeContactLink>());
+
+        // Assert
+        response.DateOfBirth.Should().BeNull();
+    }
+
+    [Fact]
+    public void ToResponse_WhenViewerIsOwner_ShouldShowDateOfBirth()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, DateOfBirth = new DateOnly(1995, 6, 20) };
+
+        // Act
+        var response = entity.ToResponse(viewerEmployeeId: 1, viewerIsHrAdmin: false, new CoreBatchLookupResult(), new List<EmployeeContactLink>());
+
+        // Assert
+        response.DateOfBirth.Should().Be(new DateOnly(1995, 6, 20));
+    }
+
+    [Fact]
+    public void ToResponse_WhenViewerIsHrAdmin_ShouldShowDateOfBirth()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, DateOfBirth = new DateOnly(1995, 6, 20) };
+
+        // Act
+        var response = entity.ToResponse(viewerEmployeeId: 99, viewerIsHrAdmin: true, new CoreBatchLookupResult(), new List<EmployeeContactLink>());
+
+        // Assert
+        response.DateOfBirth.Should().Be(new DateOnly(1995, 6, 20));
+    }
+
+    [Fact]
+    public void ToTodayEventResponse_ShouldMapBirthdayFields()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "Ayesha Rahman", PhotoUrl = "photo.jpg" };
+
+        // Act
+        var response = entity.ToTodayEventResponse(TodayEventTypeEnum.Birthday);
+
+        // Assert
+        response.EmployeeId.Should().Be(1);
+        response.EmployeeName.Should().Be("Ayesha Rahman");
+        response.PhotoUrl.Should().Be("photo.jpg");
+        response.EventType.Should().Be(TodayEventTypeEnum.Birthday);
+        response.YearsOfService.Should().BeNull();
+    }
+
+    [Fact]
+    public void ToTodayEventResponse_ShouldMapAnniversaryFieldsWithYearsOfService()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "Tanvir Hasan" };
+
+        // Act
+        var response = entity.ToTodayEventResponse(TodayEventTypeEnum.Anniversary, yearsOfService: 3);
+
+        // Assert
+        response.EventType.Should().Be(TodayEventTypeEnum.Anniversary);
+        response.YearsOfService.Should().Be(3);
+    }
+
+    [Fact]
+    public void ToNewJoineeResponse_ShouldMapFields()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, EmployeeName = "Farhana Akter", PhotoUrl = "photo.jpg", DateOfJoining = new DateOnly(2026, 8, 20) };
+
+        // Act
+        var response = entity.ToNewJoineeResponse();
+
+        // Assert
+        response.EmployeeId.Should().Be(1);
+        response.EmployeeName.Should().Be("Farhana Akter");
+        response.PhotoUrl.Should().Be("photo.jpg");
+        response.DateOfJoining.Should().Be(new DateOnly(2026, 8, 20));
+    }
 }

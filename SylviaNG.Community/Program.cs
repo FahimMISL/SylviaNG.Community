@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.FileProviders;
 using SylviaNG.Community.Application.Extensions;
 using SylviaNG.Community.Hubs;
+using SylviaNG.Community.Infrastructure.BackgroundServices;
 using SylviaNG.Community.Infrastructure.Extensions;
 using SylviaNG.Community.Middlewares;
 using SylviaNG.Community.SharedKernel.Utils;
@@ -20,6 +21,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddGrpcServices(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, NotificationUserIdProvider>();
+builder.Services.AddHostedService<ElectionAutoCloseBackgroundService>();
 
 builder.Services.AddCors(options =>
 {
@@ -125,6 +127,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseMiddleware<ResponseWrappingMiddleware>();
 
 app.UseAuthentication();
+app.UseMiddleware<EmployeeIdentityEnrichmentMiddleware>();
 app.UseAuthorization();
 
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();

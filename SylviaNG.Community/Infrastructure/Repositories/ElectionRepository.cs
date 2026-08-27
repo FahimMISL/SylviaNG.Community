@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Domain.Entities;
 using SylviaNG.Community.Infrastructure.Data;
@@ -17,6 +18,13 @@ namespace SylviaNG.Community.Infrastructure.Repositories
             request.SearchProperties ??= new[] { nameof(Election.Title), nameof(Election.Description) };
 
             return await query.ToPaginatedResultAsync(request);
+        }
+
+        public async Task<List<Election>> GetByStatusAsync(string status)
+        {
+            return await _dbSet
+                .Where(e => e.Status == status)
+                .ToListAsync();
         }
     }
 }

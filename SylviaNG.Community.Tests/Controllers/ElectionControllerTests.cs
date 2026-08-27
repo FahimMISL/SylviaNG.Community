@@ -76,18 +76,18 @@ public class ElectionControllerTests
     }
 
     [Fact]
-    public async Task CastVote_WhenAuthenticated_ShouldReturnOkWithNewId()
+    public async Task CastVote_WhenAuthenticated_ShouldReturnOkWithNewIds()
     {
         // Arrange
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(5);
-        _mediatorMock.Setup(m => m.Send(It.IsAny<ElectionVoteCastCommand>(), default)).ReturnsAsync(7L);
+        _mediatorMock.Setup(m => m.Send(It.IsAny<ElectionVoteCastCommand>(), default)).ReturnsAsync(new List<long> { 7L });
 
         // Act
-        var result = await _controller.CastVote(1, new ElectionVoteCastRequest { CandidateId = 10 });
+        var result = await _controller.CastVote(1, new ElectionVoteCastRequest { CandidateIds = new List<long> { 10 } });
 
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().Be(7L);
+        okResult.Value.Should().BeEquivalentTo(new List<long> { 7L });
     }
 
     [Fact]
@@ -97,9 +97,102 @@ public class ElectionControllerTests
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns((long?)null);
 
         // Act
-        var act = () => _controller.CastVote(1, new ElectionVoteCastRequest { CandidateId = 10 });
+        var act = () => _controller.CastVote(1, new ElectionVoteCastRequest { CandidateIds = new List<long> { 10 } });
 
         // Assert
         await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.UnauthorizedException>();
+    }
+
+    [Fact]
+    public async Task GetEligible_WhenAuthenticated_ShouldReturnOkWithResult()
+    {
+        // Arrange
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(5);
+        var expected = new List<ElectionEligibleResponse> { new() { ElectionId = 1, Title = "Employee of the Year" } };
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<SylviaNG.Community.Application.Features.Elections.Queries.ElectionGetEligible.ElectionGetEligibleQuery>(), default))
+            .ReturnsAsync(expected);
+
+        // Act
+        var result = await _controller.GetEligible();
+
+        // Assert
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task GetEligible_WhenNoEmployeeId_ShouldThrowUnauthorizedException()
+    {
+        // Arrange
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns((long?)null);
+
+        // Act
+        var act = () => _controller.GetEligible();
+
+        // Assert
+        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.UnauthorizedException>();
+    }
+
+    [Fact]
+    public async Task Publish_ShouldReturnOk()
+    {
+        // Arrange
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<SylviaNG.Community.Application.Features.Elections.Commands.ElectionPublish.ElectionPublishCommand>(), default))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.Publish(1);
+
+        // Assert
+        result.Should().BeOfType<OkResult>();
+    }
+
+    [Fact]
+    public async Task Close_ShouldReturnOk()
+    {
+        // Arrange
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<SylviaNG.Community.Application.Features.Elections.Commands.ElectionClose.ElectionCloseCommand>(), default))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.Close(1);
+
+        // Assert
+        result.Should().BeOfType<OkResult>();
+    }
+
+    [Fact]
+    public async Task Delete_ShouldReturnOk()
+    {
+        // Arrange
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<SylviaNG.Community.Application.Features.Elections.Commands.ElectionDelete.ElectionDeleteCommand>(), default))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.Delete(1);
+
+        // Assert
+        result.Should().BeOfType<OkResult>();
+    }
+
+    [Fact]
+    public async Task GetResults_ShouldReturnOkWithResult()
+    {
+        // Arrange
+        var expected = new ElectionResultsResponse { ElectionId = 1, TotalVotes = 3 };
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<SylviaNG.Community.Application.Features.Elections.Queries.ElectionGetResults.ElectionGetResultsQuery>(), default))
+            .ReturnsAsync(expected);
+
+        // Act
+        var result = await _controller.GetResults(1);
+
+        // Assert
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeEquivalentTo(expected);
     }
 }

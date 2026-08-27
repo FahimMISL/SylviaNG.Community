@@ -63,3 +63,9 @@ public enum GroupJoinRequestStatusEnum
     Approved,
     Rejected
 }
+
+public enum TodayEventTypeEnum
+{
+    Birthday,
+    Anniversary
+}

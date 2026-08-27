@@ -25,6 +25,7 @@ public class MarketplaceServiceTests
     private readonly Mock<IReviewRepository> _reviewRepositoryMock;
     private readonly Mock<IReviewImageRepository> _reviewImageRepositoryMock;
     private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
+    private readonly Mock<IEmployeeKeycloakAccountRepository> _employeeKeycloakAccountRepositoryMock;
     private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly MarketplaceService _service;
@@ -42,6 +43,8 @@ public class MarketplaceServiceTests
         _reviewRepositoryMock = new Mock<IReviewRepository>();
         _reviewImageRepositoryMock = new Mock<IReviewImageRepository>();
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
+        _employeeKeycloakAccountRepositoryMock = new Mock<IEmployeeKeycloakAccountRepository>();
+        _employeeKeycloakAccountRepositoryMock.Setup(r => r.GetEmployeeIdsByRolesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(new List<long>());
         _notificationServiceMock = new Mock<INotificationService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
 
@@ -69,6 +72,7 @@ public class MarketplaceServiceTests
             _reviewRepositoryMock.Object,
             _reviewImageRepositoryMock.Object,
             _employeeRepositoryMock.Object,
+            _employeeKeycloakAccountRepositoryMock.Object,
             _notificationServiceMock.Object,
             _unitOfWorkMock.Object);
     }
@@ -137,6 +141,31 @@ public class MarketplaceServiceTests
         captured.ApprovalStatus.Should().Be("Approved");
         captured.ApprovedBy.Should().Be(10);
         captured.ApprovedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task CreateListingAsync_WhenSubmittedForReview_ShouldNotifyModerators()
+    {
+        var request = new ListingCreateRequest { ListingType = "Item", Title = "Chair", Category = "Furniture", Price = 20, Currency = "USD", SaveAsDraft = false };
+        Listing? captured = null;
+        _listingRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Listing>())).Callback<Listing>(l => { l.ListingId = 1; captured = l; });
+        _employeeKeycloakAccountRepositoryMock.Setup(r => r.GetEmployeeIdsByRolesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(new List<long> { 3, 4 });
+
+        await _service.CreateListingAsync(10, false, request);
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r =>
+            r.EmployeeId == 3 && r.Category == "Marketplace" && r.RelatedEntityType == "Listing" && r.RelatedEntityId == 1)), Times.Once);
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r => r.EmployeeId == 4)), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task CreateListingAsync_WhenNoModeratorsConfigured_ShouldNotSendAnyNotification()
+    {
+        var request = new ListingCreateRequest { ListingType = "Item", Title = "Chair", Category = "Furniture", Price = 20, Currency = "USD", SaveAsDraft = false };
+
+        await _service.CreateListingAsync(10, false, request);
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.IsAny<NotificationCreateRequest>()), Times.Never);
     }
 
     [Fact]
@@ -334,6 +363,18 @@ public class MarketplaceServiceTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task ApproveListingAsync_WhenFound_ShouldNotifySeller()
+    {
+        var listing = new Listing { ListingId = 1, SellerId = 5, Title = "Desk", Category = "Furniture", Currency = "USD", ApprovalStatus = "Pending" };
+        _listingRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(listing);
+
+        await _service.ApproveListingAsync(1, 42);
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r =>
+            r.EmployeeId == 5 && r.Category == "Marketplace" && r.RelatedEntityType == "Listing" && r.RelatedEntityId == 1)), Times.Once);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ApproveListingAsync_WhenNotFound_ShouldThrowNotFoundException()
     {
         _listingRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Listing?)null);
@@ -355,6 +396,18 @@ public class MarketplaceServiceTests
         listing.RejectionReason.Should().Be("Inappropriate");
         listing.ApprovedBy.Should().Be(42);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task RejectListingAsync_WhenFound_ShouldNotifySellerWithReason()
+    {
+        var listing = new Listing { ListingId = 1, SellerId = 5, Title = "Desk", Category = "Furniture", Currency = "USD", ApprovalStatus = "Pending" };
+        _listingRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(listing);
+
+        await _service.RejectListingAsync(1, 42, new ListingRejectRequest { RejectionReason = "Inappropriate" });
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r =>
+            r.EmployeeId == 5 && r.Message == "Inappropriate" && r.Category == "Marketplace" && r.RelatedEntityId == 1)), Times.Once);
     }
 
     [Fact]
@@ -516,6 +569,18 @@ public class MarketplaceServiceTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task CreateReportAsync_ShouldNotifyModerators()
+    {
+        _listingRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Listing { ListingId = 1, Title = "Desk" });
+        _employeeKeycloakAccountRepositoryMock.Setup(r => r.GetEmployeeIdsByRolesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(new List<long> { 3 });
+
+        await _service.CreateReportAsync(10, new MarketplaceReportCreateRequest { ListingId = 1, Reason = "Scam" });
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r =>
+            r.EmployeeId == 3 && r.Category == "Marketplace" && r.RelatedEntityType == "Listing" && r.RelatedEntityId == 1)), Times.Once);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ResolveReportAsync_WhenFound_ShouldSetReviewFields()
     {
         var report = new MarketplaceReport { ReportId = 1, ListingId = 1, ReportedBy = 10, Reason = "Scam", Status = "Open" };
@@ -526,6 +591,18 @@ public class MarketplaceServiceTests
         report.Status.Should().Be("Resolved");
         report.ReviewedBy.Should().Be(42);
         report.ReviewedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ResolveReportAsync_WhenFound_ShouldNotifyReporter()
+    {
+        var report = new MarketplaceReport { ReportId = 1, ListingId = 1, ReportedBy = 10, Reason = "Scam", Status = "Open" };
+        _marketplaceReportRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(report);
+
+        await _service.ResolveReportAsync(1, 42, new MarketplaceReportResolveRequest { Status = "Dismissed" });
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r =>
+            r.EmployeeId == 10 && r.Title == "Your report was Dismissed" && r.Category == "Marketplace" && r.RelatedEntityType == "Listing" && r.RelatedEntityId == 1)), Times.Once);
     }
 
     [Fact]
@@ -636,7 +713,7 @@ public class MarketplaceServiceTests
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r =>
             r.EmployeeId == 5 &&
             r.Title == "Tanvir Hasan purchased your listing" &&
-            r.Category == "MarketplacePurchase" &&
+            r.Category == "Marketplace" &&
             r.RelatedEntityType == "Listing" &&
             r.RelatedEntityId == 1)), Times.Once);
     }

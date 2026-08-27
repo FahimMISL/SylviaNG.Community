@@ -3,7 +3,7 @@ using SylviaNG.Community.Application.Interfaces.Services;
 
 namespace SylviaNG.Community.Application.Features.Elections.Commands.ElectionVoteCast
 {
-    public class ElectionVoteCastHandler : IRequestHandler<ElectionVoteCastCommand, long>
+    public class ElectionVoteCastHandler : IRequestHandler<ElectionVoteCastCommand, List<long>>
     {
         private readonly IElectionService _electionService;
 
@@ -12,7 +12,7 @@ namespace SylviaNG.Community.Application.Features.Elections.Commands.ElectionVot
             _electionService = electionService;
         }
 
-        public async Task<long> Handle(ElectionVoteCastCommand command, CancellationToken cancellationToken)
+        public async Task<List<long>> Handle(ElectionVoteCastCommand command, CancellationToken cancellationToken)
         {
             return await _electionService.CastVoteAsync(command.ElectionId, command.Request, command.VoterId);
         }

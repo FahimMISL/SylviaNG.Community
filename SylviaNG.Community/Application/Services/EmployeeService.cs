@@ -7,8 +7,10 @@ using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Application.Mappings;
 using SylviaNG.Community.Domain.Entities;
+using SylviaNG.Community.Domain.Enums;
 using SylviaNG.Community.SharedKernel.Generic;
 using SylviaNG.Community.SharedKernel.Pagination;
+using SylviaNG.Community.SharedKernel.Utils;
 
 namespace SylviaNG.Community.Application.Services
 {
@@ -187,6 +189,50 @@ namespace SylviaNG.Community.Application.Services
                 PageNumber = paged.PageNumber,
                 PageSize = paged.PageSize
             };
+        }
+
+        public async Task<List<TodayEventResponse>> GetTodayEventsAsync()
+        {
+            var employees = await _employeeRepository.GetActiveWithBirthdayOrJoiningDateAsync();
+            var today = DateTimeUtility.TodayLocal();
+            var results = new List<TodayEventResponse>();
+
+            foreach (var employee in employees)
+            {
+                if (employee.DateOfBirth is { } dob && dob.Month == today.Month && dob.Day == today.Day)
+                {
+                    results.Add(employee.ToTodayEventResponse(TodayEventTypeEnum.Birthday));
+                }
+
+                // Year < today.Year excludes an employee HR just added today from showing as a
+                // "0-year anniversary" - they'll show in New Joinees instead.
+                if (employee.DateOfJoining is { } doj && doj.Month == today.Month && doj.Day == today.Day && doj.Year < today.Year)
+                {
+                    results.Add(employee.ToTodayEventResponse(TodayEventTypeEnum.Anniversary, today.Year - doj.Year));
+                }
+            }
+
+            return results.OrderBy(r => r.EmployeeName).ToList();
+        }
+
+        public async Task<List<NewJoineeResponse>> GetNewJoineesAsync()
+        {
+            var employees = await _employeeRepository.GetActiveWithBirthdayOrJoiningDateAsync();
+            var today = DateTimeUtility.TodayLocal();
+
+            return employees
+                .Where(e => e.DateOfJoining.HasValue && IsWithinNewJoineeWindow(e.DateOfJoining.Value, today))
+                .OrderByDescending(e => e.DateOfJoining)
+                .Select(e => e.ToNewJoineeResponse())
+                .ToList();
+        }
+
+        // Visible on the join day itself and the following day (2 calendar days total), gone
+        // starting the 2nd full day after joining - recomputed on every call, no stored flag/job.
+        private static bool IsWithinNewJoineeWindow(DateOnly joinedOn, DateOnly today)
+        {
+            var daysElapsed = today.DayNumber - joinedOn.DayNumber;
+            return daysElapsed is >= 0 and < 2;
         }
 
         private async Task<CoreBatchLookupResult> ResolveLookupsAsync(IEnumerable<Employee> employees)

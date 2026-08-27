@@ -61,7 +61,7 @@ public class EmployeeCredentialServiceTests
         _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(ActiveEmployee());
         _accountRepositoryMock.Setup(r => r.ExistsByEmployeeIdAsync(1)).ReturnsAsync(false);
         _keycloakAdminClientMock
-            .Setup(k => k.CreateUserAsync("ayesha.rahman", "ayesha.rahman@sylviang.example", "Ayesha", "Rahman", "Temp1234"))
+            .Setup(k => k.CreateUserAsync("ayesha.rahman", "ayesha.rahman@sylviang.example", "Ayesha", "Rahman", "Temp1234", 1))
             .ReturnsAsync("kc-user-guid-1");
 
         // Act
@@ -85,7 +85,7 @@ public class EmployeeCredentialServiceTests
         _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(ActiveEmployee());
         _accountRepositoryMock.Setup(r => r.ExistsByEmployeeIdAsync(1)).ReturnsAsync(false);
         _keycloakAdminClientMock
-            .Setup(k => k.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Setup(k => k.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>()))
             .ReturnsAsync("kc-user-guid-1");
 
         var request = ValidRequest();
@@ -111,7 +111,7 @@ public class EmployeeCredentialServiceTests
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
         _keycloakAdminClientMock.Verify(k => k.CreateUserAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>()), Times.Never);
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class EmployeeCredentialServiceTests
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>();
         _keycloakAdminClientMock.Verify(k => k.CreateUserAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>()), Times.Never);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class EmployeeCredentialServiceTests
         // Assert
         await act.Should().ThrowAsync<DuplicateException>();
         _keycloakAdminClientMock.Verify(k => k.CreateUserAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>()), Times.Never);
     }
 
     [Fact]
@@ -154,7 +154,7 @@ public class EmployeeCredentialServiceTests
         _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(ActiveEmployee());
         _accountRepositoryMock.Setup(r => r.ExistsByEmployeeIdAsync(1)).ReturnsAsync(false);
         _keycloakAdminClientMock
-            .Setup(k => k.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Setup(k => k.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>()))
             .ThrowsAsync(new DuplicateException("EmployeeKeycloakAccount", "Username or email", "ayesha.rahman"));
 
         // Act
@@ -173,7 +173,7 @@ public class EmployeeCredentialServiceTests
         _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(ActiveEmployee());
         _accountRepositoryMock.Setup(r => r.ExistsByEmployeeIdAsync(1)).ReturnsAsync(false);
         _keycloakAdminClientMock
-            .Setup(k => k.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Setup(k => k.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>()))
             .ThrowsAsync(new ExternalServiceException("Keycloak denied permission to create the Keycloak user."));
 
         // Act

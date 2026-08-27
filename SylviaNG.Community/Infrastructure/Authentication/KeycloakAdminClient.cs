@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Interfaces.Externals;
+using SylviaNG.Community.Application.Interfaces.Repositories;
 
 namespace SylviaNG.Community.Infrastructure.Authentication
 {
@@ -30,17 +32,23 @@ namespace SylviaNG.Community.Infrastructure.Authentication
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
         private readonly ILogger<KeycloakAdminClient> _logger;
+        private readonly IEmployeeKeycloakAccountRepository _employeeKeycloakAccountRepository;
 
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-        public KeycloakAdminClient(HttpClient httpClient, IConfiguration configuration, ILogger<KeycloakAdminClient> logger)
+        public KeycloakAdminClient(
+            HttpClient httpClient,
+            IConfiguration configuration,
+            ILogger<KeycloakAdminClient> logger,
+            IEmployeeKeycloakAccountRepository employeeKeycloakAccountRepository)
         {
             _httpClient = httpClient;
             _configuration = configuration;
             _logger = logger;
+            _employeeKeycloakAccountRepository = employeeKeycloakAccountRepository;
         }
 
-        public async Task<string> CreateUserAsync(string username, string? email, string firstName, string lastName, string temporaryPassword)
+        public async Task<string> CreateUserAsync(string username, string? email, string firstName, string lastName, string temporaryPassword, long employeeId)
         {
             var (serverRoot, realm) = GetServerRootAndRealm();
             var adminToken = await GetAdminAccessTokenAsync(serverRoot, realm);
@@ -53,9 +61,22 @@ namespace SylviaNG.Community.Infrastructure.Authentication
                 lastName,
                 enabled = true,
                 emailVerified = false,
+                // temporary MUST be false: a temporary credential forces a Keycloak "required
+                // action" (update password) that only an interactive browser login can complete.
+                // This app authenticates via Direct Access Grant (see TryPasswordLoginAsync), which
+                // has no UI for that - Keycloak rejects the login outright ("Account is not fully
+                // set up") for any temporary credential, correct password or not. Confirmed by
+                // direct testing against the realm. The tradeoff: the password set here becomes
+                // the employee's real password immediately, with no forced first-login change.
                 credentials = new[]
                 {
-                    new { type = "password", value = temporaryPassword, temporary = true }
+                    new { type = "password", value = temporaryPassword, temporary = false }
+                },
+                // Read back onto issued tokens via a Keycloak "User Attribute" protocol mapper
+                // (Token Claim Name "employee_id") - see KEYCLOAK_SETUP.md.
+                attributes = new Dictionary<string, string[]>
+                {
+                    ["employee_id"] = new[] { employeeId.ToString() }
                 }
             };
 
@@ -129,9 +150,11 @@ namespace SylviaNG.Community.Infrastructure.Authentication
             var (serverRoot, realm) = GetServerRootAndRealm();
             var adminToken = await GetAdminAccessTokenAsync(serverRoot, realm);
 
+            // temporary: false - see the identical note in CreateUserAsync. A temporary credential
+            // can never be used to log in via this app's Direct Access Grant flow.
             using var request = new HttpRequestMessage(HttpMethod.Put, $"{serverRoot}/admin/realms/{realm}/users/{keycloakUserId}/reset-password")
             {
-                Content = JsonContent.Create(new { type = "password", value = newTemporaryPassword, temporary = true }, options: JsonOptions)
+                Content = JsonContent.Create(new { type = "password", value = newTemporaryPassword, temporary = false }, options: JsonOptions)
             };
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
 
@@ -148,6 +171,75 @@ namespace SylviaNG.Community.Infrastructure.Authentication
                 _logger.LogError("Keycloak password reset failed ({StatusCode}): {Body}", response.StatusCode, body);
                 throw new ExternalServiceException($"Keycloak rejected the password reset ({(int)response.StatusCode} {response.StatusCode}).");
             }
+        }
+
+        public async Task<KeycloakLoginResult?> TryPasswordLoginAsync(string username, string password)
+        {
+            var (serverRoot, realm) = GetServerRootAndRealm();
+            var clientId = _configuration["Keycloak:ClientId"]
+                ?? throw new InvalidOperationException("Keycloak:ClientId is not configured.");
+            var clientSecret = _configuration["Keycloak:ClientSecret"]
+                ?? throw new InvalidOperationException("Keycloak:ClientSecret is not configured.");
+
+            var tokenUrl = $"{serverRoot}/realms/{realm}/protocol/openid-connect/token";
+            var form = new Dictionary<string, string>
+            {
+                ["grant_type"] = "password",
+                ["client_id"] = clientId,
+                ["client_secret"] = clientSecret,
+                ["username"] = username,
+                ["password"] = password
+            };
+
+            using var response = await SendAsync(() => _httpClient.PostAsync(tokenUrl, new FormUrlEncodedContent(form)), serverRoot);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Covers both invalid_grant (wrong username/password) and unauthorized_client
+                // (Direct Access Grants not enabled on Keycloak:ClientId) - either way this
+                // specific attempt didn't succeed. Logged for diagnosis only; the caller must
+                // treat this the same as "wrong local password" and not leak which store rejected it.
+                var body = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("Keycloak direct-grant login did not succeed for {Username} ({StatusCode}): {Body}", username, response.StatusCode, body);
+                return null;
+            }
+
+            var tokenResponse = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>(JsonOptions);
+            if (tokenResponse == null) return null;
+
+            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(tokenResponse.AccessToken);
+            var employeeIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == "employee_id")?.Value;
+            var roleClaim = jwt.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
+            var displayNameClaim = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value
+                ?? jwt.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value;
+
+            var employeeId = long.TryParse(employeeIdClaim, out var parsedEmployeeId) ? parsedEmployeeId : (long?)null;
+            if (employeeId == null)
+            {
+                // Same reasoning/fallback as EmployeeIdentityEnrichmentMiddleware, but that
+                // middleware only runs for subsequent authenticated requests through the ASP.NET
+                // Core pipeline - this login call itself parses the token directly and needs the
+                // same fallback so the login response's EmployeeId isn't null for accounts whose
+                // Keycloak user predates the "employee_id" attribute being set correctly.
+                var subClaim = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+                if (!string.IsNullOrEmpty(subClaim))
+                {
+                    var account = await _employeeKeycloakAccountRepository.GetByKeycloakUserIdAsync(subClaim);
+                    if (account != null && account.IsActive)
+                    {
+                        employeeId = account.EmployeeId;
+                    }
+                }
+            }
+
+            return new KeycloakLoginResult
+            {
+                AccessToken = tokenResponse.AccessToken,
+                ExpiresAtUtc = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn),
+                DisplayName = displayNameClaim,
+                Role = roleClaim,
+                EmployeeId = employeeId
+            };
         }
 
         private async Task<string> GetAdminAccessTokenAsync(string serverRoot, string realm)
@@ -240,6 +332,9 @@ namespace SylviaNG.Community.Infrastructure.Authentication
         {
             [JsonPropertyName("access_token")]
             public string AccessToken { get; set; } = string.Empty;
+
+            [JsonPropertyName("expires_in")]
+            public int ExpiresIn { get; set; }
         }
 
         private class KeycloakRole

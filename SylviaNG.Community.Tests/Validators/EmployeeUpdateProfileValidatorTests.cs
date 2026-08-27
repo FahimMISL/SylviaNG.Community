@@ -193,4 +193,54 @@ public class EmployeeUpdateProfileValidatorTests
         // Assert
         result.IsValid.Should().BeTrue();
     }
+
+    [Fact]
+    public void Validate_WithFutureDateOfBirth_ShouldHaveError()
+    {
+        // Arrange
+        var command = new EmployeeUpdateProfileCommand(1, new EmployeeUpdateProfileRequest
+        {
+            DateOfBirth = DateTime.Today.AddDays(1)
+        }, viewerEmployeeId: 1);
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.PropertyName == "Request.DateOfBirth");
+    }
+
+    [Fact]
+    public void Validate_WithNullDateOfBirth_ShouldHaveNoErrors()
+    {
+        // Arrange
+        var command = new EmployeeUpdateProfileCommand(1, new EmployeeUpdateProfileRequest
+        {
+            DateOfBirth = null
+        }, viewerEmployeeId: 1);
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_WithUnreasonablyOldDateOfBirth_ShouldHaveError()
+    {
+        // Arrange
+        var command = new EmployeeUpdateProfileCommand(1, new EmployeeUpdateProfileRequest
+        {
+            DateOfBirth = DateTime.Today.AddYears(-150)
+        }, viewerEmployeeId: 1);
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.PropertyName == "Request.DateOfBirth");
+    }
 }

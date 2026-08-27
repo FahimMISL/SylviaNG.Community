@@ -24,6 +24,11 @@ namespace SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpd
             RuleFor(x => x.Request.CommunityContributions)
                 .MaximumLength(1000).WithMessage("Community contributions must not exceed 1000 characters.");
 
+            RuleFor(x => x.Request.DateOfBirth)
+                .LessThanOrEqualTo(DateTime.Today.AddYears(-13)).WithMessage("You must be at least 13 years old.")
+                .GreaterThanOrEqualTo(DateTime.Today.AddYears(-100)).WithMessage("Please enter a valid date of birth.")
+                .When(x => x.Request.DateOfBirth.HasValue);
+
             RuleFor(x => x.Request.Phone)
                 .MaximumLength(50).WithMessage("Phone must not exceed 50 characters.");
 

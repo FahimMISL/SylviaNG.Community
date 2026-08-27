@@ -3,7 +3,7 @@ using SylviaNG.Community.Application.Features.Elections.Models;
 
 namespace SylviaNG.Community.Application.Features.Elections.Commands.ElectionVoteCast
 {
-    public class ElectionVoteCastCommand : IRequest<long>
+    public class ElectionVoteCastCommand : IRequest<List<long>>
     {
         public long ElectionId { get; set; }
         public ElectionVoteCastRequest Request { get; set; }

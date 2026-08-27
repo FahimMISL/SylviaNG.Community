@@ -22,5 +22,15 @@ namespace SylviaNG.Community.Infrastructure.Repositories
 
             return await query.ToPaginatedResultAsync(request);
         }
+
+        public async Task<bool> HasAnyVotesAsync(long electionId)
+        {
+            return await _dbSet.AnyAsync(v => v.ElectionId == electionId);
+        }
+
+        public async Task<List<ElectionVote>> GetAllForElectionAsync(long electionId)
+        {
+            return await _dbSet.Where(v => v.ElectionId == electionId).ToListAsync();
+        }
     }
 }

@@ -90,4 +90,47 @@ public class EmployeeCreateValidatorTests
         result.IsValid.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.PropertyName == "Request.DepartmentId");
     }
+
+    [Fact]
+    public void Validate_WithFutureDateOfJoining_ShouldHaveError()
+    {
+        // Arrange
+        var command = new EmployeeCreateCommand(new EmployeeCreateRequest
+        {
+            EmployeeName = "Ayesha Rahman",
+            Email = "ayesha.rahman@sylviang.example",
+            DesignationId = 1,
+            DepartmentId = 1,
+            SiteId = 1,
+            DateOfJoining = DateTime.Today.AddDays(1)
+        });
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.PropertyName == "Request.DateOfJoining");
+    }
+
+    [Fact]
+    public void Validate_WithTodayDateOfJoining_ShouldHaveNoErrors()
+    {
+        // Arrange
+        var command = new EmployeeCreateCommand(new EmployeeCreateRequest
+        {
+            EmployeeName = "Ayesha Rahman",
+            Email = "ayesha.rahman@sylviang.example",
+            DesignationId = 1,
+            DepartmentId = 1,
+            SiteId = 1,
+            DateOfJoining = DateTime.Today
+        });
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+    }
 }

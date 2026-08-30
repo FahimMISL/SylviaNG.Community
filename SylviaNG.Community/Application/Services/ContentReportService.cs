@@ -1,5 +1,6 @@
 using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.ContentReports.Models;
+using SylviaNG.Community.Application.Features.Notifications.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Application.Mappings;
@@ -17,28 +18,60 @@ namespace SylviaNG.Community.Application.Services
         private readonly IContentReportRepository _contentReportRepository;
         private readonly IPostRepository _postRepository;
         private readonly IEmployeeRepository _employeeRepository;
+        private readonly IEmployeeKeycloakAccountRepository _employeeKeycloakAccountRepository;
+        private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
 
         public ContentReportService(
             IContentReportRepository contentReportRepository,
             IPostRepository postRepository,
             IEmployeeRepository employeeRepository,
+            IEmployeeKeycloakAccountRepository employeeKeycloakAccountRepository,
+            INotificationService notificationService,
             IUnitOfWork unitOfWork)
         {
             _contentReportRepository = contentReportRepository;
             _postRepository = postRepository;
             _employeeRepository = employeeRepository;
+            _employeeKeycloakAccountRepository = employeeKeycloakAccountRepository;
+            _notificationService = notificationService;
             _unitOfWork = unitOfWork;
+        }
+
+        /// <summary>
+        /// Broadcasts a notification to every employee with an active HR/Admin Keycloak account -
+        /// mirrors MarketplaceService.NotifyModeratorsAsync, the only queryable "who are the
+        /// moderators" source in this codebase. Sends nothing, silently, if no one currently holds
+        /// HR/Admin access.
+        /// </summary>
+        private async Task NotifyModeratorsAsync(string title, string message, long postId)
+        {
+            var moderatorIds = await _employeeKeycloakAccountRepository.GetEmployeeIdsByRolesAsync(new[] { "HR", "Admin" });
+            foreach (var moderatorId in moderatorIds)
+            {
+                await _notificationService.CreateAsync(new NotificationCreateRequest
+                {
+                    EmployeeId = moderatorId,
+                    Title = title,
+                    Message = message,
+                    Category = "ContentModeration",
+                    RelatedEntityType = "Post",
+                    RelatedEntityId = postId
+                });
+            }
         }
 
         public async Task<long> CreateAsync(ContentReportCreateRequest request)
         {
-            _ = await _postRepository.GetByIdAsync(request.PostId)
+            var post = await _postRepository.GetByIdAsync(request.PostId)
                 ?? throw new NotFoundException("Post", request.PostId);
 
             var entity = request.ToEntity();
             await _contentReportRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
+
+            var reporterName = (await _employeeRepository.GetByIdAsync(request.ReportedBy))?.EmployeeName ?? "Someone";
+            await NotifyModeratorsAsync("A post was reported", $"{reporterName} reported a post: {request.Reason}", post.PostId);
 
             return entity.ReportId;
         }

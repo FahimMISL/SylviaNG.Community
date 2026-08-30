@@ -5,7 +5,7 @@ namespace SylviaNG.Community.Domain.Entities;
 
 /// <summary>
 /// Employee directory/profile record (Feature 1). Core identity fields
-/// (EmployeeName, EmployeeCode, DepartmentId, DesignatioId, SiteId, RFId) are
+/// (EmployeeName, EmployeeCode, DepartmentId, DesignatioId, SiteId) are
 /// synced from the Core/Employee microservice via Kafka (see EmployeeEventConsumer)
 /// when that integration is live; the profile fields below are owned locally.
 /// </summary>
@@ -17,7 +17,6 @@ public class Employee : Audit
     public long? DepartmentId { get; set; }
     public long? DesignatioId { get; set; }
     public long? SiteId { get; set; }
-    public long? RFId { get; set; }
 
     // Feature 1: Employee Profiles & Directory
     public string? Email { get; set; }

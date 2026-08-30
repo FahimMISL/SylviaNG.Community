@@ -107,9 +107,9 @@ namespace SylviaNG.Community.Application.Extensions
                     }
 
                     // Browsers can't set the Authorization header on a WebSocket upgrade, so the
-                    // SignalR client appends ?access_token=<token> instead - check for that on the
-                    // notifications hub path before falling through to the dev/Keycloak default.
-                    if (context.Request.Path.StartsWithSegments("/community/hubs/notifications")
+                    // SignalR client appends ?access_token=<token> instead - check for that on any
+                    // hub path before falling through to the dev/Keycloak default.
+                    if (context.Request.Path.StartsWithSegments("/community/hubs")
                         && context.Request.Query.TryGetValue("access_token", out var queryToken))
                     {
                         var issuer = TryPeekUnvalidatedIssuer($"Bearer {queryToken}");
@@ -181,7 +181,7 @@ namespace SylviaNG.Community.Application.Extensions
                 {
                     var accessToken = context.Request.Query["access_token"];
                     var path = context.HttpContext.Request.Path;
-                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/community/hubs/notifications"))
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/community/hubs"))
                     {
                         context.Token = accessToken;
                     }

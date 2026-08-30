@@ -165,6 +165,15 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
             services.AddScoped<IGroupJoinRequestRepository, GroupJoinRequestRepository>();
 
+            // Module 11 - Messenger
+            services.AddScoped<IChatConversationRepository, ChatConversationRepository>();
+            services.AddScoped<IChatParticipantRepository, ChatParticipantRepository>();
+            services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
+            services.AddScoped<IChatMessageAttachmentRepository, ChatMessageAttachmentRepository>();
+            services.AddScoped<IChatMessageReactionRepository, ChatMessageReactionRepository>();
+            services.AddScoped<IChatReportRepository, ChatReportRepository>();
+            services.AddSingleton<IMessengerBroadcaster, SignalRMessengerBroadcaster>();
+
             // Feature 8 - Dashboard Widgets (cross-aggregate reads with no home on a single
             // aggregate's own repository - see IDashboardRepository)
             services.AddScoped<IDashboardRepository, DashboardRepository>();

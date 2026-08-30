@@ -69,3 +69,33 @@ public enum TodayEventTypeEnum
     Birthday,
     Anniversary
 }
+
+// Module 11 - Messenger
+public enum ConversationTypeEnum
+{
+    Direct,
+    Group
+}
+
+public enum MessageTypeEnum
+{
+    Text,
+    Attachment,
+    Voice,
+    Shared,
+    System
+}
+
+public enum SharedContentTypeEnum
+{
+    Post,
+    Listing,
+    Event
+}
+
+public enum ChatAttachmentTypeEnum
+{
+    Image,
+    File,
+    Voice
+}

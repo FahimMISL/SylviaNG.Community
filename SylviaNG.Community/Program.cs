@@ -135,5 +135,6 @@ app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.MapControllers();
 app.MapHub<NotificationHub>("/community/hubs/notifications");
 app.MapHub<FeedHub>("/community/hubs/feed");
+app.MapHub<MessengerHub>("/community/hubs/messenger");
 
 app.Run();

@@ -168,8 +168,6 @@ namespace SylviaNG.Community.Infrastructure.Kafka
                     var departmentId = root.TryGetProperty("departmentId", out var dept) && dept.ValueKind != JsonValueKind.Null ? dept.GetInt64() : (long?)null;
                     var designationId = root.TryGetProperty("designationId", out var desig) && desig.ValueKind != JsonValueKind.Null ? desig.GetInt64() : (long?)null;
                     var siteId = root.TryGetProperty("siteId", out var site) && site.ValueKind != JsonValueKind.Null ? site.GetInt64() : (long?)null;
-                    var rfidNumber = root.TryGetProperty("rfidNumber", out var rfid) ? rfid.GetString() : null;
-                    var rfidValue = long.TryParse(rfidNumber, out var parsedRfid) ? (long?)parsedRfid : null;
 
                     var existing = await dbContext.Employees
                         .FirstOrDefaultAsync(e => e.EmployeeId == employeeId.Value, ct);
@@ -180,7 +178,6 @@ namespace SylviaNG.Community.Infrastructure.Kafka
                         existing.DepartmentId = departmentId;
                         existing.DesignatioId = designationId;
                         existing.SiteId = siteId;
-                        existing.RFId = rfidValue;
                     }
                     else
                     {
@@ -190,8 +187,7 @@ namespace SylviaNG.Community.Infrastructure.Kafka
                             EmployeeCode = employeeCode,
                             DepartmentId = departmentId,
                             DesignatioId = designationId,
-                            SiteId = siteId,
-                            RFId = rfidValue
+                            SiteId = siteId
                         });
                     }
 
@@ -209,7 +205,6 @@ namespace SylviaNG.Community.Infrastructure.Kafka
                         toClear.DepartmentId = null;
                         toClear.DesignatioId = null;
                         toClear.SiteId = null;
-                        toClear.RFId = null;
                         await dbContext.SaveChangesAsync(ct);
                     }
 

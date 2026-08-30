@@ -143,6 +143,14 @@ namespace SylviaNG.Community.Infrastructure.Data
         public DbSet<GroupMember> GroupMembers { get; set; }
         public DbSet<GroupJoinRequest> GroupJoinRequests { get; set; }
 
+        // Module 11 - Messenger
+        public DbSet<ChatConversation> ChatConversations { get; set; }
+        public DbSet<ChatParticipant> ChatParticipants { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<ChatMessageAttachment> ChatMessageAttachments { get; set; }
+        public DbSet<ChatMessageReaction> ChatMessageReactions { get; set; }
+        public DbSet<ChatReport> ChatReports { get; set; }
+
         #endregion
 
 

@@ -85,6 +85,11 @@ namespace SylviaNG.Community.Application.Extensions
             // Module 4 - Social Feed (Interest-Based Groups)
             services.AddScoped<IGroupService, GroupService>();
 
+            // Module 11 - Messenger
+            services.AddScoped<IChatConversationService, ChatConversationService>();
+            services.AddScoped<IChatMessageService, ChatMessageService>();
+            services.AddScoped<IChatReportService, ChatReportService>();
+
             // Feature 8 - Dashboard Widgets
             services.AddScoped<IDashboardService, DashboardService>();
 

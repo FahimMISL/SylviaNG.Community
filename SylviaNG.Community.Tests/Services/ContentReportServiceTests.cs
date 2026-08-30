@@ -2,7 +2,9 @@ using FluentAssertions;
 using Moq;
 using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.ContentReports.Models;
+using SylviaNG.Community.Application.Features.Notifications.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Application.Services;
 using SylviaNG.Community.Domain.Entities;
 using SylviaNG.Community.SharedKernel.Generic;
@@ -16,6 +18,8 @@ public class ContentReportServiceTests
     private readonly Mock<IContentReportRepository> _contentReportRepositoryMock;
     private readonly Mock<IPostRepository> _postRepositoryMock;
     private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
+    private readonly Mock<IEmployeeKeycloakAccountRepository> _employeeKeycloakAccountRepositoryMock;
+    private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly ContentReportService _service;
 
@@ -24,8 +28,20 @@ public class ContentReportServiceTests
         _contentReportRepositoryMock = new Mock<IContentReportRepository>();
         _postRepositoryMock = new Mock<IPostRepository>();
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
+        _employeeKeycloakAccountRepositoryMock = new Mock<IEmployeeKeycloakAccountRepository>();
+        _notificationServiceMock = new Mock<INotificationService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
-        _service = new ContentReportService(_contentReportRepositoryMock.Object, _postRepositoryMock.Object, _employeeRepositoryMock.Object, _unitOfWorkMock.Object);
+        _service = new ContentReportService(
+            _contentReportRepositoryMock.Object,
+            _postRepositoryMock.Object,
+            _employeeRepositoryMock.Object,
+            _employeeKeycloakAccountRepositoryMock.Object,
+            _notificationServiceMock.Object,
+            _unitOfWorkMock.Object);
+
+        _employeeKeycloakAccountRepositoryMock
+            .Setup(r => r.GetEmployeeIdsByRolesAsync(It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(new List<long>());
     }
 
     [Fact]
@@ -44,6 +60,28 @@ public class ContentReportServiceTests
         // Assert
         result.Should().Be(8);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithValidRequest_ShouldNotifyEveryHrAdmin()
+    {
+        // Arrange
+        _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Post { PostId = 1 });
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Employee { EmployeeId = 2, EmployeeName = "Bob" });
+        _employeeKeycloakAccountRepositoryMock
+            .Setup(r => r.GetEmployeeIdsByRolesAsync(It.Is<IEnumerable<string>>(roles => roles.Contains("HR") && roles.Contains("Admin"))))
+            .ReturnsAsync(new List<long> { 100, 101 });
+
+        var request = new ContentReportCreateRequest { ReportedBy = 2, PostId = 1, Reason = "Spam" };
+
+        // Act
+        await _service.CreateAsync(request);
+
+        // Assert
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(req =>
+            req.EmployeeId == 100 && req.RelatedEntityType == "Post" && req.RelatedEntityId == 1)), Times.Once);
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(req =>
+            req.EmployeeId == 101 && req.RelatedEntityType == "Post" && req.RelatedEntityId == 1)), Times.Once);
     }
 
     [Fact]

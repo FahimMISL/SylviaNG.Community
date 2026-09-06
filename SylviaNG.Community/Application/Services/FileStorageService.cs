@@ -36,9 +36,9 @@ namespace SylviaNG.Community.Application.Services
             return entity.ToResponse();
         }
 
-        public async Task<PagedResult<FileStorageResponse>> GetPaginatedAsync(PagedRequest request, string? module, long? entityId)
+        public async Task<PagedResult<FileStorageResponse>> GetPaginatedAsync(PagedRequest request, string? module, long? entityId, long? uploadedBy)
         {
-            var pagedResult = await _fileStorageRepository.GetPaginatedAsync(request, module, entityId);
+            var pagedResult = await _fileStorageRepository.GetPaginatedAsync(request, module, entityId, uploadedBy);
 
             return new PagedResult<FileStorageResponse>
             {

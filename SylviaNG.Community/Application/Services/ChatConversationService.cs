@@ -262,6 +262,132 @@ namespace SylviaNG.Community.Application.Services
             }
         }
 
+        public async Task AddParticipantsAsync(long conversationId, List<long> employeeIds, long callerEmployeeId)
+        {
+            var callerParticipant = await _chatParticipantRepository.GetActiveAsync(conversationId, callerEmployeeId)
+                ?? throw new ForbiddenException("You are not a participant of this conversation.");
+
+            var entity = await _chatConversationRepository.GetByIdAsync(conversationId)
+                ?? throw new NotFoundException("ChatConversation", conversationId);
+
+            if (entity.Type != ConversationTypeEnum.Group)
+                throw new FluentValidation.ValidationException("Only group conversations can have members added.");
+
+            if (entity.OnlyAdminsCanAddMembers && !callerParticipant.IsAdmin)
+                throw new ForbiddenException("Only group admins can add new members.");
+
+            var now = DateTime.UtcNow;
+            var addedEmployeeIds = new List<long>();
+
+            foreach (var employeeId in employeeIds.Distinct())
+            {
+                // Look up regardless of LeftAt - a previously-left employee is reactivated on
+                // their existing row rather than getting a duplicate ChatParticipant inserted
+                // (see ChatParticipant's class doc comment - no unique DB constraint enforces this).
+                var existing = await _chatParticipantRepository.GetAsync(conversationId, employeeId);
+                if (existing != null)
+                {
+                    if (existing.LeftAt == null) continue; // already an active member
+
+                    existing.LeftAt = null;
+                    existing.JoinedAt = now;
+                    _chatParticipantRepository.Update(existing);
+                }
+                else
+                {
+                    await _chatParticipantRepository.AddAsync(new ChatParticipant
+                    {
+                        ChatConversationId = conversationId,
+                        EmployeeId = employeeId,
+                        IsAdmin = false,
+                        JoinedAt = now
+                    });
+                }
+                addedEmployeeIds.Add(employeeId);
+            }
+
+            if (addedEmployeeIds.Count == 0) return;
+
+            await _unitOfWork.SaveChangesAsync();
+
+            var adder = await _employeeRepository.GetByIdAsync(callerEmployeeId);
+            var adderName = adder?.EmployeeName ?? "A colleague";
+            foreach (var employeeId in addedEmployeeIds)
+            {
+                await _notificationService.CreateAsync(new NotificationCreateRequest
+                {
+                    EmployeeId = employeeId,
+                    Title = $"{adderName} added you to \"{entity.Title}\"",
+                    Category = "Messenger",
+                    RelatedEntityType = "ChatConversation",
+                    RelatedEntityId = conversationId
+                });
+            }
+
+            var participants = await BuildParticipantResponsesAsync(conversationId);
+            var response = entity.ToResponse(participants);
+            response.GroupAvatarUrl = await ResolveGroupAvatarUrlAsync(entity.GroupAvatarFileId);
+            await _messengerBroadcaster.BroadcastGroupUpdatedAsync(conversationId, response);
+
+            // Every active participant's inbox row needs refreshing (member count etc.), and the
+            // newly-added ones need the conversation to appear live in their inbox at all - same
+            // fix pattern as CreateAsync's own-inbox push.
+            var allParticipants = await _chatParticipantRepository.GetActiveByConversationIdAsync(conversationId);
+            foreach (var participant in allParticipants)
+            {
+                var summary = await GetSummaryForEmployeeAsync(conversationId, participant.EmployeeId);
+                await _messengerBroadcaster.BroadcastConversationUpdatedAsync(participant.EmployeeId, summary);
+            }
+        }
+
+        public async Task SetAddMemberPermissionAsync(long conversationId, bool onlyAdminsCanAddMembers, long callerEmployeeId)
+        {
+            var entity = await _chatConversationRepository.GetByIdAsync(conversationId)
+                ?? throw new NotFoundException("ChatConversation", conversationId);
+
+            if (entity.Type != ConversationTypeEnum.Group)
+                throw new FluentValidation.ValidationException("Only group conversations have this setting.");
+
+            if (entity.CreatedByEmployeeId != callerEmployeeId)
+                throw new ForbiddenException("Only the group creator can change this setting.");
+
+            entity.OnlyAdminsCanAddMembers = onlyAdminsCanAddMembers;
+            _chatConversationRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync();
+
+            var participants = await BuildParticipantResponsesAsync(conversationId);
+            var response = entity.ToResponse(participants);
+            response.GroupAvatarUrl = await ResolveGroupAvatarUrlAsync(entity.GroupAvatarFileId);
+            await _messengerBroadcaster.BroadcastGroupUpdatedAsync(conversationId, response);
+        }
+
+        public async Task SetParticipantAdminAsync(long conversationId, long targetEmployeeId, bool isAdmin, long callerEmployeeId)
+        {
+            var entity = await _chatConversationRepository.GetByIdAsync(conversationId)
+                ?? throw new NotFoundException("ChatConversation", conversationId);
+
+            if (entity.Type != ConversationTypeEnum.Group)
+                throw new FluentValidation.ValidationException("Only group conversations have admins.");
+
+            // Deliberately checked against the creator, not the caller's own IsAdmin - unlike
+            // UpdateGroupAsync (any admin can edit title/photo), only the original creator may
+            // change who else is an admin, per spec.
+            if (entity.CreatedByEmployeeId != callerEmployeeId)
+                throw new ForbiddenException("Only the group creator can change admin permissions.");
+
+            var target = await _chatParticipantRepository.GetActiveAsync(conversationId, targetEmployeeId)
+                ?? throw new NotFoundException("ChatParticipant", targetEmployeeId);
+
+            target.IsAdmin = isAdmin;
+            _chatParticipantRepository.Update(target);
+            await _unitOfWork.SaveChangesAsync();
+
+            var participants = await BuildParticipantResponsesAsync(conversationId);
+            var response = entity.ToResponse(participants);
+            response.GroupAvatarUrl = await ResolveGroupAvatarUrlAsync(entity.GroupAvatarFileId);
+            await _messengerBroadcaster.BroadcastGroupUpdatedAsync(conversationId, response);
+        }
+
         private async Task<string?> ResolveGroupAvatarUrlAsync(long? groupAvatarFileId)
         {
             if (groupAvatarFileId == null) return null;

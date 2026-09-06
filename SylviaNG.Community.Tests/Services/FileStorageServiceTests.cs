@@ -73,10 +73,10 @@ public class FileStorageServiceTests
             PageNumber = 1,
             PageSize = 10
         };
-        _repositoryMock.Setup(r => r.GetPaginatedAsync(request, null, null)).ReturnsAsync(pagedResult);
+        _repositoryMock.Setup(r => r.GetPaginatedAsync(request, null, null, null)).ReturnsAsync(pagedResult);
 
         // Act
-        var result = await _service.GetPaginatedAsync(request, null, null);
+        var result = await _service.GetPaginatedAsync(request, null, null, null);
 
         // Assert
         result.TotalCount.Should().Be(1);

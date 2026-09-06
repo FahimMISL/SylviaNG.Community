@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.EmployeeCredentials.Models;
 using SylviaNG.Community.Application.Interfaces.Externals;
@@ -15,21 +16,27 @@ namespace SylviaNG.Community.Application.Services
         private readonly IEmployeeRepository _employeeRepository;
         private readonly IEmployeeKeycloakAccountRepository _employeeKeycloakAccountRepository;
         private readonly IKeycloakAdminClient _keycloakAdminClient;
+        private readonly IEmailService _emailService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<EmployeeCredentialService> _logger;
 
         public EmployeeCredentialService(
             IEmployeeRepository employeeRepository,
             IEmployeeKeycloakAccountRepository employeeKeycloakAccountRepository,
             IKeycloakAdminClient keycloakAdminClient,
+            IEmailService emailService,
             IUnitOfWork unitOfWork,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<EmployeeCredentialService> logger)
         {
             _employeeRepository = employeeRepository;
             _employeeKeycloakAccountRepository = employeeKeycloakAccountRepository;
             _keycloakAdminClient = keycloakAdminClient;
+            _emailService = emailService;
             _unitOfWork = unitOfWork;
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task<EmployeeCredentialResponse> CreateAsync(EmployeeCredentialCreateRequest request)
@@ -66,7 +73,33 @@ namespace SylviaNG.Community.Application.Services
             await _employeeKeycloakAccountRepository.AddAsync(account);
             await _unitOfWork.SaveChangesAsync();
 
+            await SendWelcomeEmailBestEffortAsync(employee, request.Username, request.TemporaryPassword);
+
             return account.ToResponse();
+        }
+
+        /// <summary>
+        /// The Keycloak account and EmployeeKeycloakAccount row are already committed by this
+        /// point, so a failure here (bad SMTP config, unreachable mail server, etc.) must never
+        /// fail the Grant Access call - it's only logged. HR can always communicate credentials
+        /// out-of-band if the email doesn't arrive.
+        /// </summary>
+        private async System.Threading.Tasks.Task SendWelcomeEmailBestEffortAsync(Employee employee, string username, string temporaryPassword)
+        {
+            if (string.IsNullOrWhiteSpace(employee.Email))
+            {
+                _logger.LogWarning("Skipping Grant Access welcome email for employee {EmployeeId}: no email on file.", employee.EmployeeId);
+                return;
+            }
+
+            try
+            {
+                await _emailService.SendWelcomeEmailAsync(employee.Email, employee.EmployeeName, username, temporaryPassword);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send Grant Access welcome email to employee {EmployeeId}.", employee.EmployeeId);
+            }
         }
 
         public async System.Threading.Tasks.Task ResetPasswordAsync(long employeeId, string newTemporaryPassword)

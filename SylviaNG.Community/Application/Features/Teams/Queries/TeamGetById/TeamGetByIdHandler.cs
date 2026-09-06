@@ -15,7 +15,7 @@ namespace SylviaNG.Community.Application.Features.Teams.Queries.TeamGetById
 
         public async Task<TeamResponse> Handle(TeamGetByIdQuery query, CancellationToken cancellationToken)
         {
-            return await _teamService.GetByIdAsync(query.TeamId);
+            return await _teamService.GetByIdAsync(query.TeamId, query.CallerEmployeeId, query.IsHrOrAdmin);
         }
     }
 }

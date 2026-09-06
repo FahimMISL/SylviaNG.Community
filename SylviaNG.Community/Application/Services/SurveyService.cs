@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Logging;
 using SylviaNG.Community.Application.Common.Exceptions;
+using SylviaNG.Community.Application.Features.Notifications.Models;
 using SylviaNG.Community.Application.Features.Surveys;
 using SylviaNG.Community.Application.Features.Surveys.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
@@ -22,6 +24,8 @@ namespace SylviaNG.Community.Application.Services
         private readonly ISurveyResponseRepository _surveyResponseRepository;
         private readonly ISurveyAnswerRepository _surveyAnswerRepository;
         private readonly IEmployeeRepository _employeeRepository;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<SurveyService> _logger;
         private readonly IUnitOfWork _unitOfWork;
 
         public SurveyService(
@@ -32,6 +36,8 @@ namespace SylviaNG.Community.Application.Services
             ISurveyResponseRepository surveyResponseRepository,
             ISurveyAnswerRepository surveyAnswerRepository,
             IEmployeeRepository employeeRepository,
+            INotificationService notificationService,
+            ILogger<SurveyService> logger,
             IUnitOfWork unitOfWork)
         {
             _surveyRepository = surveyRepository;
@@ -41,6 +47,8 @@ namespace SylviaNG.Community.Application.Services
             _surveyResponseRepository = surveyResponseRepository;
             _surveyAnswerRepository = surveyAnswerRepository;
             _employeeRepository = employeeRepository;
+            _notificationService = notificationService;
+            _logger = logger;
             _unitOfWork = unitOfWork;
         }
 
@@ -106,6 +114,72 @@ namespace SylviaNG.Community.Application.Services
             entity.PublishedAt = DateTime.UtcNow;
             _surveyRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
+
+            var recipientIds = await GetEligibleEmployeeIdsAsync(surveyId);
+            foreach (var employeeId in recipientIds)
+            {
+                await NotifySurveyPublishedSafeAsync(employeeId, entity);
+            }
+        }
+
+        /// <summary>
+        /// Resolves which employees are eligible for a survey's audience - used to decide who gets
+        /// notified on publish, who sees it in their eligible-surveys list, who may load its detail/
+        /// questions, and who may submit a response. Mirrors GetResultsAsync's audience branching
+        /// (EntireCompany vs Department/Branch) below, but unlike there - where "no rows" means an
+        /// unknown participation-rate denominator - every other caller treats no audience rows and an
+        /// EntireCompany row identically: eligible to every active employee.
+        /// </summary>
+        private async Task<HashSet<long>> GetEligibleEmployeeIdsAsync(long surveyId)
+        {
+            var audience = await _surveyAudienceRepository.GetBySurveyIdAsync(surveyId);
+
+            if (audience.Count == 0 || audience.Any(a => a.AudienceType == SurveyAudienceTypes.EntireCompany))
+                return (await _employeeRepository.GetActiveIdsAsync()).ToHashSet();
+
+            var departmentIds = audience
+                .Where(a => a.AudienceType == SurveyAudienceTypes.Department && a.DepartmentId.HasValue)
+                .Select(a => a.DepartmentId!.Value)
+                .ToList();
+            var siteIds = audience
+                .Where(a => a.AudienceType == SurveyAudienceTypes.Branch && a.BranchId.HasValue)
+                .Select(a => a.BranchId!.Value)
+                .ToList();
+
+            var recipientIds = new HashSet<long>();
+            if (departmentIds.Count > 0)
+                recipientIds.UnionWith(await _employeeRepository.GetActiveIdsByDepartmentIdsAsync(departmentIds));
+            if (siteIds.Count > 0)
+                recipientIds.UnionWith(await _employeeRepository.GetActiveIdsBySiteIdsAsync(siteIds));
+
+            return recipientIds;
+        }
+
+        /// <summary>
+        /// Isolates notification delivery from the publish operation it follows - the survey is
+        /// already durably Published by the time this runs, and with the default recipient set
+        /// being potentially every active employee company-wide, one failure shouldn't turn an
+        /// already-successful publish into a 500 or stop the remaining recipients from being
+        /// notified. Mirrors PollService.BroadcastPollResultsSafeAsync's same "isolate a
+        /// non-critical side effect" shape.
+        /// </summary>
+        private async Task NotifySurveyPublishedSafeAsync(long employeeId, Survey survey)
+        {
+            try
+            {
+                await _notificationService.CreateAsync(new NotificationCreateRequest
+                {
+                    EmployeeId = employeeId,
+                    Title = $"New survey published: {survey.Title}",
+                    Category = "Survey",
+                    RelatedEntityType = "Survey",
+                    RelatedEntityId = survey.SurveyId
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to notify employee {EmployeeId} about published survey {SurveyId}", employeeId, survey.SurveyId);
+            }
         }
 
         public async Task CloseAsync(long surveyId)
@@ -141,29 +215,124 @@ namespace SylviaNG.Community.Application.Services
                 });
             }
 
-            _surveyRepository.Delete(entity);
-            await _unitOfWork.SaveChangesAsync();
+            var questionIds = (await _surveyQuestionRepository.GetBySurveyIdAsync(surveyId))
+                .Select(q => q.QuestionId)
+                .ToList();
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // SurveyAnswer.QuestionId is a Restrict FK - SurveyQuestion already cascades from
+                // Survey, and cascading SurveyAnswer from both Survey->SurveyQuestion and
+                // Survey->SurveyResponse would create multiple cascade paths to the same table,
+                // which SQL Server rejects at schema-creation time (see SurveyAnswerConfiguration).
+                // Under Postgres this means a single Survey delete can attempt the SurveyQuestion
+                // cascade before the separate SurveyResponse->SurveyAnswer cascade removes the
+                // answers still referencing those questions, violating that Restrict FK. Deleting
+                // the answers explicitly first, as its own statement, avoids the ordering conflict.
+                if (questionIds.Count > 0)
+                {
+                    await _surveyAnswerRepository.DeleteWhereAsync(a => questionIds.Contains(a.QuestionId));
+                    await _unitOfWork.SaveChangesAsync();
+                }
+
+                _surveyRepository.Delete(entity);
+                await _unitOfWork.SaveChangesAsync();
+
+                await _unitOfWork.CommitTransactionAsync();
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
 
-        public async Task<SurveyDetailResponse> GetByIdAsync(long surveyId)
+        public async Task<SurveyDetailResponse> GetByIdAsync(long surveyId, bool isHrOrAdmin, long? employeeId)
         {
             var entity = await _surveyRepository.GetByIdAsync(surveyId)
                 ?? throw new NotFoundException("Survey", surveyId);
 
-            return entity.ToResponse();
+            await EnsureNonHrCallerIsEligibleAsync(entity, isHrOrAdmin, employeeId);
+
+            var isEligible = await IsEligibleForSurveyAsync(entity, employeeId);
+            return entity.ToResponse(isEligible);
         }
 
-        public async Task<PagedResult<SurveyDetailResponse>> GetPaginatedAsync(PagedRequest request)
+        public async Task<PagedResult<SurveyDetailResponse>> GetPaginatedAsync(PagedRequest request, long? employeeId)
         {
             var pagedResult = await _surveyRepository.GetPaginatedAsync(request);
 
+            var data = new List<SurveyDetailResponse>();
+            foreach (var survey in pagedResult.Data)
+            {
+                var isEligible = await IsEligibleForSurveyAsync(survey, employeeId);
+                data.Add(survey.ToResponse(isEligible));
+            }
+
             return new PagedResult<SurveyDetailResponse>
             {
-                Data = pagedResult.Data.Select(e => e.ToResponse()).ToList(),
+                Data = data,
                 TotalCount = pagedResult.TotalCount,
                 PageNumber = pagedResult.PageNumber,
                 PageSize = pagedResult.PageSize
             };
+        }
+
+        /// <summary>
+        /// Whether the given employee's own department/branch actually matches this survey's
+        /// audience (see GetEligibleEmployeeIdsAsync) - used to decide SurveyDetailResponse.IsEligible,
+        /// which the frontend uses to show/hide "Take Survey". Only ever true for a Published survey:
+        /// a Draft/Closed survey can't be responded to regardless of audience match (see
+        /// SubmitResponseAsync), so there's no point resolving audience membership for one - this also
+        /// avoids the extra query for every Draft/Closed row in a large HR "all surveys" list.
+        /// </summary>
+        private async Task<bool> IsEligibleForSurveyAsync(Survey survey, long? employeeId)
+        {
+            if (!employeeId.HasValue || survey.Status != "Published") return false;
+
+            var eligibleIds = await GetEligibleEmployeeIdsAsync(survey.SurveyId);
+            return eligibleIds.Contains(employeeId.Value);
+        }
+
+        /// <summary>
+        /// Employee-facing "surveys I can see" list (US: department/branch-targeted surveys must
+        /// only be visible to employees in that department/branch). Draft is never included - a
+        /// non-HR caller has no legitimate reason to see a survey still being authored, regardless
+        /// of its eventual audience. Published and Closed surveys are both included so an eligible
+        /// employee can still review one after it closes.
+        /// </summary>
+        public async Task<List<SurveyDetailResponse>> GetEligibleAsync(long employeeId)
+        {
+            var candidateSurveys = (await _surveyRepository.FindAsync(s => s.Status != "Draft")).ToList();
+            var result = new List<SurveyDetailResponse>();
+
+            foreach (var survey in candidateSurveys)
+            {
+                var eligibleIds = await GetEligibleEmployeeIdsAsync(survey.SurveyId);
+                if (eligibleIds.Contains(employeeId))
+                    result.Add(survey.ToResponse(true));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Shared by GetByIdAsync/GetQuestionsAsync: an HR/Admin caller bypasses entirely (they
+        /// manage surveys of any status/audience); a non-HR caller may never see a Draft survey, and
+        /// otherwise must be in its audience's eligible-employee set.
+        /// </summary>
+        private async Task EnsureNonHrCallerIsEligibleAsync(Survey survey, bool isHrOrAdmin, long? employeeId)
+        {
+            if (isHrOrAdmin)
+                return;
+
+            if (survey.Status == "Draft")
+                throw new ForbiddenException("You do not have access to this survey.");
+
+            var eligibleIds = await GetEligibleEmployeeIdsAsync(survey.SurveyId);
+            if (employeeId is null || !eligibleIds.Contains(employeeId.Value))
+                throw new ForbiddenException("You do not have access to this survey.");
         }
 
         /// <summary>
@@ -259,8 +428,12 @@ namespace SylviaNG.Community.Application.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task<List<SurveyQuestionResponse>> GetQuestionsAsync(long surveyId)
+        public async Task<List<SurveyQuestionResponse>> GetQuestionsAsync(long surveyId, bool isHrOrAdmin, long? employeeId)
         {
+            var survey = await _surveyRepository.GetByIdAsync(surveyId)
+                ?? throw new NotFoundException("Survey", surveyId);
+            await EnsureNonHrCallerIsEligibleAsync(survey, isHrOrAdmin, employeeId);
+
             var questions = await _surveyQuestionRepository.GetBySurveyIdAsync(surveyId);
             if (questions.Count == 0)
                 return new List<SurveyQuestionResponse>();
@@ -305,10 +478,10 @@ namespace SylviaNG.Community.Application.Services
         private async Task ValidateAnswersAsync(long surveyId, List<SurveyAnswerSubmitRequest> answers)
         {
             var questions = await _surveyQuestionRepository.GetBySurveyIdAsync(surveyId);
-            var questionIds = questions.Select(q => q.QuestionId).ToHashSet();
+            var questionsById = questions.ToDictionary(q => q.QuestionId);
 
-            var options = questionIds.Count > 0
-                ? await _surveyOptionRepository.GetByQuestionIdsAsync(questionIds)
+            var options = questionsById.Count > 0
+                ? await _surveyOptionRepository.GetByQuestionIdsAsync(questionsById.Keys)
                 : new List<SurveyOption>();
             var optionIdsByQuestion = options
                 .GroupBy(o => o.QuestionId)
@@ -318,7 +491,7 @@ namespace SylviaNG.Community.Application.Services
 
             foreach (var answer in answers)
             {
-                if (!questionIds.Contains(answer.QuestionId))
+                if (!questionsById.TryGetValue(answer.QuestionId, out var question))
                 {
                     failures.Add(new FluentValidation.Results.ValidationFailure(nameof(answer.QuestionId),
                         $"Question {answer.QuestionId} does not belong to this survey."));
@@ -331,6 +504,23 @@ namespace SylviaNG.Community.Application.Services
                 {
                     failures.Add(new FluentValidation.Results.ValidationFailure(nameof(answer.OptionId),
                         $"Option {answer.OptionId} does not belong to question {answer.QuestionId}."));
+                }
+
+                // Each question type is answered through a specific field on SurveyAnswerSubmitRequest -
+                // OptionId for choice types, AnswerText for Text, RatingValue for Rating. This catches a
+                // mismatch (e.g. a Rating question answered with AnswerText) that FluentValidation can't
+                // express since it has no visibility into QuestionType.
+                var hasExpectedAnswerField = question.QuestionType switch
+                {
+                    SurveyQuestionTypes.Rating => answer.RatingValue.HasValue,
+                    SurveyQuestionTypes.Text => !string.IsNullOrWhiteSpace(answer.AnswerText),
+                    SurveyQuestionTypes.SingleChoice or SurveyQuestionTypes.MultipleChoice => answer.OptionId.HasValue,
+                    _ => true
+                };
+                if (!hasExpectedAnswerField)
+                {
+                    failures.Add(new FluentValidation.Results.ValidationFailure(nameof(answer.QuestionId),
+                        $"Question {answer.QuestionId} is a {question.QuestionType} question and was not answered with the expected answer type."));
                 }
             }
 
@@ -369,6 +559,10 @@ namespace SylviaNG.Community.Application.Services
                         "Responses can only be submitted to a Published survey.")
                 });
             }
+
+            var eligibleIds = await GetEligibleEmployeeIdsAsync(surveyId);
+            if (!eligibleIds.Contains(employeeId))
+                throw new ForbiddenException("You are not eligible to respond to this survey.");
 
             var alreadyResponded = await _surveyResponseRepository.ExistsAsync(surveyId, employeeId);
             if (alreadyResponded)
@@ -415,10 +609,28 @@ namespace SylviaNG.Community.Application.Services
                 : new List<SurveyAnswer>();
             var answersByResponse = answers.GroupBy(a => a.ResponseId).ToDictionary(g => g.Key, g => g.ToList());
 
+            // SurveyResponse doesn't carry the respondent's name - resolve it from Employee, deduped
+            // per distinct EmployeeId on this page (same batch-lookup shape as
+            // ChatMessageService.BuildAttachmentGalleryAsync's sendersById). Skipped for anonymous
+            // surveys, where the mapper never exposes the name anyway.
+            var namesByEmployeeId = new Dictionary<long, string?>();
+            if (!survey.IsAnonymous)
+            {
+                var employeeIds = pagedResult.Data.Select(r => r.EmployeeId).Distinct();
+                foreach (var employeeId in employeeIds)
+                {
+                    var employee = await _employeeRepository.GetByIdAsync(employeeId);
+                    namesByEmployeeId[employeeId] = employee?.EmployeeName;
+                }
+            }
+
             return new PagedResult<SurveySubmissionResponse>
             {
                 Data = pagedResult.Data
-                    .Select(r => r.ToResponse(survey.IsAnonymous, answersByResponse.TryGetValue(r.ResponseId, out var ans) ? ans : null))
+                    .Select(r => r.ToResponse(
+                        survey.IsAnonymous,
+                        namesByEmployeeId.TryGetValue(r.EmployeeId, out var name) ? name : null,
+                        answersByResponse.TryGetValue(r.ResponseId, out var ans) ? ans : null))
                     .ToList(),
                 TotalCount = pagedResult.TotalCount,
                 PageNumber = pagedResult.PageNumber,

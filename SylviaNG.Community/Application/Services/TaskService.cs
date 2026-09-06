@@ -21,6 +21,7 @@ namespace SylviaNG.Community.Application.Services
         private readonly ITeamMemberRepository _teamMemberRepository;
         private readonly IRecurringTaskRepository _recurringTaskRepository;
         private readonly IEmployeeRepository _employeeRepository;
+        private readonly IFileStorageRepository _fileStorageRepository;
         private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
 
@@ -33,6 +34,7 @@ namespace SylviaNG.Community.Application.Services
             ITeamMemberRepository teamMemberRepository,
             IRecurringTaskRepository recurringTaskRepository,
             IEmployeeRepository employeeRepository,
+            IFileStorageRepository fileStorageRepository,
             INotificationService notificationService,
             IUnitOfWork unitOfWork)
         {
@@ -44,6 +46,7 @@ namespace SylviaNG.Community.Application.Services
             _teamMemberRepository = teamMemberRepository;
             _recurringTaskRepository = recurringTaskRepository;
             _employeeRepository = employeeRepository;
+            _fileStorageRepository = fileStorageRepository;
             _notificationService = notificationService;
             _unitOfWork = unitOfWork;
         }
@@ -363,7 +366,13 @@ namespace SylviaNG.Community.Application.Services
 
             await EnsureParticipantAccessAsync(task, callerEmployeeId, isHrOrAdmin);
 
-            var entity = request.ToEntity(taskId);
+            if (request.FileStorageId.HasValue)
+            {
+                _ = await _fileStorageRepository.GetByIdAsync(request.FileStorageId.Value)
+                    ?? throw new NotFoundException("FileStorage", request.FileStorageId.Value);
+            }
+
+            var entity = request.ToEntity(taskId, callerEmployeeId ?? 0);
             await _taskAttachmentRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 

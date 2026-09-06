@@ -8,4 +8,5 @@ public class ListingImage : Audit
     public long ListingId { get; set; }
     public string ImageUrl { get; set; } = string.Empty;
     public int DisplayOrder { get; set; }
+    public long? FileStorageId { get; set; }
 }

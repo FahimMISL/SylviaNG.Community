@@ -6,10 +6,14 @@ namespace SylviaNG.Community.Application.Features.Teams.Queries.TeamGetById
     public class TeamGetByIdQuery : IRequest<TeamResponse>
     {
         public long TeamId { get; set; }
+        public long? CallerEmployeeId { get; set; }
+        public bool IsHrOrAdmin { get; set; }
 
-        public TeamGetByIdQuery(long teamId)
+        public TeamGetByIdQuery(long teamId, long? callerEmployeeId, bool isHrOrAdmin)
         {
             TeamId = teamId;
+            CallerEmployeeId = callerEmployeeId;
+            IsHrOrAdmin = isHrOrAdmin;
         }
     }
 }

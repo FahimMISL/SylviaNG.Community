@@ -17,6 +17,7 @@ public class PostServiceTests
 {
     private readonly Mock<IPostRepository> _postRepositoryMock;
     private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
+    private readonly Mock<IGroupRepository> _groupRepositoryMock;
     private readonly Mock<IGroupMemberRepository> _groupMemberRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IMentionService> _mentionServiceMock;
@@ -26,10 +27,17 @@ public class PostServiceTests
     {
         _postRepositoryMock = new Mock<IPostRepository>();
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
+        _groupRepositoryMock = new Mock<IGroupRepository>();
         _groupMemberRepositoryMock = new Mock<IGroupMemberRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _mentionServiceMock = new Mock<IMentionService>();
-        _service = new PostService(_postRepositoryMock.Object, _employeeRepositoryMock.Object, _groupMemberRepositoryMock.Object, _unitOfWorkMock.Object, _mentionServiceMock.Object);
+        _service = new PostService(
+            _postRepositoryMock.Object,
+            _employeeRepositoryMock.Object,
+            _groupRepositoryMock.Object,
+            _groupMemberRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _mentionServiceMock.Object);
     }
 
     [Fact]
@@ -254,10 +262,99 @@ public class PostServiceTests
         _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Post?)null);
 
         // Act
-        var act = () => _service.GetByIdAsync(1);
+        var act = () => _service.GetByIdAsync(1, callerEmployeeId: 2, isHrOrAdmin: false);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenNonGroupPost_ShouldReturnContentAndCanViewTrue()
+    {
+        // Arrange
+        var post = new Post { PostId = 1, EmployeeId = 1, Content = "Hello", GroupId = null };
+        _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(post);
+
+        // Act
+        var result = await _service.GetByIdAsync(1, callerEmployeeId: 2, isHrOrAdmin: false);
+
+        // Assert
+        result.CanView.Should().BeTrue();
+        result.Content.Should().Be("Hello");
+        _groupRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<long>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenPrivateGroupPostAndCallerNotMember_ShouldHideContentButRevealGroupName()
+    {
+        // Arrange
+        var post = new Post { PostId = 1, EmployeeId = 1, Content = "Secret", GroupId = 5 };
+        var group = new Group { GroupId = 5, Name = "Leadership Team", Visibility = GroupVisibilityEnum.Private };
+        _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(post);
+        _groupRepositoryMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(group);
+        _groupMemberRepositoryMock.Setup(r => r.GetActiveAsync(5, 2)).ReturnsAsync((GroupMember?)null);
+
+        // Act
+        var result = await _service.GetByIdAsync(1, callerEmployeeId: 2, isHrOrAdmin: false);
+
+        // Assert
+        result.CanView.Should().BeFalse();
+        result.Content.Should().BeNull();
+        result.GroupName.Should().Be("Leadership Team");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenPrivateGroupPostAndCallerIsMember_ShouldReturnContent()
+    {
+        // Arrange
+        var post = new Post { PostId = 1, EmployeeId = 1, Content = "Secret", GroupId = 5 };
+        var group = new Group { GroupId = 5, Name = "Leadership Team", Visibility = GroupVisibilityEnum.Private };
+        _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(post);
+        _groupRepositoryMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(group);
+        _groupMemberRepositoryMock.Setup(r => r.GetActiveAsync(5, 2)).ReturnsAsync(new GroupMember { GroupId = 5, EmployeeId = 2 });
+
+        // Act
+        var result = await _service.GetByIdAsync(1, callerEmployeeId: 2, isHrOrAdmin: false);
+
+        // Assert
+        result.CanView.Should().BeTrue();
+        result.Content.Should().Be("Secret");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenPrivateGroupPostAndCallerIsHrOrAdmin_ShouldReturnContent()
+    {
+        // Arrange
+        var post = new Post { PostId = 1, EmployeeId = 1, Content = "Secret", GroupId = 5 };
+        var group = new Group { GroupId = 5, Name = "Leadership Team", Visibility = GroupVisibilityEnum.Private };
+        _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(post);
+        _groupRepositoryMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(group);
+
+        // Act
+        var result = await _service.GetByIdAsync(1, callerEmployeeId: 99, isHrOrAdmin: true);
+
+        // Assert
+        result.CanView.Should().BeTrue();
+        result.Content.Should().Be("Secret");
+        _groupMemberRepositoryMock.Verify(r => r.GetActiveAsync(It.IsAny<long>(), It.IsAny<long>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenPublicGroupPostAndCallerNotMember_ShouldReturnContent()
+    {
+        // Arrange
+        var post = new Post { PostId = 1, EmployeeId = 1, Content = "Hello", GroupId = 5 };
+        var group = new Group { GroupId = 5, Name = "Book Club", Visibility = GroupVisibilityEnum.Public };
+        _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(post);
+        _groupRepositoryMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(group);
+
+        // Act
+        var result = await _service.GetByIdAsync(1, callerEmployeeId: 2, isHrOrAdmin: false);
+
+        // Assert
+        result.CanView.Should().BeTrue();
+        result.Content.Should().Be("Hello");
+        result.GroupName.Should().Be("Book Club");
     }
 
     [Fact]

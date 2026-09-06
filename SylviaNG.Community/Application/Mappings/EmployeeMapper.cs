@@ -20,9 +20,17 @@ namespace SylviaNG.Community.Application.Mappings
             DesignatioId = request.DesignationId,
             DepartmentId = request.DepartmentId,
             SiteId = request.SiteId,
-            DateOfJoining = DateOnly.FromDateTime(request.DateOfJoining),
+            DateOfJoining = request.DateOfJoining,
+            DateOfBirth = request.DateOfBirth,
             IsActive = true
         };
+
+        public static void ApplyUpdate(this Employee entity, EmployeeUpdateRequest request)
+        {
+            entity.Email = request.Email;
+            entity.DateOfBirth = request.DateOfBirth;
+            entity.DateOfJoining = request.DateOfJoining;
+        }
 
         public static void ApplyProfileUpdate(this Employee entity, EmployeeUpdateProfileRequest request)
         {
@@ -31,7 +39,7 @@ namespace SylviaNG.Community.Application.Mappings
             entity.Interests = request.Interests;
             entity.Achievements = request.Achievements;
             entity.CommunityContributions = request.CommunityContributions;
-            entity.DateOfBirth = request.DateOfBirth.HasValue ? DateOnly.FromDateTime(request.DateOfBirth.Value) : null;
+            entity.DateOfBirth = request.DateOfBirth;
             entity.Phone = request.Phone;
             entity.Email = request.Email;
             entity.Extension = request.Extension;
@@ -73,6 +81,7 @@ namespace SylviaNG.Community.Application.Mappings
                 CoverPhotoUrl = entity.CoverPhotoUrl,
                 IsActive = entity.IsActive,
                 DateOfBirth = canSeePrivate ? entity.DateOfBirth : null,
+                DateOfJoining = canSeePrivate ? entity.DateOfJoining : null,
                 Phone = canSeePrivate || entity.PhoneVisibility == ContactVisibilityEnum.Public ? entity.Phone : null,
                 Email = canSeePrivate || entity.EmailVisibility == ContactVisibilityEnum.Public ? entity.Email : null,
                 Extension = canSeePrivate || entity.ExtensionVisibility == ContactVisibilityEnum.Public ? entity.Extension : null,

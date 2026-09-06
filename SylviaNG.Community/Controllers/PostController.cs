@@ -37,7 +37,8 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("{postId}")]
         public async Task<ActionResult<PostResponse>> GetById(long postId)
         {
-            var result = await _mediator.Send(new PostGetByIdQuery(postId));
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            var result = await _mediator.Send(new PostGetByIdQuery(postId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok(result);
         }
 

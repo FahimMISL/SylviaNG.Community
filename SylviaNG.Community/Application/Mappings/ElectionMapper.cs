@@ -137,7 +137,6 @@ namespace SylviaNG.Community.Application.Mappings
                 TeamId = request.TeamId,
                 CandidateType = request.CandidateType,
                 Manifesto = request.Manifesto,
-                IsApproved = false,
                 NominatedAt = DateTime.UtcNow
             };
         }
@@ -152,7 +151,6 @@ namespace SylviaNG.Community.Application.Mappings
                 TeamId = entity.TeamId,
                 CandidateType = entity.CandidateType,
                 Manifesto = entity.Manifesto,
-                IsApproved = entity.IsApproved,
                 NominatedAt = entity.NominatedAt
             };
         }

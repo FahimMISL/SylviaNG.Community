@@ -373,6 +373,112 @@ namespace SylviaNG.Community.Application.Services
             await NotifyModeratorsAsync("A chat message was reported", $"{reporterName} reported a message: {reason}", report.ChatReportId);
         }
 
+        public async Task SetPinnedAsync(long chatMessageId, long callerEmployeeId, bool isPinned)
+        {
+            var message = await _chatMessageRepository.GetByIdAsync(chatMessageId)
+                ?? throw new NotFoundException("ChatMessage", chatMessageId);
+
+            var isParticipant = await _chatParticipantRepository.IsActiveParticipantAsync(message.ChatConversationId, callerEmployeeId);
+            if (!isParticipant)
+                throw new ForbiddenException("You are not a participant of this conversation.");
+
+            message.IsPinned = isPinned;
+            message.PinnedAt = isPinned ? DateTime.UtcNow : null;
+            message.PinnedByEmployeeId = isPinned ? callerEmployeeId : null;
+            _chatMessageRepository.Update(message);
+            await _unitOfWork.SaveChangesAsync();
+
+            await _messengerBroadcaster.BroadcastMessagePinnedAsync(message.ChatConversationId, chatMessageId, isPinned, message.PinnedByEmployeeId);
+        }
+
+        public async Task<List<ChatMessageResponse>> GetPinnedMessagesAsync(long conversationId, long callerEmployeeId)
+        {
+            var isParticipant = await _chatParticipantRepository.IsActiveParticipantAsync(conversationId, callerEmployeeId);
+            if (!isParticipant)
+                throw new ForbiddenException("You are not a participant of this conversation.");
+
+            var pinned = await _chatMessageRepository.GetPinnedByConversationIdAsync(conversationId);
+            var pagedResult = await BuildResponsePageAsync(new PagedResult<ChatMessage>
+            {
+                Data = pinned,
+                PageNumber = 1,
+                PageSize = pinned.Count,
+                TotalCount = pinned.Count
+            });
+
+            return pagedResult.Data;
+        }
+
+        public async Task<PagedResult<ChatMessageAttachmentGalleryItemResponse>> GetMediaAndFilesPagedAsync(long conversationId, long callerEmployeeId, PagedRequest request)
+        {
+            var isParticipant = await _chatParticipantRepository.IsActiveParticipantAsync(conversationId, callerEmployeeId);
+            if (!isParticipant)
+                throw new ForbiddenException("You are not a participant of this conversation.");
+
+            var pagedResult = await _chatMessageAttachmentRepository.GetByConversationPagedAsync(conversationId, request);
+
+            // Attachments don't carry their own conversation/sender/sentAt - batch-resolve the
+            // owning messages (and their senders) the same way BuildResponsePageAsync batches
+            // FileStorage rows, rather than a per-item round trip.
+            var messageIds = pagedResult.Data.Select(a => a.ChatMessageId).Distinct().ToList();
+            var messagesById = new Dictionary<long, ChatMessage>();
+            foreach (var messageId in messageIds)
+            {
+                var message = await _chatMessageRepository.GetByIdAsync(messageId);
+                if (message != null) messagesById[messageId] = message;
+            }
+
+            var senderIds = messagesById.Values.Select(m => m.SenderEmployeeId).Distinct().ToList();
+            var sendersById = new Dictionary<long, Employee>();
+            foreach (var senderId in senderIds)
+            {
+                var employee = await _employeeRepository.GetByIdAsync(senderId);
+                if (employee != null) sendersById[senderId] = employee;
+            }
+
+            var files = new Dictionary<long, FileStorage>();
+            foreach (var attachment in pagedResult.Data)
+            {
+                if (files.ContainsKey(attachment.FileStorageId)) continue;
+                var file = await _fileStorageRepository.GetByIdAsync(attachment.FileStorageId);
+                if (file != null) files[attachment.FileStorageId] = file;
+            }
+
+            var items = pagedResult.Data
+                .Where(a => files.ContainsKey(a.FileStorageId) && messagesById.ContainsKey(a.ChatMessageId))
+                .Select(a =>
+                {
+                    var file = files[a.FileStorageId];
+                    var message = messagesById[a.ChatMessageId];
+                    var senderName = sendersById.TryGetValue(message.SenderEmployeeId, out var sender) ? sender.EmployeeName ?? "Unknown" : "Unknown";
+
+                    return new ChatMessageAttachmentGalleryItemResponse
+                    {
+                        ChatMessageAttachmentId = a.ChatMessageAttachmentId,
+                        ChatMessageId = a.ChatMessageId,
+                        FileStorageId = a.FileStorageId,
+                        OriginalFileName = file.OriginalFileName,
+                        StoragePath = file.StoragePath,
+                        MimeType = file.MimeType,
+                        FileSize = file.FileSize,
+                        AttachmentType = a.AttachmentType,
+                        DurationSeconds = a.DurationSeconds,
+                        SenderEmployeeId = message.SenderEmployeeId,
+                        SenderName = senderName,
+                        SentAt = message.SentAt
+                    };
+                })
+                .ToList();
+
+            return new PagedResult<ChatMessageAttachmentGalleryItemResponse>
+            {
+                Data = items,
+                PageNumber = pagedResult.PageNumber,
+                PageSize = pagedResult.PageSize,
+                TotalCount = pagedResult.TotalCount
+            };
+        }
+
         private async Task<PagedResult<ChatMessageResponse>> BuildResponsePageAsync(PagedResult<ChatMessage> pagedResult)
         {
             var messageIds = pagedResult.Data.Select(m => m.ChatMessageId).ToList();

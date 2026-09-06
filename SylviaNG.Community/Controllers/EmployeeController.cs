@@ -1,8 +1,10 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeActivate;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeCreate;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeDeactivate;
+using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdate;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdateCoverPhoto;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdatePhoto;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdateProfile;
@@ -106,6 +108,21 @@ namespace SylviaNG.Community.Controllers
         }
 
         /// <summary>
+        /// HR/Admin edit of an employee's locally-owned details - Email, Date of Birth, Date of
+        /// Joining. Distinct from the self-service UpdateProfile endpoint above (which is
+        /// restricted to the profile owner). Department/Designation/Site/Name are intentionally
+        /// excluded - they're synced from the upstream Core/Employee service via Kafka (see
+        /// EmployeeEventConsumer) and any local edit here would be overwritten by the next sync.
+        /// </summary>
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpPut("{employeeId}/details")]
+        public async Task<ActionResult> UpdateDetails(long employeeId, [FromBody] EmployeeUpdateRequest request)
+        {
+            await _mediator.Send(new EmployeeUpdateCommand(employeeId, request));
+            return Ok();
+        }
+
+        /// <summary>
         /// Set my own profile photo. StoragePath must come from a prior POST community/file-upload
         /// call (module "employee-photo").
         /// </summary>
@@ -135,6 +152,17 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult> Deactivate(long employeeId)
         {
             await _mediator.Send(new EmployeeDeactivateCommand(employeeId));
+            return Ok();
+        }
+
+        /// <summary>
+        /// Reactivate a previously deactivated employee (mirrors Deactivate).
+        /// </summary>
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpPut("{employeeId}/activate")]
+        public async Task<ActionResult> Activate(long employeeId)
+        {
+            await _mediator.Send(new EmployeeActivateCommand(employeeId));
             return Ok();
         }
     }

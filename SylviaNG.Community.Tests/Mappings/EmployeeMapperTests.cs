@@ -119,7 +119,7 @@ public class EmployeeMapperTests
     public void ToEntity_ShouldMapDateOfJoining()
     {
         // Arrange
-        var request = new EmployeeCreateRequest { EmployeeName = "Ayesha", Email = "a@example.com", DateOfJoining = new DateTime(2026, 3, 15) };
+        var request = new EmployeeCreateRequest { EmployeeName = "Ayesha", Email = "a@example.com", DateOfJoining = new DateOnly(2026, 3, 15) };
 
         // Act
         var entity = request.ToEntity();
@@ -133,7 +133,7 @@ public class EmployeeMapperTests
     {
         // Arrange
         var entity = new Employee { EmployeeId = 1, DateOfBirth = null };
-        var request = new EmployeeUpdateProfileRequest { DateOfBirth = new DateTime(1995, 6, 20) };
+        var request = new EmployeeUpdateProfileRequest { DateOfBirth = new DateOnly(1995, 6, 20) };
 
         // Act
         entity.ApplyProfileUpdate(request);

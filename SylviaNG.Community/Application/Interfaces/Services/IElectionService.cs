@@ -21,8 +21,10 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         Task<List<ElectionAudienceTargetResponse>> GetAudienceTargetsAsync(long electionId);
 
         Task<long> NominateAsync(long electionId, ElectionCandidateNominateRequest request);
+
+        /// <summary>Nominates every active employee matching a scope (Organization/Branch/Department/Team) at once; returns the count newly nominated (already-nominated employees are skipped).</summary>
+        Task<int> NominateBulkAsync(long electionId, ElectionCandidateNominateBulkRequest request);
         Task<List<ElectionCandidateResponse>> GetCandidatesAsync(long electionId);
-        Task ApproveCandidateAsync(long electionId, long candidateId);
 
         /// <summary>Casts one ballot (possibly selecting several candidates); returns the created vote row ids.</summary>
         Task<List<long>> CastVoteAsync(long electionId, ElectionVoteCastRequest request, long voterId);

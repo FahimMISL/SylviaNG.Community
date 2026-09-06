@@ -28,9 +28,9 @@ namespace SylviaNG.Community.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<int> CountApprovedAsync(long electionId)
+        public async Task<int> CountAsync(long electionId)
         {
-            return await _dbSet.CountAsync(c => c.ElectionId == electionId && c.IsApproved);
+            return await _dbSet.CountAsync(c => c.ElectionId == electionId);
         }
     }
 }

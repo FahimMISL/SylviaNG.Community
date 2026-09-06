@@ -16,7 +16,7 @@ namespace SylviaNG.Community.Application.Features.FileStorages.Queries.FileStora
 
         public async Task<PagedResult<FileStorageResponse>> Handle(FileStorageGetAllPagedQuery query, CancellationToken cancellationToken)
         {
-            return await _fileStorageService.GetPaginatedAsync(query.Request, query.Module, query.EntityId);
+            return await _fileStorageService.GetPaginatedAsync(query.Request, query.Module, query.EntityId, query.UploadedBy);
         }
     }
 }

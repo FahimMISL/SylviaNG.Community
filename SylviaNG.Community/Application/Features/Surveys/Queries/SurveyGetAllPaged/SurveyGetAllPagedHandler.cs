@@ -16,7 +16,7 @@ namespace SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetAllPa
 
         public async Task<PagedResult<SurveyDetailResponse>> Handle(SurveyGetAllPagedQuery query, CancellationToken cancellationToken)
         {
-            return await _surveyService.GetPaginatedAsync(query.Request);
+            return await _surveyService.GetPaginatedAsync(query.Request, query.EmployeeId);
         }
     }
 }

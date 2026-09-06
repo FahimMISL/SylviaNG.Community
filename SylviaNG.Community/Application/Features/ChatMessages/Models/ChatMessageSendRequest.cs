@@ -8,5 +8,7 @@ namespace SylviaNG.Community.Application.Features.ChatMessages.Models
         public MessageTypeEnum MessageType { get; set; } = MessageTypeEnum.Text;
         public List<ChatMessageAttachmentRequest> Attachments { get; set; } = new();
         public long? ReplyToMessageId { get; set; }
+        public SharedContentTypeEnum? SharedContentType { get; set; }
+        public long? SharedContentId { get; set; }
     }
 }

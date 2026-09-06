@@ -38,5 +38,18 @@ namespace SylviaNG.Community.Application.Interfaces.Services
 
         /// <summary>Admin-only: updates a group conversation's title and/or photo. Throws if the conversation isn't a Group, or the caller isn't an admin participant.</summary>
         Task UpdateGroupAsync(long conversationId, ChatConversationUpdateGroupRequest request, long callerEmployeeId);
+
+        /// <summary>
+        /// Adds one or more employees to a group. Any active participant may call this unless
+        /// the group's OnlyAdminsCanAddMembers setting is on, in which case only admins can.
+        /// A previously-left employee is reactivated (LeftAt cleared) rather than duplicated.
+        /// </summary>
+        Task AddParticipantsAsync(long conversationId, List<long> employeeIds, long callerEmployeeId);
+
+        /// <summary>Creator-only: flips whether adding members is restricted to admins.</summary>
+        Task SetAddMemberPermissionAsync(long conversationId, bool onlyAdminsCanAddMembers, long callerEmployeeId);
+
+        /// <summary>Creator-only: promotes/demotes another active participant's admin status.</summary>
+        Task SetParticipantAdminAsync(long conversationId, long targetEmployeeId, bool isAdmin, long callerEmployeeId);
     }
 }

@@ -19,7 +19,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddGrpcServices(builder.Configuration);
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        // Mirrors the MVC pipeline's JsonStringEnumConverter registration below - without this,
+        // SignalR's JsonHubProtocol falls back to raw numeric enum values (e.g. AttachmentType 0
+        // instead of "Image"), which breaks any client-side template that string-matches enum
+        // fields on a live-pushed payload while the same field via REST correctly reads as text.
+        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddSingleton<IUserIdProvider, NotificationUserIdProvider>();
 builder.Services.AddHostedService<ElectionAutoCloseBackgroundService>();
 

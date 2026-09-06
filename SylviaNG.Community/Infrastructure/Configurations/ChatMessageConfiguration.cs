@@ -24,6 +24,7 @@ namespace SylviaNG.Community.Infrastructure.Configurations
 
             builder.HasIndex(m => new { m.ChatConversationId, m.SentAt });
             builder.HasIndex(m => m.SenderEmployeeId);
+            builder.HasIndex(m => new { m.ChatConversationId, m.IsPinned });
 
             // Messages survive their conversation being referenced elsewhere but belong
             // strictly to one conversation - restrict rather than cascade, consistent with

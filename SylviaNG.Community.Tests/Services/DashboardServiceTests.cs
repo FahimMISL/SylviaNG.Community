@@ -63,17 +63,17 @@ public class DashboardServiceTests
             });
 
         _recognitionServiceMock.Setup(s => s.GetPaginatedAsync(
-                It.IsAny<PagedRequest>(), null, employeeId, employeeId, false))
+                It.IsAny<PagedRequest>(), null, employeeId, null, employeeId, false))
             .ReturnsAsync(new PagedResult<RecognitionResponse> { TotalCount = 5 });
 
-        _surveyServiceMock.Setup(s => s.GetPaginatedAsync(It.IsAny<PagedRequest>()))
+        _surveyServiceMock.Setup(s => s.GetPaginatedAsync(It.IsAny<PagedRequest>(), employeeId))
             .ReturnsAsync(new PagedResult<SurveyDetailResponse>
             {
                 Data = new List<SurveyDetailResponse>
                 {
-                    new() { SurveyId = 1, Status = "Published" }, // already responded - excluded
-                    new() { SurveyId = 2, Status = "Published" }, // not responded - counted
-                    new() { SurveyId = 3, Status = "Draft" },     // not Published - excluded
+                    new() { SurveyId = 1, Status = "Published", IsEligible = true },  // already responded - excluded
+                    new() { SurveyId = 2, Status = "Published", IsEligible = true },  // not responded - counted
+                    new() { SurveyId = 3, Status = "Draft", IsEligible = false },     // not eligible/not Published - excluded
                 }
             });
 
@@ -91,6 +91,43 @@ public class DashboardServiceTests
         result.RecognitionsReceivedCount.Should().Be(5);
         result.PendingSurveyCount.Should().Be(1); // only survey 2
         result.RecentNotifications.Should().BeEquivalentTo(recentNotifications);
+    }
+
+    [Fact]
+    public async Task GetEmployeeSummaryAsync_ShouldExcludePublishedSurveysOutsideCallersAudience()
+    {
+        // Arrange - reproduces the "why can't HR take Sur D1" bug: a Published survey the caller
+        // can see (e.g. because they're HR/Admin, or it's just in the full list) but isn't actually
+        // eligible to respond to (a different department/branch) must not inflate PendingSurveyCount.
+        const long employeeId = 7;
+
+        _dashboardRepositoryMock.Setup(r => r.GetTeamCountForEmployeeAsync(employeeId)).ReturnsAsync(0);
+        _dashboardRepositoryMock.Setup(r => r.IsSupervisorOfAnyTeamAsync(employeeId)).ReturnsAsync(false);
+        _dashboardRepositoryMock.Setup(r => r.GetRespondedSurveyIdsAsync(employeeId)).ReturnsAsync(new HashSet<long>());
+
+        _taskServiceMock.Setup(s => s.GetMyPaginatedAsync(It.IsAny<TaskFilterRequest>(), employeeId))
+            .ReturnsAsync(new PagedResult<TaskResponse>());
+        _recognitionServiceMock.Setup(s => s.GetPaginatedAsync(
+                It.IsAny<PagedRequest>(), null, employeeId, null, employeeId, false))
+            .ReturnsAsync(new PagedResult<RecognitionResponse>());
+        _notificationServiceMock.Setup(s => s.GetPaginatedAsync(employeeId, It.IsAny<NotificationFilterRequest>()))
+            .ReturnsAsync(new PagedResult<NotificationResponse>());
+
+        _surveyServiceMock.Setup(s => s.GetPaginatedAsync(It.IsAny<PagedRequest>(), employeeId))
+            .ReturnsAsync(new PagedResult<SurveyDetailResponse>
+            {
+                Data = new List<SurveyDetailResponse>
+                {
+                    new() { SurveyId = 1, Status = "Published", IsEligible = true },   // eligible - counted
+                    new() { SurveyId = 2, Status = "Published", IsEligible = false },  // Published but outside caller's department/branch - excluded
+                }
+            });
+
+        // Act
+        var result = await _service.GetEmployeeSummaryAsync(employeeId);
+
+        // Assert
+        result.PendingSurveyCount.Should().Be(1);
     }
 
     [Fact]
@@ -115,7 +152,7 @@ public class DashboardServiceTests
     public async Task GetAdminSummaryAsync_ShouldAverageOnlyNonNullParticipationRates()
     {
         // Arrange
-        _surveyServiceMock.Setup(s => s.GetPaginatedAsync(It.IsAny<PagedRequest>()))
+        _surveyServiceMock.Setup(s => s.GetPaginatedAsync(It.IsAny<PagedRequest>(), null))
             .ReturnsAsync(new PagedResult<SurveyDetailResponse>
             {
                 Data = new List<SurveyDetailResponse>
@@ -133,7 +170,7 @@ public class DashboardServiceTests
 
         var recentRecognitions = new List<RecognitionResponse> { new() { RecognitionId = 1 } };
         _recognitionServiceMock.Setup(s => s.GetPaginatedAsync(
-                It.IsAny<PagedRequest>(), null, null, null, true))
+                It.IsAny<PagedRequest>(), null, null, null, null, true))
             .ReturnsAsync(new PagedResult<RecognitionResponse> { Data = recentRecognitions });
 
         _marketplaceServiceMock.Setup(s => s.GetListingsPagedAsync(
@@ -154,7 +191,7 @@ public class DashboardServiceTests
     public async Task GetAdminSummaryAsync_WithNoComputableParticipationRate_ShouldReturnNullAverage()
     {
         // Arrange
-        _surveyServiceMock.Setup(s => s.GetPaginatedAsync(It.IsAny<PagedRequest>()))
+        _surveyServiceMock.Setup(s => s.GetPaginatedAsync(It.IsAny<PagedRequest>(), null))
             .ReturnsAsync(new PagedResult<SurveyDetailResponse>
             {
                 Data = new List<SurveyDetailResponse> { new() { SurveyId = 1, Status = "Published" } }
@@ -164,7 +201,7 @@ public class DashboardServiceTests
             .ReturnsAsync(new SurveyResultsResponse { SurveyId = 1, ParticipationRate = null });
 
         _recognitionServiceMock.Setup(s => s.GetPaginatedAsync(
-                It.IsAny<PagedRequest>(), null, null, null, true))
+                It.IsAny<PagedRequest>(), null, null, null, null, true))
             .ReturnsAsync(new PagedResult<RecognitionResponse>());
 
         _marketplaceServiceMock.Setup(s => s.GetListingsPagedAsync(It.IsAny<ListingFilterRequest>()))

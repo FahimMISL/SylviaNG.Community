@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionAudienceTargetAdd;
-using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCandidateApprove;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCandidateNominate;
+using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCandidateNominateBulk;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionClose;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCreate;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionDelete;
@@ -129,7 +129,7 @@ namespace SylviaNG.Community.Controllers
         }
 
         // Candidates - listing/nominating stays open to any authenticated employee;
-        // approval is HRAdminOnly.
+        // a nomination is immediately ballot-eligible, no approval step.
         [HttpGet("{electionId}/candidates")]
         public async Task<ActionResult<List<ElectionCandidateResponse>>> GetCandidates(long electionId)
         {
@@ -144,12 +144,14 @@ namespace SylviaNG.Community.Controllers
             return Ok(id);
         }
 
+        // Bulk nomination (nominate every active employee in a branch/department/team/the whole
+        // organization at once) is HRAdminOnly - unlike a single nomination, it's a mass action.
         [Authorize(Policy = "HRAdminOnly")]
-        [HttpPut("{electionId}/candidates/{candidateId}/approve")]
-        public async Task<ActionResult> ApproveCandidate(long electionId, long candidateId)
+        [HttpPost("{electionId}/candidates/bulk")]
+        public async Task<ActionResult<int>> NominateBulk(long electionId, [FromBody] ElectionCandidateNominateBulkRequest request)
         {
-            await _mediator.Send(new ElectionCandidateApproveCommand(electionId, candidateId));
-            return Ok();
+            var count = await _mediator.Send(new ElectionCandidateNominateBulkCommand(electionId, request));
+            return Ok(count);
         }
 
         // Votes - casting stays open to any authenticated employee (business rules enforced

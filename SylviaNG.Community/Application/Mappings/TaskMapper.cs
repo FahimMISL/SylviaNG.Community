@@ -1,5 +1,6 @@
 using SylviaNG.Community.Application.Features.Tasks.Models;
 using SylviaNG.Community.Domain.Entities;
+using SylviaNG.Community.SharedKernel.Utils;
 using TaskEntity = SylviaNG.Community.Domain.Entities.Task;
 
 namespace SylviaNG.Community.Application.Mappings
@@ -69,7 +70,11 @@ namespace SylviaNG.Community.Application.Mappings
                 return "OnTrack";
 
             var now = DateTime.UtcNow;
-            if (entity.DueDate.Value < now)
+
+            // DueDate is a calendar date in the business timezone (Asia/Dhaka, UTC+6), not UTC:
+            // comparing raw UTC calendar dates would mark a task overdue up to 6 hours into its
+            // due date, since that instant is still the previous day in UTC.
+            if (DateTimeUtility.ToLocalDate(entity.DueDate.Value) < DateTimeUtility.ToLocalDate(now))
                 return "Overdue";
 
             var reminderDays = entity.ReminderDays ?? 2;
@@ -101,7 +106,7 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
-        public static TaskAttachment ToEntity(this TaskAttachmentAddRequest request, long taskId)
+        public static TaskAttachment ToEntity(this TaskAttachmentAddRequest request, long taskId, long uploadedBy)
         {
             return new TaskAttachment
             {
@@ -110,7 +115,8 @@ namespace SylviaNG.Community.Application.Mappings
                 FileType = request.FileType,
                 FilePath = request.FilePath,
                 FileSize = request.FileSize,
-                UploadedBy = request.UploadedBy
+                FileStorageId = request.FileStorageId,
+                UploadedBy = uploadedBy
             };
         }
 
@@ -124,6 +130,7 @@ namespace SylviaNG.Community.Application.Mappings
                 FileType = entity.FileType,
                 FilePath = entity.FilePath,
                 FileSize = entity.FileSize,
+                FileStorageId = entity.FileStorageId,
                 UploadedBy = entity.UploadedBy,
                 CreatedAt = entity.CreatedAt
             };

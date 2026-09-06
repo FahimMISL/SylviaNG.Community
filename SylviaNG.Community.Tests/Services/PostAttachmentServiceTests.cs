@@ -14,6 +14,7 @@ public class PostAttachmentServiceTests
 {
     private readonly Mock<IPostAttachmentRepository> _attachmentRepositoryMock;
     private readonly Mock<IPostRepository> _postRepositoryMock;
+    private readonly Mock<IFileStorageRepository> _fileStorageRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly PostAttachmentService _service;
 
@@ -21,8 +22,9 @@ public class PostAttachmentServiceTests
     {
         _attachmentRepositoryMock = new Mock<IPostAttachmentRepository>();
         _postRepositoryMock = new Mock<IPostRepository>();
+        _fileStorageRepositoryMock = new Mock<IFileStorageRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
-        _service = new PostAttachmentService(_attachmentRepositoryMock.Object, _postRepositoryMock.Object, _unitOfWorkMock.Object);
+        _service = new PostAttachmentService(_attachmentRepositoryMock.Object, _postRepositoryMock.Object, _fileStorageRepositoryMock.Object, _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -51,6 +53,22 @@ public class PostAttachmentServiceTests
 
         // Act
         var act = () => _service.AddAsync(1, new PostAttachmentAddRequest { FileName = "a.png", FilePath = "/a.png", FileSize = 10 });
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task AddAsync_WhenFileStorageIdDoesNotExist_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        _postRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Post { PostId = 1 });
+        _fileStorageRepositoryMock.Setup(r => r.GetByIdAsync(123)).ReturnsAsync((FileStorage?)null);
+
+        var request = new PostAttachmentAddRequest { FileName = "a.png", FilePath = "/a.png", FileSize = 10, FileStorageId = 123 };
+
+        // Act
+        var act = () => _service.AddAsync(1, request);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();

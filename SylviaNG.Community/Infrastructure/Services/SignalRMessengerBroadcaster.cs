@@ -49,5 +49,10 @@ namespace SylviaNG.Community.Infrastructure.Services
         {
             await _hubContext.Clients.Group($"chat-{conversationId}").MessageDeleted(conversationId, chatMessageId, cancellationToken);
         }
+
+        public async Task BroadcastMessagePinnedAsync(long conversationId, long chatMessageId, bool isPinned, long? pinnedByEmployeeId, CancellationToken cancellationToken = default)
+        {
+            await _hubContext.Clients.Group($"chat-{conversationId}").MessagePinned(conversationId, chatMessageId, isPinned, pinnedByEmployeeId, cancellationToken);
+        }
     }
 }

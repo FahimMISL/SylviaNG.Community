@@ -11,7 +11,9 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
         public long DepartmentId { get; set; }
         public long SiteId { get; set; }
 
-        /// <summary>HR/Admin-only, set once here - this codebase has no edit-existing-employee flow.</summary>
-        public DateTime DateOfJoining { get; set; }
+        public DateOnly DateOfJoining { get; set; }
+
+        /// <summary>Optional - HR/Admin can leave it blank here and fill it in later via the Edit Employee flow.</summary>
+        public DateOnly? DateOfBirth { get; set; }
     }
 }

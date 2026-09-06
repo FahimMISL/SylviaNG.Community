@@ -26,9 +26,10 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<PagedResult<RecognitionResponse>>> GetPaged(
             [FromQuery] PagedRequest request,
             [FromQuery] long? senderId,
-            [FromQuery] long? recipientId)
+            [FromQuery] long? recipientId,
+            [FromQuery] bool? isHrIssued = null)
         {
-            var result = await _mediator.Send(new RecognitionGetAllPagedQuery(request, senderId, recipientId, _currentUserService.EmployeeId, _currentUserService.IsHrOrAdmin));
+            var result = await _mediator.Send(new RecognitionGetAllPagedQuery(request, senderId, recipientId, isHrIssued, _currentUserService.EmployeeId, _currentUserService.IsHrOrAdmin));
             return Ok(result);
         }
 

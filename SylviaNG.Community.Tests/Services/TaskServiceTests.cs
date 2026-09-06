@@ -23,6 +23,7 @@ public class TaskServiceTests
     private readonly Mock<ITeamMemberRepository> _teamMemberRepositoryMock;
     private readonly Mock<IRecurringTaskRepository> _recurringTaskRepositoryMock;
     private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
+    private readonly Mock<IFileStorageRepository> _fileStorageRepositoryMock;
     private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly TaskService _service;
@@ -37,6 +38,7 @@ public class TaskServiceTests
         _teamMemberRepositoryMock = new Mock<ITeamMemberRepository>();
         _recurringTaskRepositoryMock = new Mock<IRecurringTaskRepository>();
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
+        _fileStorageRepositoryMock = new Mock<IFileStorageRepository>();
         _notificationServiceMock = new Mock<INotificationService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
 
@@ -49,6 +51,7 @@ public class TaskServiceTests
             _teamMemberRepositoryMock.Object,
             _recurringTaskRepositoryMock.Object,
             _employeeRepositoryMock.Object,
+            _fileStorageRepositoryMock.Object,
             _notificationServiceMock.Object,
             _unitOfWorkMock.Object);
     }
@@ -285,6 +288,45 @@ public class TaskServiceTests
 
         // Act
         var act = () => _service.RemoveAttachmentAsync(1, 1, callerEmployeeId: 1, isHrOrAdmin: true);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddAttachmentAsync_ShouldSetUploadedByFromCallerEmployeeId_NotFromRequest()
+    {
+        // Arrange
+        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new TaskEntity { TaskId = 1, AssignedBy = 9, AssignedTo = 5, Title = "Report" });
+
+        TaskAttachment? added = null;
+        _taskAttachmentRepositoryMock.Setup(r => r.AddAsync(It.IsAny<TaskAttachment>()))
+            .Callback<TaskAttachment>(a => added = a)
+            .Returns(System.Threading.Tasks.Task.CompletedTask);
+
+        var request = new TaskAttachmentAddRequest { FileName = "a.png", FilePath = "/x/a.png", FileSize = 10 };
+
+        // Act - caller is the assignee (5), a valid participant.
+        await _service.AddAttachmentAsync(1, request, callerEmployeeId: 5, isHrOrAdmin: false);
+
+        // Assert - UploadedBy comes from the authenticated caller, never a client-supplied field.
+        added.Should().NotBeNull();
+        added!.UploadedBy.Should().Be(5);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddAttachmentAsync_WhenFileStorageIdDoesNotExist_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new TaskEntity { TaskId = 1, AssignedBy = 9, AssignedTo = 5, Title = "Report" });
+        _fileStorageRepositoryMock.Setup(r => r.GetByIdAsync(123)).ReturnsAsync((FileStorage?)null);
+
+        var request = new TaskAttachmentAddRequest { FileName = "a.png", FilePath = "/x/a.png", FileSize = 10, FileStorageId = 123 };
+
+        // Act
+        var act = () => _service.AddAttachmentAsync(1, request, callerEmployeeId: 5, isHrOrAdmin: false);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();

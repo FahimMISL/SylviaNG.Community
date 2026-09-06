@@ -11,15 +11,18 @@ namespace SylviaNG.Community.Application.Services
     {
         private readonly IPostAttachmentRepository _attachmentRepository;
         private readonly IPostRepository _postRepository;
+        private readonly IFileStorageRepository _fileStorageRepository;
         private readonly IUnitOfWork _unitOfWork;
 
         public PostAttachmentService(
             IPostAttachmentRepository attachmentRepository,
             IPostRepository postRepository,
+            IFileStorageRepository fileStorageRepository,
             IUnitOfWork unitOfWork)
         {
             _attachmentRepository = attachmentRepository;
             _postRepository = postRepository;
+            _fileStorageRepository = fileStorageRepository;
             _unitOfWork = unitOfWork;
         }
 
@@ -27,6 +30,12 @@ namespace SylviaNG.Community.Application.Services
         {
             _ = await _postRepository.GetByIdAsync(postId)
                 ?? throw new NotFoundException("Post", postId);
+
+            if (request.FileStorageId.HasValue)
+            {
+                _ = await _fileStorageRepository.GetByIdAsync(request.FileStorageId.Value)
+                    ?? throw new NotFoundException("FileStorage", request.FileStorageId.Value);
+            }
 
             var entity = request.ToEntity(postId);
             await _attachmentRepository.AddAsync(entity);

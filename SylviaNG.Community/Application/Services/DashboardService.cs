@@ -71,12 +71,13 @@ namespace SylviaNG.Community.Application.Services
             // The backend has no status filter on the survey list endpoint (see SurveyService) -
             // fetch up to the server-side page cap and bucket here, same limitation SurveysComponent
             // already lives with client-side, just computed once server-side instead of per client.
-            var surveys = await _surveyService.GetPaginatedAsync(new PagedRequest { Page = 1, PageSize = 100 });
+            var surveys = await _surveyService.GetPaginatedAsync(new PagedRequest { Page = 1, PageSize = 100 }, employeeId);
             var respondedIds = await _dashboardRepository.GetRespondedSurveyIdsAsync(employeeId);
 
-            return surveys.Data.Count(s =>
-                string.Equals(s.Status, "Published", StringComparison.OrdinalIgnoreCase)
-                && !respondedIds.Contains(s.SurveyId));
+            // IsEligible (audience match, not just "Published") avoids inflating this count with
+            // surveys the employee can see in the full list but isn't actually a target of - the
+            // same gap that let "Take Survey" show up for someone outside a survey's audience.
+            return surveys.Data.Count(s => s.IsEligible && !respondedIds.Contains(s.SurveyId));
         }
 
         public async Task<SupervisorTaskOverviewResponse> GetSupervisorTaskOverviewAsync(long supervisorEmployeeId)
@@ -94,7 +95,7 @@ namespace SylviaNG.Community.Application.Services
 
         public async Task<AdminDashboardSummaryResponse> GetAdminSummaryAsync()
         {
-            var surveysPage = await _surveyService.GetPaginatedAsync(new PagedRequest { Page = 1, PageSize = 100 });
+            var surveysPage = await _surveyService.GetPaginatedAsync(new PagedRequest { Page = 1, PageSize = 100 }, employeeId: null);
             var publishedSurveys = surveysPage.Data
                 .Where(s => string.Equals(s.Status, "Published", StringComparison.OrdinalIgnoreCase))
                 .ToList();

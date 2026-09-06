@@ -1,4 +1,6 @@
+using System.Text.Json.Serialization;
 using SylviaNG.Community.Domain.Enums;
+using SylviaNG.Community.SharedKernel.Utils;
 
 namespace SylviaNG.Community.Application.Features.ChatMessages.Models
 {
@@ -13,11 +15,16 @@ namespace SylviaNG.Community.Application.Features.ChatMessages.Models
         public MessageTypeEnum MessageType { get; set; }
         public SharedContentTypeEnum? SharedContentType { get; set; }
         public long? SharedContentId { get; set; }
+        [JsonConverter(typeof(UtcDateTimeJsonConverter))]
         public DateTime SentAt { get; set; }
         public List<ChatMessageAttachmentResponse> Attachments { get; set; } = new();
         public List<ChatMessageReactionResponse> Reactions { get; set; } = new();
         public bool IsDeleted { get; set; }
         public bool IsForwarded { get; set; }
         public ChatMessageReplyPreviewResponse? ReplyTo { get; set; }
+        public bool IsPinned { get; set; }
+        [JsonConverter(typeof(NullableUtcDateTimeJsonConverter))]
+        public DateTime? PinnedAt { get; set; }
+        public long? PinnedByEmployeeId { get; set; }
     }
 }

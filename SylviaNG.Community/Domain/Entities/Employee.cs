@@ -35,11 +35,12 @@ public class Employee : Audit
     public string? CoverPhotoUrl { get; set; }
     public bool IsActive { get; set; } = true;
 
-    /// <summary>Self-service, same edit flow as Bio/Skills. Only Month/Day are ever exposed
-    /// outside the owner/HR-only branch of EmployeeMapper.ToResponse.</summary>
+    /// <summary>Settable at EmployeeCreate time, editable afterward via the self-service profile
+    /// flow or HR/Admin's Edit Employee dialog. Only Month/Day are ever exposed outside the
+    /// owner/HR-only branch of EmployeeMapper.ToResponse.</summary>
     public DateOnly? DateOfBirth { get; set; }
 
-    /// <summary>HR/Admin-only, set once at EmployeeCreate time - this codebase deliberately
-    /// has no edit-existing-employee flow (see ManageEmployeeComponent on the frontend).</summary>
+    /// <summary>Set at EmployeeCreate time, editable afterward via HR/Admin's Edit Employee
+    /// dialog (User Management).</summary>
     public DateOnly? DateOfJoining { get; set; }
 }

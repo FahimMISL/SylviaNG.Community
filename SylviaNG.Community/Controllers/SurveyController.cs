@@ -16,6 +16,7 @@ using SylviaNG.Community.Application.Features.Surveys.Models;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyAudienceGetAll;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetAllPaged;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetById;
+using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetEligible;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyQuestionGetAll;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyResponseGetAllPaged;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyResultsGet;
@@ -37,17 +38,34 @@ namespace SylviaNG.Community.Controllers
             _currentUserService = currentUserService;
         }
 
+        [Authorize(Policy = "HRAdminOnly")]
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResult<SurveyDetailResponse>>> GetPaged([FromQuery] PagedRequest request)
         {
-            var result = await _mediator.Send(new SurveyGetAllPagedQuery(request));
+            var result = await _mediator.Send(new SurveyGetAllPagedQuery(request, _currentUserService.EmployeeId));
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Employee-facing "surveys I can see" list, scoped to SurveyAudience eligibility (Published/
+        /// Closed only, matching the caller's Department/Branch or an EntireCompany/no-audience
+        /// survey). Registered above "{surveyId}" so "eligible" is never captured by the long
+        /// route-parameter binder.
+        /// </summary>
+        [HttpGet("eligible")]
+        public async Task<ActionResult<List<SurveyDetailResponse>>> GetEligible()
+        {
+            var employeeId = _currentUserService.EmployeeId
+                ?? throw new UnauthorizedException("Only authenticated employees may browse eligible surveys.");
+
+            var result = await _mediator.Send(new SurveyGetEligibleQuery(employeeId));
             return Ok(result);
         }
 
         [HttpGet("{surveyId}")]
         public async Task<ActionResult<SurveyDetailResponse>> GetById(long surveyId)
         {
-            var result = await _mediator.Send(new SurveyGetByIdQuery(surveyId));
+            var result = await _mediator.Send(new SurveyGetByIdQuery(surveyId, _currentUserService.IsHrOrAdmin, _currentUserService.EmployeeId));
             return Ok(result);
         }
 
@@ -98,7 +116,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("{surveyId}/questions")]
         public async Task<ActionResult<List<SurveyQuestionResponse>>> GetQuestions(long surveyId)
         {
-            var result = await _mediator.Send(new SurveyQuestionGetAllQuery(surveyId));
+            var result = await _mediator.Send(new SurveyQuestionGetAllQuery(surveyId, _currentUserService.IsHrOrAdmin, _currentUserService.EmployeeId));
             return Ok(result);
         }
 

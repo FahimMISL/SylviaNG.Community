@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.EmployeeCredentials.Models;
@@ -17,6 +18,7 @@ public class EmployeeCredentialServiceTests
     private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
     private readonly Mock<IEmployeeKeycloakAccountRepository> _accountRepositoryMock;
     private readonly Mock<IKeycloakAdminClient> _keycloakAdminClientMock;
+    private readonly Mock<IEmailService> _emailServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly EmployeeCredentialService _service;
 
@@ -25,6 +27,7 @@ public class EmployeeCredentialServiceTests
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
         _accountRepositoryMock = new Mock<IEmployeeKeycloakAccountRepository>();
         _keycloakAdminClientMock = new Mock<IKeycloakAdminClient>();
+        _emailServiceMock = new Mock<IEmailService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
 
         var configuration = new ConfigurationBuilder()
@@ -35,8 +38,10 @@ public class EmployeeCredentialServiceTests
             _employeeRepositoryMock.Object,
             _accountRepositoryMock.Object,
             _keycloakAdminClientMock.Object,
+            _emailServiceMock.Object,
             _unitOfWorkMock.Object,
-            configuration);
+            configuration,
+            Mock.Of<ILogger<EmployeeCredentialService>>());
     }
 
     private static Employee ActiveEmployee(long id = 1) => new()
@@ -183,6 +188,67 @@ public class EmployeeCredentialServiceTests
         await act.Should().ThrowAsync<ExternalServiceException>();
         _accountRepositoryMock.Verify(r => r.AddAsync(It.IsAny<EmployeeKeycloakAccount>()), Times.Never);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithValidRequest_ShouldSendWelcomeEmailToEmployee()
+    {
+        // Arrange
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(ActiveEmployee());
+        _accountRepositoryMock.Setup(r => r.ExistsByEmployeeIdAsync(1)).ReturnsAsync(false);
+        _keycloakAdminClientMock
+            .Setup(k => k.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>()))
+            .ReturnsAsync("kc-user-guid-1");
+
+        // Act
+        await _service.CreateAsync(ValidRequest());
+
+        // Assert
+        _emailServiceMock.Verify(e => e.SendWelcomeEmailAsync(
+            "ayesha.rahman@sylviang.example", "Ayesha Rahman", "ayesha.rahman", "Temp1234", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenEmployeeHasNoEmail_ShouldSkipWelcomeEmailAndStillSucceed()
+    {
+        // Arrange
+        var employee = ActiveEmployee();
+        employee.Email = null;
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(employee);
+        _accountRepositoryMock.Setup(r => r.ExistsByEmployeeIdAsync(1)).ReturnsAsync(false);
+        _keycloakAdminClientMock
+            .Setup(k => k.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>()))
+            .ReturnsAsync("kc-user-guid-1");
+
+        // Act
+        var result = await _service.CreateAsync(ValidRequest());
+
+        // Assert
+        result.Should().NotBeNull();
+        _emailServiceMock.Verify(e => e.SendWelcomeEmailAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenWelcomeEmailFails_ShouldStillSucceed()
+    {
+        // Arrange
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(ActiveEmployee());
+        _accountRepositoryMock.Setup(r => r.ExistsByEmployeeIdAsync(1)).ReturnsAsync(false);
+        _keycloakAdminClientMock
+            .Setup(k => k.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long>()))
+            .ReturnsAsync("kc-user-guid-1");
+        _emailServiceMock
+            .Setup(e => e.SendWelcomeEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Smtp:Host is not configured."));
+
+        // Act
+        var result = await _service.CreateAsync(ValidRequest());
+
+        // Assert - best-effort: the email failure must not fail Grant Access, since the
+        // Keycloak account/EmployeeKeycloakAccount row are already committed by this point.
+        result.Should().NotBeNull();
+        result.KeycloakUserId.Should().Be("kc-user-guid-1");
     }
 
     [Fact]

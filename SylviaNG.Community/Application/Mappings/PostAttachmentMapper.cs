@@ -14,6 +14,7 @@ namespace SylviaNG.Community.Application.Mappings
                 FileType = request.FileType,
                 FilePath = request.FilePath,
                 FileSize = request.FileSize,
+                FileStorageId = request.FileStorageId,
                 UploadedAt = DateTime.UtcNow
             };
         }
@@ -28,6 +29,7 @@ namespace SylviaNG.Community.Application.Mappings
                 FileType = entity.FileType,
                 FilePath = entity.FilePath,
                 FileSize = entity.FileSize,
+                FileStorageId = entity.FileStorageId,
                 UploadedAt = entity.UploadedAt
             };
         }

@@ -20,7 +20,5 @@ namespace SylviaNG.Community.Application.Features.Marketplace.Models
         public string? RejectionReason { get; set; }
         public long? CreatedBy { get; set; }
         public DateTime? CreatedAt { get; set; }
-        public double? AverageRating { get; set; }
-        public int ReviewCount { get; set; }
     }
 }

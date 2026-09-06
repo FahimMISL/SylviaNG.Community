@@ -25,6 +25,10 @@ namespace SylviaNG.Community.Application.Features.ChatMessages.Commands.ChatMess
                 .Must(a => a.Count == 1 && a[0].AttachmentType == ChatAttachmentTypeEnum.Voice)
                 .When(x => x.Request.MessageType == MessageTypeEnum.Voice)
                 .WithMessage("A voice message needs exactly one voice attachment.");
+
+            RuleFor(x => x.Request.SharedContentId)
+                .NotNull().WithMessage("Shared content is required.")
+                .When(x => x.Request.MessageType == MessageTypeEnum.Shared);
         }
     }
 }

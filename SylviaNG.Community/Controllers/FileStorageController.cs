@@ -4,6 +4,7 @@ using SylviaNG.Community.Application.Features.FileStorages.Commands.FileStorageC
 using SylviaNG.Community.Application.Features.FileStorages.Models;
 using SylviaNG.Community.Application.Features.FileStorages.Queries.FileStorageGetAllPaged;
 using SylviaNG.Community.Application.Features.FileStorages.Queries.FileStorageGetById;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.SharedKernel.Pagination;
 
 namespace SylviaNG.Community.Controllers
@@ -17,19 +18,22 @@ namespace SylviaNG.Community.Controllers
     public class FileStorageController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public FileStorageController(IMediator mediator)
+        public FileStorageController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResult<FileStorageResponse>>> GetPaged(
             [FromQuery] PagedRequest request,
             [FromQuery] string? module,
-            [FromQuery] long? entityId)
+            [FromQuery] long? entityId,
+            [FromQuery] long? uploadedBy)
         {
-            var result = await _mediator.Send(new FileStorageGetAllPagedQuery(request, module, entityId));
+            var result = await _mediator.Send(new FileStorageGetAllPagedQuery(request, module, entityId, uploadedBy));
             return Ok(result);
         }
 
@@ -43,6 +47,10 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Create([FromBody] FileStorageCreateRequest request)
         {
+            // UploadedBy must come from the authenticated caller, never from client input -
+            // otherwise anyone can record any employee id as the uploader of any file.
+            request.UploadedBy = _currentUserService.EmployeeId ?? 0;
+
             var id = await _mediator.Send(new FileStorageCreateCommand(request));
             return Ok(id);
         }

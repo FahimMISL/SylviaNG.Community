@@ -2,8 +2,10 @@ using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeActivate;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeCreate;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeDeactivate;
+using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdate;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdateCoverPhoto;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdatePhoto;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpdateProfile;
@@ -139,6 +141,32 @@ public class EmployeeControllerTests
     }
 
     [Fact]
+    public async Task UpdateDetails_WithValidRequest_ShouldReturnOk()
+    {
+        // Arrange
+        var request = new EmployeeUpdateRequest
+        {
+            Email = "ayesha.rahman@sylviang.example",
+            DateOfBirth = new DateOnly(1995, 6, 15),
+            DateOfJoining = new DateOnly(2021, 3, 10)
+        };
+        EmployeeUpdateCommand? capturedCommand = null;
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<EmployeeUpdateCommand>(), default))
+            .Callback<IRequest<Unit>, CancellationToken>((c, _) => capturedCommand = (EmployeeUpdateCommand)c)
+            .ReturnsAsync(Unit.Value);
+
+        // Act
+        var result = await _controller.UpdateDetails(1, request);
+
+        // Assert
+        result.Should().BeOfType<OkResult>();
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.EmployeeId.Should().Be(1);
+        capturedCommand.Request.Email.Should().Be("ayesha.rahman@sylviang.example");
+    }
+
+    [Fact]
     public async Task UpdatePhoto_ShouldPassCurrentUserAsViewer()
     {
         // Arrange
@@ -195,6 +223,20 @@ public class EmployeeControllerTests
 
         // Act
         var result = await _controller.Deactivate(1);
+
+        // Assert
+        result.Should().BeOfType<OkResult>();
+    }
+
+    [Fact]
+    public async Task Activate_WithValidId_ShouldReturnOk()
+    {
+        // Arrange
+        _mediatorMock.Setup(m => m.Send(It.IsAny<EmployeeActivateCommand>(), default))
+            .ReturnsAsync(Unit.Value);
+
+        // Act
+        var result = await _controller.Activate(1);
 
         // Assert
         result.Should().BeOfType<OkResult>();

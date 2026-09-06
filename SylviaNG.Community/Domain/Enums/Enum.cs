@@ -97,5 +97,6 @@ public enum ChatAttachmentTypeEnum
 {
     Image,
     File,
-    Voice
+    Voice,
+    Video
 }

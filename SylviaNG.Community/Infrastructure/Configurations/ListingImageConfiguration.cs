@@ -21,6 +21,13 @@ namespace SylviaNG.Community.Infrastructure.Configurations
                 .WithMany()
                 .HasForeignKey(li => li.ListingId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Never let an image silently orphan if the underlying file record is
+            // removed - same reasoning as ChatMessageAttachment's restrict-on-delete.
+            builder.HasOne<FileStorage>()
+                .WithMany()
+                .HasForeignKey(li => li.FileStorageId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

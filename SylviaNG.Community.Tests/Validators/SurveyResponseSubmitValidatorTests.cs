@@ -51,4 +51,20 @@ public class SurveyResponseSubmitValidatorTests
 
         result.IsValid.Should().BeFalse();
     }
+
+    [Fact]
+    public void Validate_WithAnswerHavingOnlyRatingValue_ShouldHaveNoErrors()
+    {
+        var command = new SurveyResponseSubmitCommand(1, new SurveySubmissionRequest
+        {
+            Answers = new List<SurveyAnswerSubmitRequest>
+            {
+                new() { QuestionId = 1, RatingValue = 4 }
+            }
+        }, 5);
+
+        var result = _validator.Validate(command);
+
+        result.IsValid.Should().BeTrue();
+    }
 }

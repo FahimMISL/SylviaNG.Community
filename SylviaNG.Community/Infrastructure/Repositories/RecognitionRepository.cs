@@ -11,7 +11,7 @@ namespace SylviaNG.Community.Infrastructure.Repositories
     {
         public RecognitionRepository(ApplicationDBContext dbContext) : base(dbContext) { }
 
-        public async Task<PagedResult<Recognition>> GetPaginatedAsync(PagedRequest request, long? senderId = null, long? recipientId = null, long? viewerEmployeeId = null, bool viewerIsHrAdmin = false)
+        public async Task<PagedResult<Recognition>> GetPaginatedAsync(PagedRequest request, long? senderId = null, long? recipientId = null, bool? isHrIssued = null, long? viewerEmployeeId = null, bool viewerIsHrAdmin = false)
         {
             var query = _dbSet.AsQueryable();
 
@@ -20,6 +20,9 @@ namespace SylviaNG.Community.Infrastructure.Repositories
 
             if (recipientId.HasValue)
                 query = query.Where(r => r.RecipientId == recipientId.Value);
+
+            if (isHrIssued.HasValue)
+                query = query.Where(r => r.IsHrIssued == isHrIssued.Value);
 
             // Private recognitions are only visible to their sender/recipient and HR/Admin -
             // everyone else only sees ones marked IsPublic.

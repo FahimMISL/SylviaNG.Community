@@ -64,5 +64,13 @@ namespace SylviaNG.Community.Infrastructure.Repositories
                 TotalCount = totalCount
             };
         }
+
+        public async Task<List<ChatMessage>> GetPinnedByConversationIdAsync(long conversationId)
+        {
+            return await _dbSet
+                .Where(m => m.ChatConversationId == conversationId && m.IsPinned && !m.IsDeleted)
+                .OrderByDescending(m => m.PinnedAt)
+                .ToListAsync();
+        }
     }
 }

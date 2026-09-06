@@ -11,7 +11,7 @@ namespace SylviaNG.Community.Application.Interfaces.Repositories
         /// <summary>Fetches multiple candidates belonging to the election in one round trip - used to validate a multi-select ballot atomically.</summary>
         Task<List<ElectionCandidate>> GetByIdsForElectionAsync(long electionId, IEnumerable<long> candidateIds);
 
-        /// <summary>Approved-candidate count, used to gate publishing (must be &gt;= Election.MinSelection).</summary>
-        Task<int> CountApprovedAsync(long electionId);
+        /// <summary>Nominated-candidate count, used to gate publishing (must be &gt;= Election.MinSelection).</summary>
+        Task<int> CountAsync(long electionId);
     }
 }

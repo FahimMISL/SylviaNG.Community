@@ -8,9 +8,14 @@ namespace SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetAllPa
     {
         public PagedRequest Request { get; set; }
 
-        public SurveyGetAllPagedQuery(PagedRequest request)
+        /// <summary>Resolved server-side from ICurrentUserService by SurveyController, used to compute
+        /// SurveyDetailResponse.IsEligible per survey - see SurveyService.GetPaginatedAsync.</summary>
+        public long? EmployeeId { get; set; }
+
+        public SurveyGetAllPagedQuery(PagedRequest request, long? employeeId)
         {
             Request = request;
+            EmployeeId = employeeId;
         }
     }
 }

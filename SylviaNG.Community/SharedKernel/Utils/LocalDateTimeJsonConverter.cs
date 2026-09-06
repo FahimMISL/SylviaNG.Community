@@ -6,16 +6,25 @@ namespace SylviaNG.Community.SharedKernel.Utils;
 
 /// <summary>
 /// Automatically converts UTC DateTime to local time when serializing to JSON,
-/// and treats incoming JSON DateTime as local time (converts to UTC).
+/// and treats incoming JSON DateTime as local time (converts to UTC) - but only when the
+/// incoming string is genuinely bare/offset-less (DateTimeKind.Unspecified). A "Z"/offset-suffixed
+/// string (e.g. the frontend's Date#toISOString()) already represents an unambiguous absolute
+/// instant; reinterpreting its digits as business-local time on top of that would double-convert
+/// it, silently shifting every StartDate/EndDate by the business timezone's UTC offset.
 /// </summary>
 public class LocalDateTimeJsonConverter : JsonConverter<DateTime>
 {
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var dt = reader.GetDateTime();
-        return DateTime.SpecifyKind(dt, DateTimeKind.Unspecified) == default
-            ? default
-            : DateTimeUtility.ConvertLocalToUtc(DateTime.SpecifyKind(dt, DateTimeKind.Unspecified));
+        if (dt == default) return default;
+
+        return dt.Kind switch
+        {
+            DateTimeKind.Utc => dt,
+            DateTimeKind.Local => dt.ToUniversalTime(),
+            _ => DateTimeUtility.ConvertLocalToUtc(dt)
+        };
     }
 
     public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
@@ -35,7 +44,12 @@ public class NullableLocalDateTimeJsonConverter : JsonConverter<DateTime?>
         if (reader.TokenType == JsonTokenType.Null) return null;
 
         var dt = reader.GetDateTime();
-        return DateTimeUtility.ConvertLocalToUtc(DateTime.SpecifyKind(dt, DateTimeKind.Unspecified));
+        return dt.Kind switch
+        {
+            DateTimeKind.Utc => dt,
+            DateTimeKind.Local => dt.ToUniversalTime(),
+            _ => DateTimeUtility.ConvertLocalToUtc(dt)
+        };
     }
 
     public override void Write(Utf8JsonWriter writer, DateTime? value, JsonSerializerOptions options)

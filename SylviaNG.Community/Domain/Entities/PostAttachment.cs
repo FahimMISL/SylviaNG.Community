@@ -10,5 +10,6 @@ public class PostAttachment : Audit
     public string? FileType { get; set; }
     public string FilePath { get; set; } = string.Empty;
     public long FileSize { get; set; }
+    public long? FileStorageId { get; set; }
     public DateTime UploadedAt { get; set; }
 }

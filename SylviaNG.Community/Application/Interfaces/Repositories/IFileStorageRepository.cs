@@ -6,6 +6,6 @@ namespace SylviaNG.Community.Application.Interfaces.Repositories
 {
     public interface IFileStorageRepository : IRepository<FileStorage>
     {
-        Task<PagedResult<FileStorage>> GetPaginatedAsync(PagedRequest request, string? module, long? entityId);
+        Task<PagedResult<FileStorage>> GetPaginatedAsync(PagedRequest request, string? module, long? entityId, long? uploadedBy);
     }
 }

@@ -26,5 +26,14 @@ namespace SylviaNG.Community.Application.Interfaces.Services
 
         /// <summary>Files a moderation report against a specific message.</summary>
         Task ReportAsync(long chatMessageId, string reason, long callerEmployeeId);
+
+        /// <summary>Pins/unpins a message to the conversation's "Pinned Messages" panel. Any active participant may do this, not just the sender.</summary>
+        Task SetPinnedAsync(long chatMessageId, long callerEmployeeId, bool isPinned);
+
+        /// <summary>Every currently-pinned, non-deleted message in a conversation, newest-pinned first.</summary>
+        Task<List<ChatMessageResponse>> GetPinnedMessagesAsync(long conversationId, long callerEmployeeId);
+
+        /// <summary>Every attachment sent in a conversation, newest first - backs the "Media and Files" panel.</summary>
+        Task<PagedResult<ChatMessageAttachmentGalleryItemResponse>> GetMediaAndFilesPagedAsync(long conversationId, long callerEmployeeId, PagedRequest request);
     }
 }

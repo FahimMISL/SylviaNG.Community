@@ -33,5 +33,8 @@ namespace SylviaNG.Community.Hubs
 
         /// <summary>Group-targeted: pushed when a message is removed, so open threads can swap it for the tombstone live.</summary>
         Task MessageDeleted(long conversationId, long chatMessageId, CancellationToken cancellationToken = default);
+
+        /// <summary>Group-targeted: pushed when a message is pinned/unpinned, so open threads and the Pinned Messages panel stay live.</summary>
+        Task MessagePinned(long conversationId, long chatMessageId, bool isPinned, long? pinnedByEmployeeId, CancellationToken cancellationToken = default);
     }
 }

@@ -28,5 +28,11 @@ namespace SylviaNG.Community.Infrastructure.Repositories
             return await _dbSet
                 .AnyAsync(p => p.ChatConversationId == conversationId && p.EmployeeId == employeeId && p.LeftAt == null);
         }
+
+        public async Task<ChatParticipant?> GetAsync(long conversationId, long employeeId)
+        {
+            return await _dbSet
+                .FirstOrDefaultAsync(p => p.ChatConversationId == conversationId && p.EmployeeId == employeeId);
+        }
     }
 }

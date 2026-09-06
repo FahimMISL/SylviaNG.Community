@@ -42,11 +42,5 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         Task<long> CreatePurchaseAsync(long buyerId, PurchaseCreateRequest request);
         Task<List<PurchaseResponse>> GetPurchasesForEmployeeAsync(long employeeId);
         Task<bool> HasPurchasedAsync(long employeeId, long listingId);
-
-        // Reviews
-        Task<long> CreateReviewAsync(long reviewerId, ReviewCreateRequest request);
-        Task<List<ReviewResponse>> GetReviewsForListingAsync(long listingId);
-        Task<long> AddReviewImageAsync(long reviewId, ReviewImageAddRequest request);
-        Task<List<ReviewImageResponse>> GetReviewImagesAsync(long reviewId);
     }
 }

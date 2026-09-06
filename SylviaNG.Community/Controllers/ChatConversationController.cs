@@ -1,8 +1,11 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using SylviaNG.Community.Application.Features.ChatConversations.Commands.ChatConversationAddParticipants;
 using SylviaNG.Community.Application.Features.ChatConversations.Commands.ChatConversationCreate;
 using SylviaNG.Community.Application.Features.ChatConversations.Commands.ChatConversationMarkRead;
+using SylviaNG.Community.Application.Features.ChatConversations.Commands.ChatConversationSetAddMemberPermission;
 using SylviaNG.Community.Application.Features.ChatConversations.Commands.ChatConversationSetMuted;
+using SylviaNG.Community.Application.Features.ChatConversations.Commands.ChatConversationSetParticipantAdmin;
 using SylviaNG.Community.Application.Features.ChatConversations.Commands.ChatConversationSetPinned;
 using SylviaNG.Community.Application.Features.ChatConversations.Commands.ChatConversationUpdateGroup;
 using SylviaNG.Community.Application.Features.ChatConversations.Models;
@@ -11,6 +14,8 @@ using SylviaNG.Community.Application.Features.ChatConversations.Queries.ChatConv
 using SylviaNG.Community.Application.Features.ChatMessages.Commands.ChatMessageSend;
 using SylviaNG.Community.Application.Features.ChatMessages.Models;
 using SylviaNG.Community.Application.Features.ChatMessages.Queries.ChatMessageGetAllPaged;
+using SylviaNG.Community.Application.Features.ChatMessages.Queries.ChatMessageGetAttachmentsPaged;
+using SylviaNG.Community.Application.Features.ChatMessages.Queries.ChatMessageGetPinned;
 using SylviaNG.Community.Application.Features.ChatMessages.Queries.ChatMessageSearch;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.SharedKernel.Pagination;
@@ -70,6 +75,24 @@ namespace SylviaNG.Community.Controllers
             return Ok(result);
         }
 
+        /// <summary>Every currently-pinned message in this conversation, for the "Pinned Messages" panel.</summary>
+        [HttpGet("{conversationId}/messages/pinned")]
+        public async Task<ActionResult<List<ChatMessageResponse>>> GetPinnedMessages(long conversationId)
+        {
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            var result = await _mediator.Send(new ChatMessageGetPinnedQuery(conversationId, callerId));
+            return Ok(result);
+        }
+
+        /// <summary>Every attachment ever sent in this conversation, newest first, for the "Media and Files" panel.</summary>
+        [HttpGet("{conversationId}/attachments/paged")]
+        public async Task<ActionResult<PagedResult<ChatMessageAttachmentGalleryItemResponse>>> GetAttachmentsPaged(long conversationId, [FromQuery] PagedRequest request)
+        {
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            var result = await _mediator.Send(new ChatMessageGetAttachmentsPagedQuery(conversationId, request, callerId));
+            return Ok(result);
+        }
+
         [HttpPost("{conversationId}/messages")]
         public async Task<ActionResult<ChatMessageResponse>> SendMessage(long conversationId, [FromBody] ChatMessageSendRequest request)
         {
@@ -125,6 +148,33 @@ namespace SylviaNG.Community.Controllers
         {
             var callerId = _currentUserService.EmployeeId ?? 0;
             await _mediator.Send(new ChatConversationUpdateGroupCommand(conversationId, request, callerId));
+            return Ok();
+        }
+
+        /// <summary>Adds one or more employees to a group - any active participant may call this unless OnlyAdminsCanAddMembers is on.</summary>
+        [HttpPost("{conversationId}/participants")]
+        public async Task<ActionResult> AddParticipants(long conversationId, [FromBody] ChatConversationAddParticipantsRequest request)
+        {
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new ChatConversationAddParticipantsCommand(conversationId, request, callerId));
+            return Ok();
+        }
+
+        /// <summary>Creator-only: flips whether adding members is restricted to admins.</summary>
+        [HttpPut("{conversationId}/settings")]
+        public async Task<ActionResult> SetAddMemberPermission(long conversationId, [FromBody] ChatConversationSetAddMemberPermissionRequest request)
+        {
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new ChatConversationSetAddMemberPermissionCommand(conversationId, request.OnlyAdminsCanAddMembers, callerId));
+            return Ok();
+        }
+
+        /// <summary>Creator-only: promotes/demotes another active participant's admin status.</summary>
+        [HttpPut("{conversationId}/participants/{employeeId}/admin")]
+        public async Task<ActionResult> SetParticipantAdmin(long conversationId, long employeeId, [FromBody] ChatConversationSetParticipantAdminRequest request)
+        {
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new ChatConversationSetParticipantAdminCommand(conversationId, employeeId, request.IsAdmin, callerId));
             return Ok();
         }
     }

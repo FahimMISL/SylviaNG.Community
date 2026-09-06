@@ -11,5 +11,7 @@ namespace SylviaNG.Community.Application.Interfaces.Repositories
 
         /// <summary>Body-text search scoped to conversations the employee is an active participant of.</summary>
         Task<PagedResult<ChatMessage>> SearchAsync(long employeeId, string searchTerm, PagedRequest request);
+
+        Task<List<ChatMessage>> GetPinnedByConversationIdAsync(long conversationId);
     }
 }

@@ -30,14 +30,14 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResult<TeamResponse>>> GetPaged([FromQuery] PagedRequest request)
         {
-            var result = await _mediator.Send(new TeamGetAllPagedQuery(request));
+            var result = await _mediator.Send(new TeamGetAllPagedQuery(request, _currentUserService.EmployeeId, _currentUserService.IsHrOrAdmin));
             return Ok(result);
         }
 
         [HttpGet("{teamId}")]
         public async Task<ActionResult<TeamResponse>> GetById(long teamId)
         {
-            var result = await _mediator.Send(new TeamGetByIdQuery(teamId));
+            var result = await _mediator.Send(new TeamGetByIdQuery(teamId, _currentUserService.EmployeeId, _currentUserService.IsHrOrAdmin));
             return Ok(result);
         }
 
@@ -68,7 +68,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("{teamId}/members")]
         public async Task<ActionResult<List<TeamMemberResponse>>> GetMembers(long teamId)
         {
-            var result = await _mediator.Send(new TeamMemberGetAllQuery(teamId));
+            var result = await _mediator.Send(new TeamMemberGetAllQuery(teamId, _currentUserService.EmployeeId, _currentUserService.IsHrOrAdmin));
             return Ok(result);
         }
 

@@ -11,5 +11,9 @@ namespace SylviaNG.Community.Application.Interfaces.Repositories
 
         /// <summary>Distinct active employee ids across the given teams - "Team"-scoped election eligibility.</summary>
         Task<List<long>> GetActiveEmployeeIdsByTeamIdsAsync(IEnumerable<long> teamIds);
+
+        /// <summary>Active team memberships for one employee - "which teams am I in", the reverse of
+        /// GetActiveEmployeeIdsByTeamIdsAsync.</summary>
+        Task<List<long>> GetTeamIdsByEmployeeIdAsync(long employeeId);
     }
 }

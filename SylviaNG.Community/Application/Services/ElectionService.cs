@@ -5,6 +5,10 @@ using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Application.Mappings;
 using SylviaNG.Community.Domain.Constants;
+// Domain.Entities also defines a "Task" entity (an unrelated in-flight module), which collides
+// with System.Threading.Tasks.Task if the namespace is imported wholesale - alias just the one
+// entity type this file needs instead (see the similar alias in ElectionServiceTests.cs).
+using ElectionCandidate = SylviaNG.Community.Domain.Entities.ElectionCandidate;
 using SylviaNG.Community.SharedKernel.Generic;
 using SylviaNG.Community.SharedKernel.Pagination;
 
@@ -67,6 +71,13 @@ namespace SylviaNG.Community.Application.Services
                 entity.ApplyUpdate(request);
             }
 
+            // Checked against the merged entity, not just the request, since ElectionUpdateRequest
+            // fields are all optional (a caller may send only one of StartDate/EndDate) - the
+            // FluentValidation rule on the request alone can't see the other, already-stored side
+            // of the comparison.
+            if (entity.EndDate.HasValue && entity.EndDate.Value <= entity.StartDate)
+                throw new ForbiddenException($"Election \"{entity.Title}\" cannot have an EndDate at or before its StartDate.");
+
             _electionRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
         }
@@ -98,10 +109,10 @@ namespace SylviaNG.Community.Application.Services
             if (entity.AudienceScope != ElectionAudienceScope.Organization && targets.Count == 0)
                 throw new ForbiddenException("Publishing is blocked until a voting scope is configured.");
 
-            var approvedCandidateCount = await _candidateRepository.CountApprovedAsync(electionId);
-            if (approvedCandidateCount < entity.MinSelection)
+            var candidateCount = await _candidateRepository.CountAsync(electionId);
+            if (candidateCount < entity.MinSelection)
                 throw new ForbiddenException(
-                    $"At least {entity.MinSelection} approved candidate(s) are required to publish - currently {approvedCandidateCount}.");
+                    $"At least {entity.MinSelection} nominated candidate(s) are required to publish - currently {candidateCount}.");
 
             entity.Status = ElectionStatus.Open;
             _electionRepository.Update(entity);
@@ -208,20 +219,47 @@ namespace SylviaNG.Community.Application.Services
             return entity.ElectionCandidateId;
         }
 
+        public async Task<int> NominateBulkAsync(long electionId, ElectionCandidateNominateBulkRequest request)
+        {
+            var election = await _electionRepository.GetByIdAsync(electionId)
+                ?? throw new NotFoundException("Election", electionId);
+
+            if (election.CandidateType != "Employee")
+                throw new ForbiddenException(
+                    $"Election \"{election.Title}\" is a {election.CandidateType}-candidate election - bulk nomination only supports Employee candidates.");
+
+            var employeeIds = await _eligibilityService.ResolveCandidateEmployeeIdsAsync(request.Scope, request.TargetIds);
+            if (employeeIds.Count == 0) return 0;
+
+            var existingCandidates = await _candidateRepository.GetByElectionIdAsync(electionId);
+            var alreadyNominatedEmployeeIds = existingCandidates
+                .Where(c => c.EmployeeId.HasValue)
+                .Select(c => c.EmployeeId!.Value)
+                .ToHashSet();
+
+            var newCandidates = employeeIds
+                .Where(id => !alreadyNominatedEmployeeIds.Contains(id))
+                .Select(id => new ElectionCandidate
+                {
+                    ElectionId = electionId,
+                    EmployeeId = id,
+                    CandidateType = "Employee",
+                    NominatedAt = DateTime.UtcNow
+                })
+                .ToList();
+
+            if (newCandidates.Count == 0) return 0;
+
+            await _candidateRepository.AddRangeAsync(newCandidates);
+            await _unitOfWork.SaveChangesAsync();
+
+            return newCandidates.Count;
+        }
+
         public async Task<List<ElectionCandidateResponse>> GetCandidatesAsync(long electionId)
         {
             var candidates = await _candidateRepository.GetByElectionIdAsync(electionId);
             return candidates.Select(c => c.ToResponse()).ToList();
-        }
-
-        public async Task ApproveCandidateAsync(long electionId, long candidateId)
-        {
-            var candidate = await _candidateRepository.GetByIdForElectionAsync(electionId, candidateId)
-                ?? throw new NotFoundException("ElectionCandidate", candidateId);
-
-            candidate.IsApproved = true;
-            _candidateRepository.Update(candidate);
-            await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task<List<long>> CastVoteAsync(long electionId, ElectionVoteCastRequest request, long voterId)
@@ -254,9 +292,6 @@ namespace SylviaNG.Community.Application.Services
             var candidates = await _candidateRepository.GetByIdsForElectionAsync(electionId, distinctCandidateIds);
             if (candidates.Count != distinctCandidateIds.Count)
                 throw new NotFoundException("ElectionCandidate", string.Join(",", distinctCandidateIds));
-
-            if (candidates.Any(c => !c.IsApproved))
-                throw new ForbiddenException("One or more selected candidates have not been approved and cannot receive votes.");
 
             var entities = request.ToEntities(electionId, voterId);
             await _voteRepository.AddRangeAsync(entities);

@@ -15,6 +15,7 @@ namespace SylviaNG.Community.Application.Services
     {
         private readonly IPostRepository _postRepository;
         private readonly IEmployeeRepository _employeeRepository;
+        private readonly IGroupRepository _groupRepository;
         private readonly IGroupMemberRepository _groupMemberRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMentionService _mentionService;
@@ -22,12 +23,14 @@ namespace SylviaNG.Community.Application.Services
         public PostService(
             IPostRepository postRepository,
             IEmployeeRepository employeeRepository,
+            IGroupRepository groupRepository,
             IGroupMemberRepository groupMemberRepository,
             IUnitOfWork unitOfWork,
             IMentionService mentionService)
         {
             _postRepository = postRepository;
             _employeeRepository = employeeRepository;
+            _groupRepository = groupRepository;
             _groupMemberRepository = groupMemberRepository;
             _unitOfWork = unitOfWork;
             _mentionService = mentionService;
@@ -81,12 +84,33 @@ namespace SylviaNG.Community.Application.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task<PostResponse> GetByIdAsync(long postId)
+        public async Task<PostResponse> GetByIdAsync(long postId, long callerEmployeeId, bool isHrOrAdmin)
         {
             var entity = await _postRepository.GetByIdAsync(postId)
                 ?? throw new NotFoundException("Post", postId);
 
-            return entity.ToResponse();
+            var response = entity.ToResponse();
+            if (!entity.GroupId.HasValue) return response;
+
+            var group = await _groupRepository.GetByIdAsync(entity.GroupId.Value);
+            response.GroupName = group?.Name;
+
+            // Naming the group is safe even when access is denied - only its post content is
+            // sensitive - so this returns 200 with CanView=false/Content=null rather than
+            // throwing, letting the caller build a "Join {GroupName} to see this post" UI from
+            // a single request (see message-bubble's shared-post card and the feed's ?postId= link).
+            var canView = isHrOrAdmin
+                || group == null
+                || group.Visibility == GroupVisibilityEnum.Public
+                || await _groupMemberRepository.GetActiveAsync(entity.GroupId.Value, callerEmployeeId) != null;
+
+            if (!canView)
+            {
+                response.CanView = false;
+                response.Content = null;
+            }
+
+            return response;
         }
 
         public async Task<PagedResult<PostResponse>> GetFeedPaginatedAsync(PostFilterRequest request, long callerEmployeeId)

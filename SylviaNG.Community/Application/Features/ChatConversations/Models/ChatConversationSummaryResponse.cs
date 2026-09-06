@@ -1,4 +1,6 @@
+using System.Text.Json.Serialization;
 using SylviaNG.Community.Domain.Enums;
+using SylviaNG.Community.SharedKernel.Utils;
 
 namespace SylviaNG.Community.Application.Features.ChatConversations.Models
 {
@@ -14,6 +16,7 @@ namespace SylviaNG.Community.Application.Features.ChatConversations.Models
         public string DisplayName { get; set; } = string.Empty;
         public string? AvatarUrl { get; set; }
         public long? OtherEmployeeId { get; set; }
+        [JsonConverter(typeof(NullableUtcDateTimeJsonConverter))]
         public DateTime? LastMessageAt { get; set; }
         public string? LastMessagePreview { get; set; }
         public int UnreadCount { get; set; }

@@ -66,13 +66,12 @@ public class ElectionServiceTests
         EndDate = DateTime.UtcNow.AddDays(1)
     };
 
-    private static ElectionCandidate ApprovedCandidate(long electionId = 1, long candidateId = 10) => new()
+    private static ElectionCandidate NominatedCandidate(long electionId = 1, long candidateId = 10) => new()
     {
         ElectionCandidateId = candidateId,
         ElectionId = electionId,
         EmployeeId = 5,
         CandidateType = "Employee",
-        IsApproved = true,
         NominatedAt = DateTime.UtcNow.AddDays(-2)
     };
 
@@ -114,31 +113,75 @@ public class ElectionServiceTests
     }
 
     [Fact]
-    public async Task ApproveCandidateAsync_WhenNotFound_ShouldThrowNotFoundException()
+    public async Task NominateBulkAsync_WhenElectionNotFound_ShouldThrowNotFoundException()
     {
         // Arrange
-        _candidateRepositoryMock.Setup(r => r.GetByIdForElectionAsync(1, 10)).ReturnsAsync((ElectionCandidate?)null);
+        _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Election?)null);
 
         // Act
-        var act = () => _service.ApproveCandidateAsync(1, 10);
+        var act = () => _service.NominateBulkAsync(1, new ElectionCandidateNominateBulkRequest { Scope = "Organization" });
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
     [Fact]
-    public async Task ApproveCandidateAsync_WhenFound_ShouldSetIsApprovedTrue()
+    public async Task NominateBulkAsync_WhenCandidateTypeIsNotEmployee_ShouldThrowForbiddenException()
     {
         // Arrange
-        var candidate = new ElectionCandidate { ElectionCandidateId = 10, ElectionId = 1, IsApproved = false };
-        _candidateRepositoryMock.Setup(r => r.GetByIdForElectionAsync(1, 10)).ReturnsAsync(candidate);
+        var election = new Election { ElectionId = 1, Title = "T", CandidateType = "Team" };
+        _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
 
         // Act
-        await _service.ApproveCandidateAsync(1, 10);
+        var act = () => _service.NominateBulkAsync(1, new ElectionCandidateNominateBulkRequest { Scope = "Organization" });
 
         // Assert
-        candidate.IsApproved.Should().BeTrue();
-        _candidateRepositoryMock.Verify(r => r.Update(candidate), Times.Once);
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task NominateBulkAsync_WhenNoEmployeesResolved_ShouldReturnZeroAndNotSave()
+    {
+        // Arrange
+        var election = new Election { ElectionId = 1, Title = "T", CandidateType = "Employee" };
+        _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
+        _eligibilityServiceMock
+            .Setup(s => s.ResolveCandidateEmployeeIdsAsync("Department", It.IsAny<List<long>>()))
+            .ReturnsAsync(new HashSet<long>());
+
+        // Act
+        var result = await _service.NominateBulkAsync(1, new ElectionCandidateNominateBulkRequest { Scope = "Department", TargetIds = new List<long> { 7 } });
+
+        // Assert
+        result.Should().Be(0);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task NominateBulkAsync_WhenValid_ShouldSkipAlreadyNominatedEmployeesAndReturnNewCount()
+    {
+        // Arrange - employee 5 is already nominated; only 6 and 7 should be newly added
+        var election = new Election { ElectionId = 1, Title = "T", CandidateType = "Employee" };
+        _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
+        _eligibilityServiceMock
+            .Setup(s => s.ResolveCandidateEmployeeIdsAsync("Organization", It.IsAny<List<long>>()))
+            .ReturnsAsync(new HashSet<long> { 5, 6, 7 });
+        _candidateRepositoryMock
+            .Setup(r => r.GetByElectionIdAsync(1))
+            .ReturnsAsync(new List<ElectionCandidate> { NominatedCandidate(candidateId: 10) }); // EmployeeId = 5
+
+        List<ElectionCandidate>? addedCandidates = null;
+        _candidateRepositoryMock
+            .Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<ElectionCandidate>>()))
+            .Callback<IEnumerable<ElectionCandidate>>(c => addedCandidates = c.ToList());
+
+        // Act
+        var result = await _service.NominateBulkAsync(1, new ElectionCandidateNominateBulkRequest { Scope = "Organization" });
+
+        // Assert
+        result.Should().Be(2);
+        addedCandidates.Should().HaveCount(2);
+        addedCandidates!.Select(c => c.EmployeeId).Should().BeEquivalentTo(new long?[] { 6, 7 });
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
@@ -218,25 +261,6 @@ public class ElectionServiceTests
     }
 
     [Fact]
-    public async Task CastVoteAsync_WhenCandidateNotApproved_ShouldThrowForbiddenException()
-    {
-        // Arrange
-        var election = OpenElection();
-        var candidate = ApprovedCandidate();
-        candidate.IsApproved = false;
-        _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
-        _candidateRepositoryMock
-            .Setup(r => r.GetByIdsForElectionAsync(1, It.Is<IEnumerable<long>>(ids => ids.Contains(10))))
-            .ReturnsAsync(new List<ElectionCandidate> { candidate });
-
-        // Act
-        var act = () => _service.CastVoteAsync(1, new ElectionVoteCastRequest { CandidateIds = new List<long> { 10 } }, voterId: 5);
-
-        // Assert
-        await act.Should().ThrowAsync<ForbiddenException>();
-    }
-
-    [Fact]
     public async Task CastVoteAsync_WhenVoterAlreadyVoted_ShouldThrowDuplicateException()
     {
         // Arrange
@@ -271,7 +295,7 @@ public class ElectionServiceTests
     {
         // Arrange
         var election = OpenElection(allowMultipleChoice: false);
-        var candidate = ApprovedCandidate();
+        var candidate = NominatedCandidate();
         _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
         _candidateRepositoryMock
             .Setup(r => r.GetByIdsForElectionAsync(1, It.Is<IEnumerable<long>>(ids => ids.Contains(10))))
@@ -297,8 +321,8 @@ public class ElectionServiceTests
     {
         // Arrange
         var election = OpenElection(allowMultipleChoice: true, minSelection: 1, maxSelection: 2);
-        var candidateA = ApprovedCandidate(candidateId: 10);
-        var candidateB = ApprovedCandidate(candidateId: 11);
+        var candidateA = NominatedCandidate(candidateId: 10);
+        var candidateB = NominatedCandidate(candidateId: 11);
         _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
         _candidateRepositoryMock
             .Setup(r => r.GetByIdsForElectionAsync(1, It.IsAny<IEnumerable<long>>()))
@@ -338,12 +362,12 @@ public class ElectionServiceTests
     }
 
     [Fact]
-    public async Task PublishAsync_WhenFewerApprovedCandidatesThanMinSelection_ShouldThrowForbiddenException()
+    public async Task PublishAsync_WhenFewerCandidatesThanMinSelection_ShouldThrowForbiddenException()
     {
         // Arrange
         var election = new Election { ElectionId = 1, Title = "T", AudienceScope = "Organization", Status = "Draft", MinSelection = 2, MaxSelection = 2 };
         _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
-        _candidateRepositoryMock.Setup(r => r.CountApprovedAsync(1)).ReturnsAsync(1);
+        _candidateRepositoryMock.Setup(r => r.CountAsync(1)).ReturnsAsync(1);
 
         // Act
         var act = () => _service.PublishAsync(1);
@@ -358,7 +382,7 @@ public class ElectionServiceTests
         // Arrange
         var election = new Election { ElectionId = 1, Title = "T", AudienceScope = "Organization", Status = "Draft", MinSelection = 1, MaxSelection = 1 };
         _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
-        _candidateRepositoryMock.Setup(r => r.CountApprovedAsync(1)).ReturnsAsync(1);
+        _candidateRepositoryMock.Setup(r => r.CountAsync(1)).ReturnsAsync(1);
         _eligibilityServiceMock
             .Setup(s => s.GetEligibleEmployeeIdsAsync(election, It.IsAny<List<ElectionAudienceTarget>>()))
             .ReturnsAsync(new HashSet<long> { 5, 6 });
@@ -492,11 +516,35 @@ public class ElectionServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_WhenEndDateAtOrBeforeExistingStartDate_ShouldThrowForbiddenException()
+    {
+        // Arrange - request only sends EndDate (StartDate left as-is); must still be checked
+        // against the election's existing, already-stored StartDate.
+        var election = new Election
+        {
+            ElectionId = 1,
+            Title = "T",
+            AudienceScope = "Organization",
+            Status = "Draft",
+            StartDate = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc)
+        };
+        _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
+        _voteRepositoryMock.Setup(r => r.HasAnyVotesAsync(1)).ReturnsAsync(false);
+
+        // Act - new EndDate equals StartDate, which is invalid (must be strictly after)
+        var act = () => _service.UpdateAsync(1, new ElectionUpdateRequest { EndDate = election.StartDate });
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
+    }
+
+    [Fact]
     public async Task GetResultsAsync_WhenAnonymous_ShouldNotIncludeVoterDetails()
     {
         // Arrange
         var election = new Election { ElectionId = 1, Title = "T", IsAnonymous = true, Status = "Closed" };
-        var candidate = ApprovedCandidate();
+        var candidate = NominatedCandidate();
         _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
         _candidateRepositoryMock.Setup(r => r.GetByElectionIdAsync(1)).ReturnsAsync(new List<ElectionCandidate> { candidate });
         _voteRepositoryMock.Setup(r => r.GetAllForElectionAsync(1)).ReturnsAsync(new List<ElectionVote>
@@ -518,7 +566,7 @@ public class ElectionServiceTests
     {
         // Arrange
         var election = new Election { ElectionId = 1, Title = "T", IsAnonymous = false, Status = "Closed" };
-        var candidate = ApprovedCandidate();
+        var candidate = NominatedCandidate();
         _electionRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(election);
         _candidateRepositoryMock.Setup(r => r.GetByElectionIdAsync(1)).ReturnsAsync(new List<ElectionCandidate> { candidate });
         _voteRepositoryMock.Setup(r => r.GetAllForElectionAsync(1)).ReturnsAsync(new List<ElectionVote>

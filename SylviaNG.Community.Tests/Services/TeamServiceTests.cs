@@ -8,6 +8,7 @@ using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Application.Services;
 using SylviaNG.Community.Domain.Entities;
 using SylviaNG.Community.SharedKernel.Generic;
+using SylviaNG.Community.SharedKernel.Pagination;
 
 namespace SylviaNG.Community.Tests.Services;
 
@@ -67,10 +68,95 @@ public class TeamServiceTests
         _teamRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Team?)null);
 
         // Act
-        var act = () => _service.GetByIdAsync(1);
+        var act = () => _service.GetByIdAsync(1, callerEmployeeId: 1, isHrOrAdmin: true);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_WhenCallerIsNeitherSupervisorMemberNorHrAdmin_ShouldThrowForbiddenException()
+    {
+        // Arrange
+        _teamRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Team { TeamId = 1, Name = "Engineering", SupervisorId = 55 });
+        _teamMemberRepositoryMock.Setup(r => r.ExistsAsync(1, 7)).ReturnsAsync(false);
+
+        // Act
+        var act = () => _service.GetByIdAsync(1, callerEmployeeId: 7, isHrOrAdmin: false);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_WhenCallerIsSupervisor_ShouldSucceed()
+    {
+        // Arrange
+        _teamRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Team { TeamId = 1, Name = "Engineering", SupervisorId = 7 });
+
+        // Act
+        var result = await _service.GetByIdAsync(1, callerEmployeeId: 7, isHrOrAdmin: false);
+
+        // Assert
+        result.TeamId.Should().Be(1);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_WhenCallerIsActiveMember_ShouldSucceed()
+    {
+        // Arrange
+        _teamRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Team { TeamId = 1, Name = "Engineering", SupervisorId = 55 });
+        _teamMemberRepositoryMock.Setup(r => r.ExistsAsync(1, 7)).ReturnsAsync(true);
+
+        // Act
+        var result = await _service.GetByIdAsync(1, callerEmployeeId: 7, isHrOrAdmin: false);
+
+        // Assert
+        result.TeamId.Should().Be(1);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_WhenCallerIsHrOrAdmin_ShouldSucceedRegardlessOfMembership()
+    {
+        // Arrange
+        _teamRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Team { TeamId = 1, Name = "Engineering", SupervisorId = 55 });
+
+        // Act
+        var result = await _service.GetByIdAsync(1, callerEmployeeId: 99, isHrOrAdmin: true);
+
+        // Assert
+        result.TeamId.Should().Be(1);
+        _teamMemberRepositoryMock.Verify(r => r.ExistsAsync(It.IsAny<long>(), It.IsAny<long>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetPaginatedAsync_WhenHrOrAdmin_ShouldCallRepositoryUnscoped()
+    {
+        // Arrange
+        _teamRepositoryMock.Setup(r => r.GetPaginatedAsync(It.IsAny<PagedRequest>(), null, null))
+            .ReturnsAsync(new PagedResult<Team> { Data = new List<Team>(), TotalCount = 0, PageNumber = 1, PageSize = 10 });
+
+        // Act
+        await _service.GetPaginatedAsync(new PagedRequest(), callerEmployeeId: 1, isHrOrAdmin: true);
+
+        // Assert
+        _teamRepositoryMock.Verify(r => r.GetPaginatedAsync(It.IsAny<PagedRequest>(), null, null), Times.Once);
+        _teamMemberRepositoryMock.Verify(r => r.GetTeamIdsByEmployeeIdAsync(It.IsAny<long>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetPaginatedAsync_WhenRegularEmployee_ShouldScopeToTheirTeams()
+    {
+        // Arrange
+        _teamMemberRepositoryMock.Setup(r => r.GetTeamIdsByEmployeeIdAsync(7)).ReturnsAsync(new List<long> { 2, 3 });
+        _teamRepositoryMock.Setup(r => r.GetPaginatedAsync(It.IsAny<PagedRequest>(), 7, It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new PagedResult<Team> { Data = new List<Team>(), TotalCount = 0, PageNumber = 1, PageSize = 10 });
+
+        // Act
+        await _service.GetPaginatedAsync(new PagedRequest(), callerEmployeeId: 7, isHrOrAdmin: false);
+
+        // Assert
+        _teamRepositoryMock.Verify(r => r.GetPaginatedAsync(It.IsAny<PagedRequest>(), 7, It.Is<IEnumerable<long>>(ids => ids.SequenceEqual(new long[] { 2, 3 }))), Times.Once);
     }
 
     [Fact]
@@ -148,5 +234,48 @@ public class TeamServiceTests
         // Assert
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r =>
             r.EmployeeId == 5 && r.Category == "Team")), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetMembersAsync_WhenCallerIsNeitherSupervisorMemberNorHrAdmin_ShouldThrowForbiddenException()
+    {
+        // Arrange
+        _teamRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Team { TeamId = 1, Name = "Engineering", SupervisorId = 55 });
+        _teamMemberRepositoryMock.Setup(r => r.ExistsAsync(1, 7)).ReturnsAsync(false);
+
+        // Act
+        var act = () => _service.GetMembersAsync(1, callerEmployeeId: 7, isHrOrAdmin: false);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetMembersAsync_WhenCallerIsActiveMember_ShouldReturnMembers()
+    {
+        // Arrange
+        _teamRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Team { TeamId = 1, Name = "Engineering", SupervisorId = 55 });
+        _teamMemberRepositoryMock.Setup(r => r.ExistsAsync(1, 7)).ReturnsAsync(true);
+        _teamMemberRepositoryMock.Setup(r => r.GetByTeamIdAsync(1)).ReturnsAsync(new List<TeamMember> { new() { TeamMemberId = 1, TeamId = 1, EmployeeId = 7, IsActive = true } });
+
+        // Act
+        var result = await _service.GetMembersAsync(1, callerEmployeeId: 7, isHrOrAdmin: false);
+
+        // Assert
+        result.Should().ContainSingle(m => m.EmployeeId == 7);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetMembersAsync_WhenCallerIsHrOrAdmin_ShouldSucceedRegardlessOfMembership()
+    {
+        // Arrange
+        _teamRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Team { TeamId = 1, Name = "Engineering", SupervisorId = 55 });
+        _teamMemberRepositoryMock.Setup(r => r.GetByTeamIdAsync(1)).ReturnsAsync(new List<TeamMember>());
+
+        // Act
+        await _service.GetMembersAsync(1, callerEmployeeId: 99, isHrOrAdmin: true);
+
+        // Assert
+        _teamMemberRepositoryMock.Verify(r => r.ExistsAsync(It.IsAny<long>(), It.IsAny<long>()), Times.Never);
     }
 }

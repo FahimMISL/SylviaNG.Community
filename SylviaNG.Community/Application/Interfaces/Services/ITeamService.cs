@@ -14,8 +14,11 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         /// <summary>Caller must be this team's Supervisor, or HR/Admin (US-7.2).</summary>
         Task DeleteAsync(long teamId, long callerEmployeeId, bool isHrOrAdmin);
 
-        Task<TeamResponse> GetByIdAsync(long teamId);
-        Task<PagedResult<TeamResponse>> GetPaginatedAsync(PagedRequest request);
+        /// <summary>Caller must be this team's Supervisor, an active member, or HR/Admin.</summary>
+        Task<TeamResponse> GetByIdAsync(long teamId, long? callerEmployeeId, bool isHrOrAdmin);
+
+        /// <summary>Unscoped for HR/Admin; otherwise restricted to teams the caller supervises or is an active member of.</summary>
+        Task<PagedResult<TeamResponse>> GetPaginatedAsync(PagedRequest request, long? callerEmployeeId, bool isHrOrAdmin);
 
         /// <summary>Caller must be this team's Supervisor, or HR/Admin (US-7.2).</summary>
         Task<long> AddMemberAsync(long teamId, TeamMemberAddRequest request, long callerEmployeeId, bool isHrOrAdmin);
@@ -23,6 +26,7 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         /// <summary>Caller must be this team's Supervisor, or HR/Admin (US-7.2).</summary>
         Task RemoveMemberAsync(long teamId, long employeeId, long callerEmployeeId, bool isHrOrAdmin);
 
-        Task<List<TeamMemberResponse>> GetMembersAsync(long teamId);
+        /// <summary>Caller must be this team's Supervisor, an active member, or HR/Admin.</summary>
+        Task<List<TeamMemberResponse>> GetMembersAsync(long teamId, long? callerEmployeeId, bool isHrOrAdmin);
     }
 }

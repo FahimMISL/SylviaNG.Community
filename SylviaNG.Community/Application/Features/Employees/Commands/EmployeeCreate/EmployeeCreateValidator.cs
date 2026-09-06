@@ -1,4 +1,5 @@
 using FluentValidation;
+using SylviaNG.Community.SharedKernel.Utils;
 
 namespace SylviaNG.Community.Application.Features.Employees.Commands.EmployeeCreate
 {
@@ -25,7 +26,12 @@ namespace SylviaNG.Community.Application.Features.Employees.Commands.EmployeeCre
                 .GreaterThan(0).WithMessage("Branch is required.");
 
             RuleFor(x => x.Request.DateOfJoining)
-                .LessThanOrEqualTo(DateTime.Today).WithMessage("Date of joining cannot be in the future.");
+                .LessThanOrEqualTo(DateTimeUtility.TodayLocal()).WithMessage("Date of joining cannot be in the future.");
+
+            RuleFor(x => x.Request.DateOfBirth)
+                .LessThanOrEqualTo(DateTimeUtility.TodayLocal().AddYears(-13)).WithMessage("You must be at least 13 years old.")
+                .GreaterThanOrEqualTo(DateTimeUtility.TodayLocal().AddYears(-100)).WithMessage("Please enter a valid date of birth.")
+                .When(x => x.Request.DateOfBirth.HasValue);
         }
     }
 }

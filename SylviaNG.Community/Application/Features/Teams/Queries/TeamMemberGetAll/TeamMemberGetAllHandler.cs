@@ -15,7 +15,7 @@ namespace SylviaNG.Community.Application.Features.Teams.Queries.TeamMemberGetAll
 
         public async Task<List<TeamMemberResponse>> Handle(TeamMemberGetAllQuery query, CancellationToken cancellationToken)
         {
-            return await _teamService.GetMembersAsync(query.TeamId);
+            return await _teamService.GetMembersAsync(query.TeamId, query.CallerEmployeeId, query.IsHrOrAdmin);
         }
     }
 }

@@ -11,13 +11,15 @@ public class ElectionEligibilityServiceTests
 {
     private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
     private readonly Mock<ITeamMemberRepository> _teamMemberRepositoryMock;
+    private readonly Mock<ITeamRepository> _teamRepositoryMock;
     private readonly ElectionEligibilityService _service;
 
     public ElectionEligibilityServiceTests()
     {
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
         _teamMemberRepositoryMock = new Mock<ITeamMemberRepository>();
-        _service = new ElectionEligibilityService(_employeeRepositoryMock.Object, _teamMemberRepositoryMock.Object);
+        _teamRepositoryMock = new Mock<ITeamRepository>();
+        _service = new ElectionEligibilityService(_employeeRepositoryMock.Object, _teamMemberRepositoryMock.Object, _teamRepositoryMock.Object);
     }
 
     private static Election Election(string audienceScope) => new() { ElectionId = 1, Title = "T", AudienceScope = audienceScope };
@@ -106,5 +108,61 @@ public class ElectionEligibilityServiceTests
 
         // Assert
         result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveCandidateEmployeeIdsAsync_WhenTeam_ShouldIncludeSupervisorAlongsideMembers()
+    {
+        // Arrange - team 300 has one TeamMember (8) plus a supervisor (99) who isn't a TeamMember row
+        _teamMemberRepositoryMock
+            .Setup(r => r.GetActiveEmployeeIdsByTeamIdsAsync(It.Is<IEnumerable<long>>(ids => ids.Contains(300))))
+            .ReturnsAsync(new List<long> { 8 });
+        _teamRepositoryMock
+            .Setup(r => r.GetSupervisorIdsByTeamIdsAsync(It.Is<IEnumerable<long>>(ids => ids.Contains(300))))
+            .ReturnsAsync(new List<long> { 99 });
+        _employeeRepositoryMock
+            .Setup(r => r.FilterActiveIdsAsync(It.Is<IEnumerable<long>>(ids => ids.Contains(99))))
+            .ReturnsAsync(new List<long> { 99 });
+
+        // Act
+        var result = await _service.ResolveCandidateEmployeeIdsAsync("Team", new List<long> { 300 });
+
+        // Assert
+        result.Should().BeEquivalentTo(new HashSet<long> { 8, 99 });
+    }
+
+    [Fact]
+    public async Task ResolveCandidateEmployeeIdsAsync_WhenTeamSupervisorInactive_ShouldExcludeSupervisor()
+    {
+        // Arrange
+        _teamMemberRepositoryMock
+            .Setup(r => r.GetActiveEmployeeIdsByTeamIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<long> { 8 });
+        _teamRepositoryMock
+            .Setup(r => r.GetSupervisorIdsByTeamIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<long> { 99 });
+        _employeeRepositoryMock
+            .Setup(r => r.FilterActiveIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<long>()); // 99 filtered out as inactive
+
+        // Act
+        var result = await _service.ResolveCandidateEmployeeIdsAsync("Team", new List<long> { 300 });
+
+        // Assert
+        result.Should().BeEquivalentTo(new HashSet<long> { 8 });
+    }
+
+    [Fact]
+    public async Task ResolveCandidateEmployeeIdsAsync_WhenNotTeamScope_ShouldMatchResolveEmployeeIdsAsync()
+    {
+        // Arrange
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsAsync()).ReturnsAsync(new List<long> { 1, 2, 3 });
+
+        // Act
+        var result = await _service.ResolveCandidateEmployeeIdsAsync("Organization", new List<long>());
+
+        // Assert
+        result.Should().BeEquivalentTo(new HashSet<long> { 1, 2, 3 });
+        _teamRepositoryMock.Verify(r => r.GetSupervisorIdsByTeamIdsAsync(It.IsAny<IEnumerable<long>>()), Times.Never);
     }
 }

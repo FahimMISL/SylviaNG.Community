@@ -21,8 +21,8 @@ namespace SylviaNG.Community.Application.Features.Surveys.Commands.SurveyRespons
                         .GreaterThan(0).WithMessage("QuestionId is required.");
 
                     answer.RuleFor(a => a)
-                        .Must(a => a.OptionId.HasValue || !string.IsNullOrWhiteSpace(a.AnswerText))
-                        .WithMessage("Either OptionId or AnswerText must be provided.");
+                        .Must(a => a.OptionId.HasValue || !string.IsNullOrWhiteSpace(a.AnswerText) || a.RatingValue.HasValue)
+                        .WithMessage("Either OptionId, AnswerText, or RatingValue must be provided.");
                 });
         }
     }

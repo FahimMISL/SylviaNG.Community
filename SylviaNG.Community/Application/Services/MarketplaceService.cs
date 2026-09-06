@@ -20,10 +20,9 @@ namespace SylviaNG.Community.Application.Services
         private readonly IMessageRepository _messageRepository;
         private readonly IMarketplaceReportRepository _marketplaceReportRepository;
         private readonly IPurchaseRepository _purchaseRepository;
-        private readonly IReviewRepository _reviewRepository;
-        private readonly IReviewImageRepository _reviewImageRepository;
         private readonly IEmployeeRepository _employeeRepository;
         private readonly IEmployeeKeycloakAccountRepository _employeeKeycloakAccountRepository;
+        private readonly IFileStorageRepository _fileStorageRepository;
         private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
 
@@ -36,10 +35,9 @@ namespace SylviaNG.Community.Application.Services
             IMessageRepository messageRepository,
             IMarketplaceReportRepository marketplaceReportRepository,
             IPurchaseRepository purchaseRepository,
-            IReviewRepository reviewRepository,
-            IReviewImageRepository reviewImageRepository,
             IEmployeeRepository employeeRepository,
             IEmployeeKeycloakAccountRepository employeeKeycloakAccountRepository,
+            IFileStorageRepository fileStorageRepository,
             INotificationService notificationService,
             IUnitOfWork unitOfWork)
         {
@@ -51,10 +49,9 @@ namespace SylviaNG.Community.Application.Services
             _messageRepository = messageRepository;
             _marketplaceReportRepository = marketplaceReportRepository;
             _purchaseRepository = purchaseRepository;
-            _reviewRepository = reviewRepository;
-            _reviewImageRepository = reviewImageRepository;
             _employeeRepository = employeeRepository;
             _employeeKeycloakAccountRepository = employeeKeycloakAccountRepository;
+            _fileStorageRepository = fileStorageRepository;
             _notificationService = notificationService;
             _unitOfWork = unitOfWork;
         }
@@ -256,9 +253,6 @@ namespace SylviaNG.Community.Application.Services
                 ?? throw new NotFoundException("Listing", listingId);
 
             var response = entity.ToResponse();
-            var (average, count) = await _reviewRepository.GetRatingSummaryAsync(listingId);
-            response.AverageRating = average;
-            response.ReviewCount = count;
 
             return response;
         }
@@ -267,16 +261,6 @@ namespace SylviaNG.Community.Application.Services
         {
             var pagedResult = await _listingRepository.GetPaginatedAsync(request);
             var responses = pagedResult.Data.Select(l => l.ToResponse()).ToList();
-
-            var ratingSummaries = await _reviewRepository.GetRatingSummariesAsync(responses.Select(r => r.ListingId));
-            foreach (var response in responses)
-            {
-                if (ratingSummaries.TryGetValue(response.ListingId, out var summary))
-                {
-                    response.AverageRating = summary.Average;
-                    response.ReviewCount = summary.Count;
-                }
-            }
 
             return new PagedResult<ListingResponse>
             {
@@ -293,6 +277,12 @@ namespace SylviaNG.Community.Application.Services
         {
             _ = await _listingRepository.GetByIdAsync(listingId)
                 ?? throw new NotFoundException("Listing", listingId);
+
+            if (request.FileStorageId.HasValue)
+            {
+                _ = await _fileStorageRepository.GetByIdAsync(request.FileStorageId.Value)
+                    ?? throw new NotFoundException("FileStorage", request.FileStorageId.Value);
+            }
 
             var entity = request.ToEntity(listingId);
             await _listingImageRepository.AddAsync(entity);
@@ -558,52 +548,6 @@ namespace SylviaNG.Community.Application.Services
         public async Task<bool> HasPurchasedAsync(long employeeId, long listingId)
         {
             return await _purchaseRepository.ExistsForBuyerAndListingAsync(employeeId, listingId);
-        }
-
-        // ---------------- Reviews ----------------
-
-        public async Task<long> CreateReviewAsync(long reviewerId, ReviewCreateRequest request)
-        {
-            _ = await _listingRepository.GetByIdAsync(request.ListingId)
-                ?? throw new NotFoundException("Listing", request.ListingId);
-
-            var hasPurchased = await _purchaseRepository.ExistsForBuyerAndListingAsync(reviewerId, request.ListingId);
-            if (!hasPurchased)
-                throw new ForbiddenException("You can only review listings you have purchased.");
-
-            var alreadyReviewed = await _reviewRepository.ExistsAsync(reviewerId, request.ListingId);
-            if (alreadyReviewed)
-                throw new DuplicateException("Review", "ListingId", request.ListingId.ToString());
-
-            var entity = request.ToEntity(reviewerId);
-            await _reviewRepository.AddAsync(entity);
-            await _unitOfWork.SaveChangesAsync();
-
-            return entity.ReviewId;
-        }
-
-        public async Task<List<ReviewResponse>> GetReviewsForListingAsync(long listingId)
-        {
-            var reviews = await _reviewRepository.GetByListingIdAsync(listingId);
-            return reviews.Select(r => r.ToResponse()).ToList();
-        }
-
-        public async Task<long> AddReviewImageAsync(long reviewId, ReviewImageAddRequest request)
-        {
-            _ = await _reviewRepository.GetByIdAsync(reviewId)
-                ?? throw new NotFoundException("Review", reviewId);
-
-            var entity = request.ToEntity(reviewId);
-            await _reviewImageRepository.AddAsync(entity);
-            await _unitOfWork.SaveChangesAsync();
-
-            return entity.ImageId;
-        }
-
-        public async Task<List<ReviewImageResponse>> GetReviewImagesAsync(long reviewId)
-        {
-            var images = await _reviewImageRepository.GetByReviewIdAsync(reviewId);
-            return images.Select(i => i.ToResponse()).ToList();
         }
     }
 }

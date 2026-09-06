@@ -18,7 +18,7 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
         public string? CommunityContributions { get; set; }
 
         /// <summary>Self-service, same flow as Bio/Skills. Optional.</summary>
-        public DateTime? DateOfBirth { get; set; }
+        public DateOnly? DateOfBirth { get; set; }
 
         public string? Phone { get; set; }
         public string? Email { get; set; }

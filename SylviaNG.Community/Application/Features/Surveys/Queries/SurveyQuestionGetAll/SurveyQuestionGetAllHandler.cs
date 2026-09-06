@@ -15,7 +15,7 @@ namespace SylviaNG.Community.Application.Features.Surveys.Queries.SurveyQuestion
 
         public async Task<List<SurveyQuestionResponse>> Handle(SurveyQuestionGetAllQuery query, CancellationToken cancellationToken)
         {
-            return await _surveyService.GetQuestionsAsync(query.SurveyId);
+            return await _surveyService.GetQuestionsAsync(query.SurveyId, query.IsHrOrAdmin, query.EmployeeId);
         }
     }
 }

@@ -367,4 +367,134 @@ public class ChatMessageServiceTests
         _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(req =>
             req.EmployeeId == 101 && req.RelatedEntityType == "ChatReport" && req.RelatedEntityId == 500)), Times.Once);
     }
+
+    [Fact]
+    public async Task SetPinnedAsync_WhenPinning_ShouldSetFieldsAndBroadcast()
+    {
+        // Arrange
+        var message = new ChatMessage { ChatMessageId = 10, ChatConversationId = 1, SenderEmployeeId = 3 };
+        _chatMessageRepositoryMock.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(message);
+        _chatParticipantRepositoryMock.Setup(r => r.IsActiveParticipantAsync(1, 2)).ReturnsAsync(true);
+
+        // Act
+        await _service.SetPinnedAsync(10, 2, true);
+
+        // Assert
+        message.IsPinned.Should().BeTrue();
+        message.PinnedByEmployeeId.Should().Be(2);
+        message.PinnedAt.Should().NotBeNull();
+        _chatMessageRepositoryMock.Verify(r => r.Update(message), Times.Once);
+        _messengerBroadcasterMock.Verify(b => b.BroadcastMessagePinnedAsync(1, 10, true, 2, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task SetPinnedAsync_WhenUnpinning_ShouldClearFieldsAndBroadcast()
+    {
+        // Arrange
+        var message = new ChatMessage { ChatMessageId = 10, ChatConversationId = 1, SenderEmployeeId = 3, IsPinned = true, PinnedAt = DateTime.UtcNow, PinnedByEmployeeId = 2 };
+        _chatMessageRepositoryMock.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(message);
+        _chatParticipantRepositoryMock.Setup(r => r.IsActiveParticipantAsync(1, 2)).ReturnsAsync(true);
+
+        // Act
+        await _service.SetPinnedAsync(10, 2, false);
+
+        // Assert
+        message.IsPinned.Should().BeFalse();
+        message.PinnedAt.Should().BeNull();
+        message.PinnedByEmployeeId.Should().BeNull();
+        _messengerBroadcasterMock.Verify(b => b.BroadcastMessagePinnedAsync(1, 10, false, null, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task SetPinnedAsync_WhenCallerNotParticipant_ShouldThrowForbiddenException()
+    {
+        // Arrange
+        var message = new ChatMessage { ChatMessageId = 10, ChatConversationId = 1, SenderEmployeeId = 3 };
+        _chatMessageRepositoryMock.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(message);
+        _chatParticipantRepositoryMock.Setup(r => r.IsActiveParticipantAsync(1, 99)).ReturnsAsync(false);
+
+        // Act
+        var act = () => _service.SetPinnedAsync(10, 99, true);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _chatMessageRepositoryMock.Verify(r => r.Update(It.IsAny<ChatMessage>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetPinnedMessagesAsync_WhenCallerIsParticipant_ShouldReturnHydratedPinnedMessages()
+    {
+        // Arrange
+        _chatParticipantRepositoryMock.Setup(r => r.IsActiveParticipantAsync(1, 2)).ReturnsAsync(true);
+        var pinned = new ChatMessage { ChatMessageId = 10, ChatConversationId = 1, SenderEmployeeId = 3, Body = "important", IsPinned = true, PinnedAt = DateTime.UtcNow, PinnedByEmployeeId = 2 };
+        _chatMessageRepositoryMock.Setup(r => r.GetPinnedByConversationIdAsync(1)).ReturnsAsync(new List<ChatMessage> { pinned });
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(3)).ReturnsAsync(new Employee { EmployeeId = 3, EmployeeName = "Carol" });
+        _chatMessageAttachmentRepositoryMock.Setup(r => r.GetByMessageIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new List<ChatMessageAttachment>());
+        _chatMessageReactionRepositoryMock.Setup(r => r.GetByMessageIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new List<ChatMessageReaction>());
+
+        // Act
+        var result = await _service.GetPinnedMessagesAsync(1, 2);
+
+        // Assert
+        var item = result.Should().ContainSingle().Subject;
+        item.ChatMessageId.Should().Be(10);
+        item.SenderName.Should().Be("Carol");
+        item.IsPinned.Should().BeTrue();
+        item.PinnedByEmployeeId.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetPinnedMessagesAsync_WhenCallerNotParticipant_ShouldThrowForbiddenException()
+    {
+        // Arrange
+        _chatParticipantRepositoryMock.Setup(r => r.IsActiveParticipantAsync(1, 99)).ReturnsAsync(false);
+
+        // Act
+        var act = () => _service.GetPinnedMessagesAsync(1, 99);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task GetMediaAndFilesPagedAsync_WhenCallerIsParticipant_ShouldReturnHydratedGalleryItems()
+    {
+        // Arrange
+        _chatParticipantRepositoryMock.Setup(r => r.IsActiveParticipantAsync(1, 2)).ReturnsAsync(true);
+        var attachment = new ChatMessageAttachment { ChatMessageAttachmentId = 5, ChatMessageId = 10, FileStorageId = 20, AttachmentType = ChatAttachmentTypeEnum.Image };
+        var pagedAttachments = new PagedResult<ChatMessageAttachment>
+        {
+            Data = new List<ChatMessageAttachment> { attachment },
+            TotalCount = 1,
+            PageNumber = 1,
+            PageSize = 30
+        };
+        _chatMessageAttachmentRepositoryMock.Setup(r => r.GetByConversationPagedAsync(1, It.IsAny<PagedRequest>())).ReturnsAsync(pagedAttachments);
+        var message = new ChatMessage { ChatMessageId = 10, ChatConversationId = 1, SenderEmployeeId = 3, SentAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
+        _chatMessageRepositoryMock.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(message);
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(3)).ReturnsAsync(new Employee { EmployeeId = 3, EmployeeName = "Carol" });
+        _fileStorageRepositoryMock.Setup(r => r.GetByIdAsync(20)).ReturnsAsync(new FileStorage { FileId = 20, OriginalFileName = "photo.png", StoragePath = "uploads/photo.png", FileSize = 1024 });
+
+        // Act
+        var result = await _service.GetMediaAndFilesPagedAsync(1, 2, new PagedRequest());
+
+        // Assert
+        var item = result.Data.Should().ContainSingle().Subject;
+        item.OriginalFileName.Should().Be("photo.png");
+        item.SenderName.Should().Be("Carol");
+        item.ChatMessageId.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task GetMediaAndFilesPagedAsync_WhenCallerNotParticipant_ShouldThrowForbiddenException()
+    {
+        // Arrange
+        _chatParticipantRepositoryMock.Setup(r => r.IsActiveParticipantAsync(1, 99)).ReturnsAsync(false);
+
+        // Act
+        var act = () => _service.GetMediaAndFilesPagedAsync(1, 99, new PagedRequest());
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
 }

@@ -1,12 +1,16 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using SylviaNG.Community.Application.Common.Exceptions;
+using SylviaNG.Community.Application.Features.Notifications.Models;
 using SylviaNG.Community.Application.Features.Surveys.Models;
 using SylviaNG.Community.Application.Interfaces.Repositories;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Application.Services;
 using SylviaNG.Community.Domain.Entities;
 using SylviaNG.Community.SharedKernel.Generic;
 using SylviaNG.Community.SharedKernel.Pagination;
+using System.Linq.Expressions;
 
 namespace SylviaNG.Community.Tests.Services;
 
@@ -19,6 +23,8 @@ public class SurveyServiceTests
     private readonly Mock<ISurveyResponseRepository> _surveyResponseRepositoryMock;
     private readonly Mock<ISurveyAnswerRepository> _surveyAnswerRepositoryMock;
     private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
+    private readonly Mock<INotificationService> _notificationServiceMock;
+    private readonly Mock<ILogger<SurveyService>> _loggerMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly SurveyService _service;
 
@@ -31,6 +37,8 @@ public class SurveyServiceTests
         _surveyResponseRepositoryMock = new Mock<ISurveyResponseRepository>();
         _surveyAnswerRepositoryMock = new Mock<ISurveyAnswerRepository>();
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
+        _notificationServiceMock = new Mock<INotificationService>();
+        _loggerMock = new Mock<ILogger<SurveyService>>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
 
         _service = new SurveyService(
@@ -41,7 +49,24 @@ public class SurveyServiceTests
             _surveyResponseRepositoryMock.Object,
             _surveyAnswerRepositoryMock.Object,
             _employeeRepositoryMock.Object,
+            _notificationServiceMock.Object,
+            _loggerMock.Object,
             _unitOfWorkMock.Object);
+
+        // Default: no audience configured, and employee 5 (the id used throughout
+        // SubmitResponseAsync_*/GetByIdAsync_*/GetQuestionsAsync_* tests below) counts as an active
+        // employee - "no audience rows" resolves to "everyone active" (see
+        // SurveyService.GetEligibleEmployeeIdsAsync), so this keeps the many existing tests that
+        // never touch audience/employee mocks passing under the new SubmitResponseAsync/GetByIdAsync/
+        // GetQuestionsAsync eligibility checks, while the PublishAsync_* tests below that only assert
+        // status/SaveChanges (not notification counts) are unaffected by employee 5 now resolving to
+        // one notification. Per-test setups (e.g. GetResultsAsync_* configuring GetBySurveyIdAsync(1),
+        // or the eligibility tests configuring a Department/Branch audience) still win via Moq's
+        // most-recent-setup-wins resolution.
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(It.IsAny<long>()))
+            .ReturnsAsync(new List<SurveyAudience>());
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsAsync())
+            .ReturnsAsync(new List<long> { 5 });
     }
 
     #region Survey CRUD
@@ -228,6 +253,108 @@ public class SurveyServiceTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task PublishAsync_WithNoAudienceConfigured_ShouldNotifyEveryActiveEmployee()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Draft" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+        _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyQuestion>
+        {
+            new() { QuestionId = 1, SurveyId = 1, QuestionText = "Q1", QuestionType = "Text" }
+        });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsAsync()).ReturnsAsync(new List<long> { 5, 6, 7 });
+
+        await _service.PublishAsync(1);
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.IsAny<NotificationCreateRequest>()), Times.Exactly(3));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task PublishAsync_WithEntireCompanyAudience_ShouldNotifyEveryActiveEmployee()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Draft" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+        _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyQuestion>
+        {
+            new() { QuestionId = 1, SurveyId = 1, QuestionText = "Q1", QuestionType = "Text" }
+        });
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyAudience>
+        {
+            new() { AudienceId = 1, SurveyId = 1, AudienceType = "EntireCompany" }
+        });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsAsync()).ReturnsAsync(new List<long> { 5, 6 });
+
+        await _service.PublishAsync(1);
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.IsAny<NotificationCreateRequest>()), Times.Exactly(2));
+        _employeeRepositoryMock.Verify(r => r.GetActiveIdsByDepartmentIdsAsync(It.IsAny<IEnumerable<long>>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task PublishAsync_WithDepartmentAndBranchAudience_ShouldNotifyUnionOfEligibleEmployeesOnce()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Draft" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+        _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyQuestion>
+        {
+            new() { QuestionId = 1, SurveyId = 1, QuestionText = "Q1", QuestionType = "Text" }
+        });
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyAudience>
+        {
+            new() { AudienceId = 1, SurveyId = 1, AudienceType = "Department", DepartmentId = 2 },
+            new() { AudienceId = 2, SurveyId = 1, AudienceType = "Branch", BranchId = 3 }
+        });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsByDepartmentIdsAsync(It.Is<IEnumerable<long>>(ids => ids.Contains(2L))))
+            .ReturnsAsync(new List<long> { 5, 6 });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsBySiteIdsAsync(It.Is<IEnumerable<long>>(ids => ids.Contains(3L))))
+            .ReturnsAsync(new List<long> { 6, 7 });
+
+        await _service.PublishAsync(1);
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.IsAny<NotificationCreateRequest>()), Times.Exactly(3));
+        _employeeRepositoryMock.Verify(r => r.GetActiveIdsAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task PublishAsync_ShouldSendCorrectNotificationFields()
+    {
+        var survey = new Survey { SurveyId = 42, Title = "Engagement Pulse", SurveyType = "Pulse", Status = "Draft" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(42)).ReturnsAsync(survey);
+        _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(42)).ReturnsAsync(new List<SurveyQuestion>
+        {
+            new() { QuestionId = 1, SurveyId = 42, QuestionText = "Q1", QuestionType = "Text" }
+        });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsAsync()).ReturnsAsync(new List<long> { 9 });
+
+        await _service.PublishAsync(42);
+
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(req =>
+            req.EmployeeId == 9 &&
+            req.Title == "New survey published: Engagement Pulse" &&
+            req.Category == "Survey" &&
+            req.RelatedEntityType == "Survey" &&
+            req.RelatedEntityId == 42)), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task PublishAsync_WhenNotificationCreateThrows_ShouldStillNotifyRemainingEmployeesAndNotThrow()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Draft" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+        _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyQuestion>
+        {
+            new() { QuestionId = 1, SurveyId = 1, QuestionText = "Q1", QuestionType = "Text" }
+        });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsAsync()).ReturnsAsync(new List<long> { 5, 6 });
+        _notificationServiceMock.Setup(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r => r.EmployeeId == 5)))
+            .ThrowsAsync(new InvalidOperationException("db down"));
+
+        var act = () => _service.PublishAsync(1);
+
+        await act.Should().NotThrowAsync();
+        _notificationServiceMock.Verify(n => n.CreateAsync(It.Is<NotificationCreateRequest>(r => r.EmployeeId == 6)), Times.Once);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task CloseAsync_ShouldSetStatusToClosedAndSetClosedAt()
     {
         var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" };
@@ -289,11 +416,37 @@ public class SurveyServiceTests
     {
         var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Draft" };
         _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+        _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyQuestion>());
 
         await _service.DeleteAsync(1);
 
         _surveyRepositoryMock.Verify(r => r.Delete(survey), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+        _surveyAnswerRepositoryMock.Verify(r => r.DeleteWhereAsync(It.IsAny<Expression<Func<SurveyAnswer, bool>>>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task DeleteAsync_WithExistingQuestions_ShouldDeleteAnswersBeforeSurveyWithinTransaction()
+    {
+        // Regression test: SurveyAnswer.QuestionId is a Restrict FK, so deleting a survey that has
+        // questions with recorded answers must explicitly delete those answers first (see the
+        // comment in SurveyService.DeleteAsync) - otherwise Postgres rejects the cascade delete
+        // with a foreign key violation on FK_SurveyAnswers_SurveyQuestions_QuestionId.
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+        _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyQuestion>
+        {
+            new() { QuestionId = 1, SurveyId = 1, QuestionText = "Rate it", QuestionType = "Rating" }
+        });
+
+        await _service.DeleteAsync(1);
+
+        _surveyAnswerRepositoryMock.Verify(r => r.DeleteWhereAsync(It.IsAny<Expression<Func<SurveyAnswer, bool>>>()), Times.Once);
+        _surveyRepositoryMock.Verify(r => r.Delete(survey), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Exactly(2));
+        _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(), Times.Once);
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(), Times.Once);
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(), Times.Never);
     }
 
     [Fact]
@@ -301,7 +454,7 @@ public class SurveyServiceTests
     {
         _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Survey?)null);
 
-        var act = () => _service.GetByIdAsync(1);
+        var act = () => _service.GetByIdAsync(1, isHrOrAdmin: true, employeeId: null);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -312,10 +465,72 @@ public class SurveyServiceTests
         var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Draft" };
         _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
 
-        var result = await _service.GetByIdAsync(1);
+        var result = await _service.GetByIdAsync(1, isHrOrAdmin: true, employeeId: null);
 
         result.SurveyId.Should().Be(1);
         result.Title.Should().Be("Pulse");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_ForHrOrAdminOutsideSurveysAudience_ShouldStillSetIsEligibleFalse()
+    {
+        // Reproduces "why can't HR take Sur D1": HR can view/manage any survey regardless of
+        // audience (isHrOrAdmin bypasses EnsureNonHrCallerIsEligibleAsync below), but IsEligible
+        // must still reflect their real department/branch membership, since that's what the
+        // frontend uses to decide whether "Take Survey" should show.
+        var survey = new Survey { SurveyId = 1, Title = "Dept Pulse", SurveyType = "Pulse", Status = "Published" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyAudience>
+        {
+            new() { AudienceId = 1, SurveyId = 1, AudienceType = "Department", DepartmentId = 1 }
+        });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsByDepartmentIdsAsync(It.Is<IEnumerable<long>>(ids => ids.Contains(1L))))
+            .ReturnsAsync(new List<long> { 99 }); // department 1's employees - doesn't include the HR caller (3)
+
+        var result = await _service.GetByIdAsync(1, isHrOrAdmin: true, employeeId: 3);
+
+        result.IsEligible.Should().BeFalse();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_WhenNonHrAndDraft_ShouldThrowForbiddenException()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Draft" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+
+        var act = () => _service.GetByIdAsync(1, isHrOrAdmin: false, employeeId: 5);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_WhenNonHrAndNotEligible_ShouldThrowForbiddenException()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1))
+            .ReturnsAsync(new List<SurveyAudience> { new() { AudienceType = "Department", DepartmentId = 10 } });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsByDepartmentIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<long> { 1, 2, 3 });
+
+        var act = () => _service.GetByIdAsync(1, isHrOrAdmin: false, employeeId: 5);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetByIdAsync_WhenNonHrAndEligible_ShouldReturnMappedResponse()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" };
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(survey);
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1))
+            .ReturnsAsync(new List<SurveyAudience> { new() { AudienceType = "Department", DepartmentId = 10 } });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsByDepartmentIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<long> { 5 });
+
+        var result = await _service.GetByIdAsync(1, isHrOrAdmin: false, employeeId: 5);
+
+        result.SurveyId.Should().Be(1);
     }
 
     [Fact]
@@ -330,10 +545,117 @@ public class SurveyServiceTests
         };
         _surveyRepositoryMock.Setup(r => r.GetPaginatedAsync(It.IsAny<PagedRequest>())).ReturnsAsync(pagedEntities);
 
-        var result = await _service.GetPaginatedAsync(new PagedRequest());
+        var result = await _service.GetPaginatedAsync(new PagedRequest(), employeeId: 5);
 
         result.TotalCount.Should().Be(1);
         result.Data.Should().ContainSingle(s => s.SurveyId == 1);
+        // Draft surveys are never eligible regardless of audience - see IsEligibleForSurveyAsync.
+        result.Data.Single().IsEligible.Should().BeFalse();
+        _employeeRepositoryMock.Verify(r => r.GetActiveIdsAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetPaginatedAsync_WithPublishedSurveyMatchingCallersAudience_ShouldSetIsEligibleTrue()
+    {
+        var pagedEntities = new PagedResult<Survey>
+        {
+            Data = new List<Survey> { new() { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" } },
+            TotalCount = 1,
+            PageNumber = 1,
+            PageSize = 10
+        };
+        _surveyRepositoryMock.Setup(r => r.GetPaginatedAsync(It.IsAny<PagedRequest>())).ReturnsAsync(pagedEntities);
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(pagedEntities.Data[0]);
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyAudience>());
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsAsync()).ReturnsAsync(new List<long> { 5 });
+
+        var result = await _service.GetPaginatedAsync(new PagedRequest(), employeeId: 5);
+
+        result.Data.Single().IsEligible.Should().BeTrue();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetPaginatedAsync_WithPublishedSurveyOutsideCallersAudience_ShouldSetIsEligibleFalse()
+    {
+        var pagedEntities = new PagedResult<Survey>
+        {
+            Data = new List<Survey> { new() { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" } },
+            TotalCount = 1,
+            PageNumber = 1,
+            PageSize = 10
+        };
+        _surveyRepositoryMock.Setup(r => r.GetPaginatedAsync(It.IsAny<PagedRequest>())).ReturnsAsync(pagedEntities);
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(pagedEntities.Data[0]);
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyAudience>
+        {
+            new() { AudienceId = 1, SurveyId = 1, AudienceType = "Department", DepartmentId = 1 }
+        });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsByDepartmentIdsAsync(It.Is<IEnumerable<long>>(ids => ids.Contains(1L))))
+            .ReturnsAsync(new List<long> { 99 }); // department 1's employees - doesn't include the caller (5)
+
+        var result = await _service.GetPaginatedAsync(new PagedRequest(), employeeId: 5);
+
+        result.Data.Single().IsEligible.Should().BeFalse();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetEligibleAsync_ShouldExcludeDraftSurveys()
+    {
+        _surveyRepositoryMock.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Survey, bool>>>()))
+            .ReturnsAsync(new List<Survey>());
+
+        var result = await _service.GetEligibleAsync(5);
+
+        result.Should().BeEmpty();
+        _surveyRepositoryMock.Verify(r => r.FindAsync(It.IsAny<Expression<Func<Survey, bool>>>()), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetEligibleAsync_WhenEmployeeInTargetedDepartment_ShouldIncludeSurvey()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" };
+        _surveyRepositoryMock.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Survey, bool>>>()))
+            .ReturnsAsync(new List<Survey> { survey });
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1))
+            .ReturnsAsync(new List<SurveyAudience> { new() { AudienceType = "Department", DepartmentId = 10 } });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsByDepartmentIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<long> { 5 });
+
+        var result = await _service.GetEligibleAsync(5);
+
+        result.Should().ContainSingle(s => s.SurveyId == 1);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetEligibleAsync_WhenEmployeeNotInTargetedDepartment_ShouldExcludeSurvey()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" };
+        _surveyRepositoryMock.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Survey, bool>>>()))
+            .ReturnsAsync(new List<Survey> { survey });
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1))
+            .ReturnsAsync(new List<SurveyAudience> { new() { AudienceType = "Department", DepartmentId = 10 } });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsByDepartmentIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<long> { 1, 2, 3 });
+
+        var result = await _service.GetEligibleAsync(5);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetEligibleAsync_WhenNoAudienceRows_ShouldIncludeSurveyForEveryone()
+    {
+        var survey = new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Closed" };
+        _surveyRepositoryMock.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Survey, bool>>>()))
+            .ReturnsAsync(new List<Survey> { survey });
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1))
+            .ReturnsAsync(new List<SurveyAudience>());
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsAsync())
+            .ReturnsAsync(new List<long> { 5 });
+
+        var result = await _service.GetEligibleAsync(5);
+
+        result.Should().ContainSingle(s => s.SurveyId == 1);
     }
 
     #endregion
@@ -489,13 +811,48 @@ public class SurveyServiceTests
             new() { OptionId = 11, QuestionId = 1, OptionText = "No" }
         };
 
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" });
         _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(questions);
         _surveyOptionRepositoryMock.Setup(r => r.GetByQuestionIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(options);
 
-        var result = await _service.GetQuestionsAsync(1);
+        var result = await _service.GetQuestionsAsync(1, isHrOrAdmin: true, employeeId: null);
 
         result.Should().ContainSingle();
         result[0].Options.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetQuestionsAsync_WhenSurveyNotFound_ShouldThrowNotFoundException()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Survey?)null);
+
+        var act = () => _service.GetQuestionsAsync(1, isHrOrAdmin: true, employeeId: null);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetQuestionsAsync_WhenNonHrAndDraft_ShouldThrowForbiddenException()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Draft" });
+
+        var act = () => _service.GetQuestionsAsync(1, isHrOrAdmin: false, employeeId: 5);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetQuestionsAsync_WhenNonHrAndNotEligible_ShouldThrowForbiddenException()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" });
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1))
+            .ReturnsAsync(new List<SurveyAudience> { new() { AudienceType = "Branch", BranchId = 20 } });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsBySiteIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<long> { 1, 2, 3 });
+
+        var act = () => _service.GetQuestionsAsync(1, isHrOrAdmin: false, employeeId: 5);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
     }
 
     #endregion
@@ -593,12 +950,28 @@ public class SurveyServiceTests
         await act.Should().ThrowAsync<DuplicateException>();
     }
 
+    [Fact]
+    public async System.Threading.Tasks.Task SubmitResponseAsync_WhenEmployeeNotInTargetedAudience_ShouldThrowForbiddenException()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" });
+        _surveyAudienceRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1))
+            .ReturnsAsync(new List<SurveyAudience> { new() { AudienceType = "Department", DepartmentId = 10 } });
+        _employeeRepositoryMock.Setup(r => r.GetActiveIdsByDepartmentIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync(new List<long> { 1, 2, 3 });
+
+        var act = () => _service.SubmitResponseAsync(1, new SurveySubmissionRequest(), 5);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _surveyResponseRepositoryMock.Verify(r => r.AddAsync(It.IsAny<SurveyResponse>()), Times.Never);
+    }
+
     private void SetUpQuestionsForValidation()
     {
         _surveyQuestionRepositoryMock.Setup(r => r.GetBySurveyIdAsync(1)).ReturnsAsync(new List<SurveyQuestion>
         {
             new() { QuestionId = 1, SurveyId = 1, QuestionText = "Pick one", QuestionType = "SingleChoice", IsRequired = false },
-            new() { QuestionId = 2, SurveyId = 1, QuestionText = "Any feedback?", QuestionType = "Text", IsRequired = false }
+            new() { QuestionId = 2, SurveyId = 1, QuestionText = "Any feedback?", QuestionType = "Text", IsRequired = false },
+            new() { QuestionId = 3, SurveyId = 1, QuestionText = "Rate your experience", QuestionType = "Rating", IsRequired = false }
         });
         _surveyOptionRepositoryMock.Setup(r => r.GetByQuestionIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new List<SurveyOption>
         {
@@ -713,7 +1086,48 @@ public class SurveyServiceTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task GetResponsesAsync_ShouldReturnPagedResultWithAnswers()
+    public async System.Threading.Tasks.Task SubmitResponseAsync_WithRatingQuestionAnsweredByRatingValue_ShouldCreateResponseAndAnswersTransactionally()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" });
+        _surveyResponseRepositoryMock.Setup(r => r.ExistsAsync(1, 5)).ReturnsAsync(false);
+        _surveyResponseRepositoryMock.Setup(r => r.AddAsync(It.IsAny<SurveyResponse>()))
+            .Callback<SurveyResponse>(resp => resp.ResponseId = 20);
+        SetUpQuestionsForValidation();
+
+        // QuestionId 3 is the Rating question from SetUpQuestionsForValidation.
+        var request = new SurveySubmissionRequest
+        {
+            Answers = new List<SurveyAnswerSubmitRequest> { new() { QuestionId = 3, RatingValue = 4 } }
+        };
+
+        var result = await _service.SubmitResponseAsync(1, request, 5);
+
+        result.Should().Be(20);
+        _surveyAnswerRepositoryMock.Verify(r => r.AddRangeAsync(It.Is<IEnumerable<SurveyAnswer>>(
+            answers => answers.Single().RatingValue == 4)), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task SubmitResponseAsync_WithRatingQuestionAnsweredByAnswerText_ShouldThrowValidationException()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", Status = "Published" });
+        _surveyResponseRepositoryMock.Setup(r => r.ExistsAsync(1, 5)).ReturnsAsync(false);
+        SetUpQuestionsForValidation();
+
+        // QuestionId 3 is the Rating question - answering it with AnswerText instead of RatingValue
+        // is a type mismatch that should be rejected.
+        var request = new SurveySubmissionRequest
+        {
+            Answers = new List<SurveyAnswerSubmitRequest> { new() { QuestionId = 3, AnswerText = "Great" } }
+        };
+
+        var act = () => _service.SubmitResponseAsync(1, request, 5);
+
+        await act.Should().ThrowAsync<FluentValidation.ValidationException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetResponsesAsync_ShouldReturnPagedResultWithAnswersAndEmployeeName()
     {
         _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", IsAnonymous = false });
         var pagedResponses = new PagedResult<SurveyResponse>
@@ -731,17 +1145,19 @@ public class SurveyServiceTests
         {
             new() { AnswerId = 1, ResponseId = 20, QuestionId = 1, OptionId = 10 }
         });
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(new Employee { EmployeeId = 5, EmployeeName = "Ayesha Rahman" });
 
         var result = await _service.GetResponsesAsync(1, new PagedRequest());
 
         result.TotalCount.Should().Be(1);
         result.Data.Should().ContainSingle();
         result.Data[0].EmployeeId.Should().Be(5);
+        result.Data[0].EmployeeName.Should().Be("Ayesha Rahman");
         result.Data[0].Answers.Should().ContainSingle();
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task GetResponsesAsync_WhenSurveyIsAnonymous_ShouldNullOutEmployeeId()
+    public async System.Threading.Tasks.Task GetResponsesAsync_WhenSurveyIsAnonymous_ShouldNullOutEmployeeIdAndName()
     {
         _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", IsAnonymous = true });
         _surveyResponseRepositoryMock.Setup(r => r.GetPaginatedBySurveyIdAsync(1, It.IsAny<PagedRequest>())).ReturnsAsync(new PagedResult<SurveyResponse>
@@ -752,10 +1168,33 @@ public class SurveyServiceTests
             PageSize = 10
         });
         _surveyAnswerRepositoryMock.Setup(r => r.GetByResponseIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new List<SurveyAnswer>());
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(new Employee { EmployeeId = 5, EmployeeName = "Ayesha Rahman" });
 
         var result = await _service.GetResponsesAsync(1, new PagedRequest());
 
-        result.Data.Should().ContainSingle().Which.EmployeeId.Should().BeNull();
+        var response = result.Data.Should().ContainSingle().Subject;
+        response.EmployeeId.Should().BeNull();
+        response.EmployeeName.Should().BeNull();
+        _employeeRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<long>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetResponsesAsync_WhenEmployeeNotFound_ShouldLeaveNameNull()
+    {
+        _surveyRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Survey { SurveyId = 1, Title = "Pulse", SurveyType = "Pulse", IsAnonymous = false });
+        _surveyResponseRepositoryMock.Setup(r => r.GetPaginatedBySurveyIdAsync(1, It.IsAny<PagedRequest>())).ReturnsAsync(new PagedResult<SurveyResponse>
+        {
+            Data = new List<SurveyResponse> { new() { ResponseId = 20, SurveyId = 1, EmployeeId = 999, CompletionStatus = "Completed" } },
+            TotalCount = 1,
+            PageNumber = 1,
+            PageSize = 10
+        });
+        _surveyAnswerRepositoryMock.Setup(r => r.GetByResponseIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new List<SurveyAnswer>());
+        _employeeRepositoryMock.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((Employee?)null);
+
+        var result = await _service.GetResponsesAsync(1, new PagedRequest());
+
+        result.Data.Should().ContainSingle().Which.EmployeeName.Should().BeNull();
     }
 
     [Fact]

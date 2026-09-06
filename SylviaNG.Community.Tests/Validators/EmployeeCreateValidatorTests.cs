@@ -1,6 +1,7 @@
 using FluentAssertions;
 using SylviaNG.Community.Application.Features.Employees.Commands.EmployeeCreate;
 using SylviaNG.Community.Application.Features.Employees.Models;
+using SylviaNG.Community.SharedKernel.Utils;
 
 namespace SylviaNG.Community.Tests.Validators;
 
@@ -102,7 +103,7 @@ public class EmployeeCreateValidatorTests
             DesignationId = 1,
             DepartmentId = 1,
             SiteId = 1,
-            DateOfJoining = DateTime.Today.AddDays(1)
+            DateOfJoining = DateTimeUtility.TodayLocal().AddDays(1)
         });
 
         // Act
@@ -124,7 +125,7 @@ public class EmployeeCreateValidatorTests
             DesignationId = 1,
             DepartmentId = 1,
             SiteId = 1,
-            DateOfJoining = DateTime.Today
+            DateOfJoining = DateTimeUtility.TodayLocal()
         });
 
         // Act

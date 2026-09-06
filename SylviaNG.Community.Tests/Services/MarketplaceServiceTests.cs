@@ -22,10 +22,9 @@ public class MarketplaceServiceTests
     private readonly Mock<IMessageRepository> _messageRepositoryMock;
     private readonly Mock<IMarketplaceReportRepository> _marketplaceReportRepositoryMock;
     private readonly Mock<IPurchaseRepository> _purchaseRepositoryMock;
-    private readonly Mock<IReviewRepository> _reviewRepositoryMock;
-    private readonly Mock<IReviewImageRepository> _reviewImageRepositoryMock;
     private readonly Mock<IEmployeeRepository> _employeeRepositoryMock;
     private readonly Mock<IEmployeeKeycloakAccountRepository> _employeeKeycloakAccountRepositoryMock;
+    private readonly Mock<IFileStorageRepository> _fileStorageRepositoryMock;
     private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly MarketplaceService _service;
@@ -40,25 +39,16 @@ public class MarketplaceServiceTests
         _messageRepositoryMock = new Mock<IMessageRepository>();
         _marketplaceReportRepositoryMock = new Mock<IMarketplaceReportRepository>();
         _purchaseRepositoryMock = new Mock<IPurchaseRepository>();
-        _reviewRepositoryMock = new Mock<IReviewRepository>();
-        _reviewImageRepositoryMock = new Mock<IReviewImageRepository>();
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
         _employeeKeycloakAccountRepositoryMock = new Mock<IEmployeeKeycloakAccountRepository>();
         _employeeKeycloakAccountRepositoryMock.Setup(r => r.GetEmployeeIdsByRolesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(new List<long>());
+        _fileStorageRepositoryMock = new Mock<IFileStorageRepository>();
         _notificationServiceMock = new Mock<INotificationService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
 
         _conversationParticipantRepositoryMock
             .Setup(r => r.GetByConversationIdAsync(It.IsAny<long>()))
             .ReturnsAsync(new List<ConversationParticipant>());
-
-        _reviewRepositoryMock
-            .Setup(r => r.GetRatingSummaryAsync(It.IsAny<long>()))
-            .ReturnsAsync(((double?)null, 0));
-
-        _reviewRepositoryMock
-            .Setup(r => r.GetRatingSummariesAsync(It.IsAny<IEnumerable<long>>()))
-            .ReturnsAsync(new Dictionary<long, (double? Average, int Count)>());
 
         _service = new MarketplaceService(
             _listingRepositoryMock.Object,
@@ -69,10 +59,9 @@ public class MarketplaceServiceTests
             _messageRepositoryMock.Object,
             _marketplaceReportRepositoryMock.Object,
             _purchaseRepositoryMock.Object,
-            _reviewRepositoryMock.Object,
-            _reviewImageRepositoryMock.Object,
             _employeeRepositoryMock.Object,
             _employeeKeycloakAccountRepositoryMock.Object,
+            _fileStorageRepositoryMock.Object,
             _notificationServiceMock.Object,
             _unitOfWorkMock.Object);
     }
@@ -444,6 +433,17 @@ public class MarketplaceServiceTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
+    [Fact]
+    public async System.Threading.Tasks.Task AddImageAsync_WhenFileStorageIdDoesNotExist_ShouldThrowNotFoundException()
+    {
+        _listingRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Listing { ListingId = 1 });
+        _fileStorageRepositoryMock.Setup(r => r.GetByIdAsync(123)).ReturnsAsync((FileStorage?)null);
+
+        var act = () => _service.AddImageAsync(1, new ListingImageAddRequest { ImageUrl = "http://x/y.png", FileStorageId = 123 });
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
     // ---------------- Favorites ----------------
 
     [Fact]
@@ -718,54 +718,4 @@ public class MarketplaceServiceTests
             r.RelatedEntityId == 1)), Times.Once);
     }
 
-    // ---------------- Reviews ----------------
-
-    [Fact]
-    public async System.Threading.Tasks.Task CreateReviewAsync_WhenReviewerHasNotPurchased_ShouldThrowForbiddenException()
-    {
-        _listingRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Listing { ListingId = 1 });
-        _purchaseRepositoryMock.Setup(r => r.ExistsForBuyerAndListingAsync(10, 1)).ReturnsAsync(false);
-
-        var act = () => _service.CreateReviewAsync(10, new ReviewCreateRequest { ListingId = 1, Rating = 5 });
-
-        await act.Should().ThrowAsync<ForbiddenException>();
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task CreateReviewAsync_WhenReviewerHasPurchased_ShouldReturnId()
-    {
-        _listingRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Listing { ListingId = 1 });
-        _purchaseRepositoryMock.Setup(r => r.ExistsForBuyerAndListingAsync(10, 1)).ReturnsAsync(true);
-        _reviewRepositoryMock.Setup(r => r.ExistsAsync(10, 1)).ReturnsAsync(false);
-        _reviewRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Review>())).Callback<Review>(r => r.ReviewId = 4);
-
-        var result = await _service.CreateReviewAsync(10, new ReviewCreateRequest { ListingId = 1, Rating = 5, Comment = "Great!" });
-
-        result.Should().Be(4);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task CreateReviewAsync_WhenAlreadyReviewed_ShouldThrowDuplicateException()
-    {
-        _listingRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Listing { ListingId = 1 });
-        _purchaseRepositoryMock.Setup(r => r.ExistsForBuyerAndListingAsync(10, 1)).ReturnsAsync(true);
-        _reviewRepositoryMock.Setup(r => r.ExistsAsync(10, 1)).ReturnsAsync(true);
-
-        var act = () => _service.CreateReviewAsync(10, new ReviewCreateRequest { ListingId = 1, Rating = 5 });
-
-        await act.Should().ThrowAsync<DuplicateException>();
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task GetListingByIdAsync_ShouldIncludeAverageRatingAndReviewCount()
-    {
-        var listing = new Listing { ListingId = 1, SellerId = 5, Title = "Desk", Category = "Furniture", Currency = "USD", Status = "Active", ApprovalStatus = "Approved" };
-        _listingRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(listing);
-        _reviewRepositoryMock.Setup(r => r.GetRatingSummaryAsync(1)).ReturnsAsync((4.5, 2));
-
-        var result = await _service.GetListingByIdAsync(1);
-
-        result.AverageRating.Should().Be(4.5);
-        result.ReviewCount.Should().Be(2);
-    }
 }

@@ -18,4 +18,7 @@ public class ChatConversation : Audit
     public long CreatedByEmployeeId { get; set; }
     public DateTime? LastMessageAt { get; set; }
     public string? LastMessagePreview { get; set; }
+
+    /// <summary>Group only. When true, only participants with IsAdmin can add new members - default false lets any active participant add people.</summary>
+    public bool OnlyAdminsCanAddMembers { get; set; }
 }

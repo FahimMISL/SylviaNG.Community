@@ -7,6 +7,7 @@ using SylviaNG.Community.Application.Features.Surveys.Commands.SurveyResponseSub
 using SylviaNG.Community.Application.Features.Surveys.Models;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetAllPaged;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetById;
+using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyGetEligible;
 using SylviaNG.Community.Application.Features.Surveys.Queries.SurveyResponseGetAllPaged;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Controllers;
@@ -53,6 +54,29 @@ public class SurveyControllerTests
 
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         okResult.Value.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task GetEligible_ShouldReturnOkWithResult()
+    {
+        var expected = new List<SurveyDetailResponse> { new() { SurveyId = 1, Title = "Engagement Pulse" } };
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(5);
+        _mediatorMock.Setup(m => m.Send(It.IsAny<SurveyGetEligibleQuery>(), default)).ReturnsAsync(expected);
+
+        var result = await _controller.GetEligible();
+
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task GetEligible_WhenNoCurrentEmployeeId_ShouldThrowUnauthorizedException()
+    {
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns((long?)null);
+
+        var act = () => _controller.GetEligible();
+
+        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.UnauthorizedException>();
     }
 
     [Fact]

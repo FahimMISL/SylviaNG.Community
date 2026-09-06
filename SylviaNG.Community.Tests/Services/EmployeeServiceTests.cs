@@ -215,6 +215,93 @@ public class EmployeeServiceTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task ActivateAsync_WithExistingId_ShouldSetIsActiveTrue()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, IsActive = false };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+
+        // Act
+        await _service.ActivateAsync(1);
+
+        // Assert
+        entity.IsActive.Should().BeTrue();
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ActivateAsync_WithNonExistentId_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        _repositoryMock.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((Employee?)null);
+
+        // Act
+        var act = () => _service.ActivateAsync(999);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateAsync_WithValidRequest_ShouldApplyUpdateAndSave()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, Email = "old@sylviang.example", DateOfBirth = null, DateOfJoining = new DateOnly(2020, 1, 1) };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+        _repositoryMock.Setup(r => r.ExistsByEmailAsync("new@sylviang.example", 1)).ReturnsAsync(false);
+
+        var request = new EmployeeUpdateRequest
+        {
+            Email = "new@sylviang.example",
+            DateOfBirth = new DateOnly(1995, 6, 15),
+            DateOfJoining = new DateOnly(2021, 3, 10)
+        };
+
+        // Act
+        await _service.UpdateAsync(employeeId: 1, request);
+
+        // Assert
+        entity.Email.Should().Be("new@sylviang.example");
+        entity.DateOfBirth.Should().Be(new DateOnly(1995, 6, 15));
+        entity.DateOfJoining.Should().Be(new DateOnly(2021, 3, 10));
+        _repositoryMock.Verify(r => r.Update(entity), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateAsync_WithNonExistentId_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        _repositoryMock.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((Employee?)null);
+
+        var request = new EmployeeUpdateRequest { Email = "new@sylviang.example", DateOfJoining = DateOnly.FromDateTime(DateTime.Today) };
+
+        // Act
+        var act = () => _service.UpdateAsync(999, request);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateAsync_WithEmailTakenByAnotherEmployee_ShouldThrowDuplicateException()
+    {
+        // Arrange
+        var entity = new Employee { EmployeeId = 1, Email = "old@sylviang.example" };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+        _repositoryMock.Setup(r => r.ExistsByEmailAsync("taken@sylviang.example", 1)).ReturnsAsync(true);
+
+        var request = new EmployeeUpdateRequest { Email = "taken@sylviang.example", DateOfJoining = DateOnly.FromDateTime(DateTime.Today) };
+
+        // Act
+        var act = () => _service.UpdateAsync(1, request);
+
+        // Assert
+        await act.Should().ThrowAsync<DuplicateException>().WithMessage("*taken@sylviang.example*");
+        _repositoryMock.Verify(r => r.Update(It.IsAny<Employee>()), Times.Never);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task GetByIdAsync_ForNonOwnerNonHrViewer_ShouldHidePrivateContactFields()
     {
         // Arrange

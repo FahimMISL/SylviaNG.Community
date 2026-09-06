@@ -17,9 +17,15 @@ namespace SylviaNG.Community.Infrastructure.Repositories
                 .AnyAsync(t => t.Name == name && (!excludeId.HasValue || t.TeamId != excludeId.Value));
         }
 
-        public async Task<PagedResult<Team>> GetPaginatedAsync(PagedRequest request)
+        public async Task<PagedResult<Team>> GetPaginatedAsync(PagedRequest request, long? scopeToEmployeeId, IEnumerable<long>? memberTeamIds)
         {
             var query = _dbSet.AsQueryable();
+
+            if (scopeToEmployeeId.HasValue)
+            {
+                var memberIdSet = (memberTeamIds ?? Enumerable.Empty<long>()).ToHashSet();
+                query = query.Where(t => t.SupervisorId == scopeToEmployeeId.Value || memberIdSet.Contains(t.TeamId));
+            }
 
             request.SearchProperties ??= new[] { nameof(Team.Name), nameof(Team.Description) };
 
@@ -29,6 +35,16 @@ namespace SylviaNG.Community.Infrastructure.Repositories
         public async Task<bool> ExistsBySupervisorIdAsync(long employeeId)
         {
             return await _dbSet.AnyAsync(t => t.SupervisorId == employeeId && t.IsActive);
+        }
+
+        public async Task<List<long>> GetSupervisorIdsByTeamIdsAsync(IEnumerable<long> teamIds)
+        {
+            var idSet = teamIds.ToList();
+            return await _dbSet
+                .Where(t => idSet.Contains(t.TeamId) && t.IsActive && t.SupervisorId.HasValue)
+                .Select(t => t.SupervisorId!.Value)
+                .Distinct()
+                .ToListAsync();
         }
     }
 }

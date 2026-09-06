@@ -139,7 +139,7 @@ public class RecognitionServiceTests
         var request = new PagedRequest();
         var emptyResult = new PagedResult<Recognition> { Data = new List<Recognition>(), TotalCount = 0, PageNumber = 1, PageSize = 10 };
         _recognitionRepositoryMock
-            .Setup(r => r.GetPaginatedAsync(request, null, 5, 5, false))
+            .Setup(r => r.GetPaginatedAsync(request, null, 5, null, 5, false))
             .ReturnsAsync(emptyResult);
 
         // Act
@@ -147,7 +147,7 @@ public class RecognitionServiceTests
 
         // Assert
         result.Data.Should().BeEmpty();
-        _recognitionRepositoryMock.Verify(r => r.GetPaginatedAsync(request, null, 5, 5, false), Times.Once);
+        _recognitionRepositoryMock.Verify(r => r.GetPaginatedAsync(request, null, 5, null, 5, false), Times.Once);
     }
 
     [Fact]
@@ -157,14 +157,14 @@ public class RecognitionServiceTests
         var request = new PagedRequest();
         var emptyResult = new PagedResult<Recognition> { Data = new List<Recognition>(), TotalCount = 0, PageNumber = 1, PageSize = 10 };
         _recognitionRepositoryMock
-            .Setup(r => r.GetPaginatedAsync(request, null, 5, 99, true))
+            .Setup(r => r.GetPaginatedAsync(request, null, 5, null, 99, true))
             .ReturnsAsync(emptyResult);
 
         // Act
         await _service.GetPaginatedAsync(request, senderId: null, recipientId: 5, viewerEmployeeId: 99, viewerIsHrAdmin: true);
 
         // Assert
-        _recognitionRepositoryMock.Verify(r => r.GetPaginatedAsync(request, null, 5, 99, true), Times.Once);
+        _recognitionRepositoryMock.Verify(r => r.GetPaginatedAsync(request, null, 5, null, 99, true), Times.Once);
     }
 
     [Fact]

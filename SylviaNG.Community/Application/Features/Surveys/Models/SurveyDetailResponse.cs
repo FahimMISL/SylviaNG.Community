@@ -19,5 +19,14 @@ namespace SylviaNG.Community.Application.Features.Surveys.Models
         public DateTime? PublishedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
         public string? ExternalUrl { get; set; }
+
+        /// <summary>
+        /// Whether the caller's own employee record matches this survey's audience (see
+        /// SurveyService.GetEligibleEmployeeIdsAsync) - independent of the HR/Admin view-bypass
+        /// that lets HR/Admin see/manage any survey regardless of audience. Drives whether the
+        /// frontend shows "Take Survey" - HR/Admin can view a Department-scoped survey they
+        /// manage without actually being a member of that department's audience.
+        /// </summary>
+        public bool IsEligible { get; set; }
     }
 }

@@ -14,6 +14,8 @@ namespace SylviaNG.Community.Application.Mappings
                 Body = request.Body,
                 MessageType = request.MessageType,
                 ReplyToMessageId = request.ReplyToMessageId,
+                SharedContentType = request.SharedContentType,
+                SharedContentId = request.SharedContentId,
                 SentAt = sentAt
             };
         }
@@ -44,7 +46,10 @@ namespace SylviaNG.Community.Application.Mappings
                 Reactions = reactions ?? new List<ChatMessageReactionResponse>(),
                 IsDeleted = isDeleted,
                 IsForwarded = entity.IsForwarded,
-                ReplyTo = isDeleted ? null : replyTo
+                ReplyTo = isDeleted ? null : replyTo,
+                IsPinned = entity.IsPinned,
+                PinnedAt = entity.PinnedAt,
+                PinnedByEmployeeId = entity.PinnedByEmployeeId
             };
         }
 

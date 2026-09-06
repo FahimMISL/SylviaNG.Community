@@ -200,7 +200,7 @@ public class EmployeeUpdateProfileValidatorTests
         // Arrange
         var command = new EmployeeUpdateProfileCommand(1, new EmployeeUpdateProfileRequest
         {
-            DateOfBirth = DateTime.Today.AddDays(1)
+            DateOfBirth = DateOnly.FromDateTime(DateTime.Today).AddDays(1)
         }, viewerEmployeeId: 1);
 
         // Act
@@ -233,7 +233,7 @@ public class EmployeeUpdateProfileValidatorTests
         // Arrange
         var command = new EmployeeUpdateProfileCommand(1, new EmployeeUpdateProfileRequest
         {
-            DateOfBirth = DateTime.Today.AddYears(-150)
+            DateOfBirth = DateOnly.FromDateTime(DateTime.Today).AddYears(-150)
         }, viewerEmployeeId: 1);
 
         // Act

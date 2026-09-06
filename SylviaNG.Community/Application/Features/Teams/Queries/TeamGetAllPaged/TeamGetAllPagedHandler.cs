@@ -16,7 +16,7 @@ namespace SylviaNG.Community.Application.Features.Teams.Queries.TeamGetAllPaged
 
         public async Task<PagedResult<TeamResponse>> Handle(TeamGetAllPagedQuery query, CancellationToken cancellationToken)
         {
-            return await _teamService.GetPaginatedAsync(query.Request);
+            return await _teamService.GetPaginatedAsync(query.Request, query.CallerEmployeeId, query.IsHrOrAdmin);
         }
     }
 }

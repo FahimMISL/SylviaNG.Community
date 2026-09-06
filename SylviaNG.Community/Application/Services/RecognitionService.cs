@@ -108,9 +108,9 @@ namespace SylviaNG.Community.Application.Services
             return entity.ToResponse(badges);
         }
 
-        public async Task<PagedResult<RecognitionResponse>> GetPaginatedAsync(PagedRequest request, long? senderId = null, long? recipientId = null, long? viewerEmployeeId = null, bool viewerIsHrAdmin = false)
+        public async Task<PagedResult<RecognitionResponse>> GetPaginatedAsync(PagedRequest request, long? senderId = null, long? recipientId = null, bool? isHrIssued = null, long? viewerEmployeeId = null, bool viewerIsHrAdmin = false)
         {
-            var pagedResult = await _recognitionRepository.GetPaginatedAsync(request, senderId, recipientId, viewerEmployeeId, viewerIsHrAdmin);
+            var pagedResult = await _recognitionRepository.GetPaginatedAsync(request, senderId, recipientId, isHrIssued, viewerEmployeeId, viewerIsHrAdmin);
 
             var recognitionIds = pagedResult.Data.Select(e => e.RecognitionId).ToList();
             var recognitionBadges = recognitionIds.Count == 0

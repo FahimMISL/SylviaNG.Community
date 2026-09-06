@@ -25,6 +25,7 @@ namespace SylviaNG.Community.Application.Mappings
                 Title = entity.Title,
                 GroupAvatarFileId = entity.GroupAvatarFileId,
                 CreatedByEmployeeId = entity.CreatedByEmployeeId,
+                OnlyAdminsCanAddMembers = entity.OnlyAdminsCanAddMembers,
                 LastMessageAt = entity.LastMessageAt,
                 LastMessagePreview = entity.LastMessagePreview,
                 Participants = participants

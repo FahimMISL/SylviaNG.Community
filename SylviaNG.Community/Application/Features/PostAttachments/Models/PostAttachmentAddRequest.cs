@@ -6,5 +6,6 @@ namespace SylviaNG.Community.Application.Features.PostAttachments.Models
         public string? FileType { get; set; }
         public string FilePath { get; set; } = string.Empty;
         public long FileSize { get; set; }
+        public long? FileStorageId { get; set; }
     }
 }

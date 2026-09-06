@@ -9,27 +9,35 @@ namespace SylviaNG.Community.Application.Services
     {
         private readonly IEmployeeRepository _employeeRepository;
         private readonly ITeamMemberRepository _teamMemberRepository;
+        private readonly ITeamRepository _teamRepository;
 
         public ElectionEligibilityService(
             IEmployeeRepository employeeRepository,
-            ITeamMemberRepository teamMemberRepository)
+            ITeamMemberRepository teamMemberRepository,
+            ITeamRepository teamRepository)
         {
             _employeeRepository = employeeRepository;
             _teamMemberRepository = teamMemberRepository;
+            _teamRepository = teamRepository;
         }
 
         public async Task<HashSet<long>> GetEligibleEmployeeIdsAsync(Election election, List<ElectionAudienceTarget> targets)
         {
-            if (election.AudienceScope == ElectionAudienceScope.Organization)
+            var targetIds = ParseTargetIds(targets);
+            return await ResolveEmployeeIdsAsync(election.AudienceScope, targetIds);
+        }
+
+        public async Task<HashSet<long>> ResolveEmployeeIdsAsync(string scope, List<long> targetIds)
+        {
+            if (scope == ElectionAudienceScope.Organization)
             {
                 return (await _employeeRepository.GetActiveIdsAsync()).ToHashSet();
             }
 
-            var targetIds = ParseTargetIds(targets);
             if (targetIds.Count == 0)
                 return new HashSet<long>();
 
-            var eligibleIds = election.AudienceScope switch
+            var resolvedIds = scope switch
             {
                 ElectionAudienceScope.Branch => await _employeeRepository.GetActiveIdsBySiteIdsAsync(targetIds),
                 ElectionAudienceScope.Department => await _employeeRepository.GetActiveIdsByDepartmentIdsAsync(targetIds),
@@ -38,7 +46,21 @@ namespace SylviaNG.Community.Application.Services
                 _ => new List<long>()
             };
 
-            return eligibleIds.ToHashSet();
+            return resolvedIds.ToHashSet();
+        }
+
+        public async Task<HashSet<long>> ResolveCandidateEmployeeIdsAsync(string scope, List<long> targetIds)
+        {
+            var ids = await ResolveEmployeeIdsAsync(scope, targetIds);
+
+            if (scope == ElectionAudienceScope.Team && targetIds.Count > 0)
+            {
+                var supervisorIds = await _teamRepository.GetSupervisorIdsByTeamIdsAsync(targetIds);
+                var activeSupervisorIds = await _employeeRepository.FilterActiveIdsAsync(supervisorIds);
+                ids.UnionWith(activeSupervisorIds);
+            }
+
+            return ids;
         }
 
         private static List<long> ParseTargetIds(List<ElectionAudienceTarget> targets)

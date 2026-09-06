@@ -10,13 +10,14 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         Task PublishAsync(long surveyId);
         Task CloseAsync(long surveyId);
         Task DeleteAsync(long surveyId);
-        Task<SurveyDetailResponse> GetByIdAsync(long surveyId);
-        Task<PagedResult<SurveyDetailResponse>> GetPaginatedAsync(PagedRequest request);
+        Task<SurveyDetailResponse> GetByIdAsync(long surveyId, bool isHrOrAdmin, long? employeeId);
+        Task<PagedResult<SurveyDetailResponse>> GetPaginatedAsync(PagedRequest request, long? employeeId);
+        Task<List<SurveyDetailResponse>> GetEligibleAsync(long employeeId);
 
         Task<long> AddQuestionAsync(long surveyId, SurveyQuestionCreateRequest request);
         Task UpdateQuestionAsync(long surveyId, long questionId, SurveyQuestionUpdateRequest request);
         Task DeleteQuestionAsync(long surveyId, long questionId);
-        Task<List<SurveyQuestionResponse>> GetQuestionsAsync(long surveyId);
+        Task<List<SurveyQuestionResponse>> GetQuestionsAsync(long surveyId, bool isHrOrAdmin, long? employeeId);
 
         Task<long> AddAudienceAsync(long surveyId, SurveyAudienceCreateRequest request);
         Task<List<SurveyAudienceResponse>> GetAudienceAsync(long surveyId);

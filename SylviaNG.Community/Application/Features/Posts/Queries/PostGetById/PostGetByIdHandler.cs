@@ -15,7 +15,7 @@ namespace SylviaNG.Community.Application.Features.Posts.Queries.PostGetById
 
         public async Task<PostResponse> Handle(PostGetByIdQuery query, CancellationToken cancellationToken)
         {
-            return await _postService.GetByIdAsync(query.PostId);
+            return await _postService.GetByIdAsync(query.PostId, query.CallerEmployeeId, query.IsHrOrAdmin);
         }
     }
 }

@@ -34,7 +34,7 @@ namespace SylviaNG.Community.Application.Mappings
             if (request.ExternalUrl != null) entity.ExternalUrl = string.IsNullOrEmpty(request.ExternalUrl) ? null : request.ExternalUrl;
         }
 
-        public static SurveyDetailResponse ToResponse(this Survey entity)
+        public static SurveyDetailResponse ToResponse(this Survey entity, bool isEligible)
         {
             return new SurveyDetailResponse
             {
@@ -48,7 +48,8 @@ namespace SylviaNG.Community.Application.Mappings
                 CreatedBy = entity.CreatedBy,
                 PublishedAt = entity.PublishedAt,
                 ClosedAt = entity.ClosedAt,
-                ExternalUrl = entity.ExternalUrl
+                ExternalUrl = entity.ExternalUrl,
+                IsEligible = isEligible
             };
         }
 
@@ -166,13 +167,14 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
-        public static SurveySubmissionResponse ToResponse(this SurveyResponse entity, bool isAnonymous, List<SurveyAnswer>? answers = null)
+        public static SurveySubmissionResponse ToResponse(this SurveyResponse entity, bool isAnonymous, string? employeeName, List<SurveyAnswer>? answers = null)
         {
             return new SurveySubmissionResponse
             {
                 ResponseId = entity.ResponseId,
                 SurveyId = entity.SurveyId,
                 EmployeeId = isAnonymous ? null : entity.EmployeeId,
+                EmployeeName = isAnonymous ? null : employeeName,
                 SubmittedAt = entity.SubmittedAt,
                 CompletionStatus = entity.CompletionStatus,
                 Answers = (answers ?? new List<SurveyAnswer>()).Select(a => a.ToResponse()).ToList()

@@ -67,7 +67,8 @@ namespace SylviaNG.Community.Application.Mappings
             {
                 ListingId = listingId,
                 ImageUrl = request.ImageUrl,
-                DisplayOrder = request.DisplayOrder
+                DisplayOrder = request.DisplayOrder,
+                FileStorageId = request.FileStorageId
             };
         }
 
@@ -78,7 +79,8 @@ namespace SylviaNG.Community.Application.Mappings
                 ImageId = entity.ImageId,
                 ListingId = entity.ListingId,
                 ImageUrl = entity.ImageUrl,
-                DisplayOrder = entity.DisplayOrder
+                DisplayOrder = entity.DisplayOrder,
+                FileStorageId = entity.FileStorageId
             };
         }
 
@@ -199,49 +201,5 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
-        public static Review ToEntity(this ReviewCreateRequest request, long reviewerId)
-        {
-            return new Review
-            {
-                ListingId = request.ListingId,
-                ReviewerId = reviewerId,
-                Rating = request.Rating,
-                Comment = request.Comment
-            };
-        }
-
-        public static ReviewResponse ToResponse(this Review entity)
-        {
-            return new ReviewResponse
-            {
-                ReviewId = entity.ReviewId,
-                ListingId = entity.ListingId,
-                ReviewerId = entity.ReviewerId,
-                Rating = entity.Rating,
-                Comment = entity.Comment,
-                CreatedAt = entity.CreatedAt
-            };
-        }
-
-        public static ReviewImage ToEntity(this ReviewImageAddRequest request, long reviewId)
-        {
-            return new ReviewImage
-            {
-                ReviewId = reviewId,
-                ImageUrl = request.ImageUrl,
-                DisplayOrder = request.DisplayOrder
-            };
-        }
-
-        public static ReviewImageResponse ToResponse(this ReviewImage entity)
-        {
-            return new ReviewImageResponse
-            {
-                ImageId = entity.ImageId,
-                ReviewId = entity.ReviewId,
-                ImageUrl = entity.ImageUrl,
-                DisplayOrder = entity.DisplayOrder
-            };
-        }
     }
 }

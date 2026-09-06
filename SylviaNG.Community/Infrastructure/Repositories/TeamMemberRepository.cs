@@ -34,5 +34,10 @@ namespace SylviaNG.Community.Infrastructure.Repositories
                 .Distinct()
                 .ToListAsync();
         }
+
+        public async Task<List<long>> GetTeamIdsByEmployeeIdAsync(long employeeId)
+        {
+            return await _dbSet.Where(tm => tm.EmployeeId == employeeId && tm.IsActive).Select(tm => tm.TeamId).ToListAsync();
+        }
     }
 }

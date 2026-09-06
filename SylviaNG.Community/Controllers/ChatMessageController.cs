@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SylviaNG.Community.Application.Features.ChatMessages.Commands.ChatMessageDelete;
 using SylviaNG.Community.Application.Features.ChatMessages.Commands.ChatMessageForward;
 using SylviaNG.Community.Application.Features.ChatMessages.Commands.ChatMessageReport;
+using SylviaNG.Community.Application.Features.ChatMessages.Commands.ChatMessageSetPinned;
 using SylviaNG.Community.Application.Features.ChatMessages.Models;
 using SylviaNG.Community.Application.Interfaces.Services;
 
@@ -45,6 +46,15 @@ namespace SylviaNG.Community.Controllers
         {
             var callerId = _currentUserService.EmployeeId ?? 0;
             await _mediator.Send(new ChatMessageReportCommand(messageId, request, callerId));
+            return Ok();
+        }
+
+        /// <summary>Pins/unpins this message to the conversation's "Pinned Messages" panel - any active participant may do this.</summary>
+        [HttpPut("pin")]
+        public async Task<ActionResult> SetPinned(long messageId, [FromBody] ChatMessagePinRequest request)
+        {
+            var callerId = _currentUserService.EmployeeId ?? 0;
+            await _mediator.Send(new ChatMessageSetPinnedCommand(messageId, callerId, request.IsPinned));
             return Ok();
         }
     }

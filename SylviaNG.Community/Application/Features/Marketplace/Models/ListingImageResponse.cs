@@ -6,5 +6,6 @@ namespace SylviaNG.Community.Application.Features.Marketplace.Models
         public long ListingId { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }
+        public long? FileStorageId { get; set; }
     }
 }

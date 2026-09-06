@@ -17,6 +17,12 @@ namespace SylviaNG.Community.Application.Features.Surveys.Models
         /// </summary>
         public long? EmployeeId { get; set; }
 
+        /// <summary>
+        /// Resolved from Employee.EmployeeName by SurveyService.GetResponsesAsync - null whenever
+        /// EmployeeId is null (anonymous survey) or the employee record can't be found.
+        /// </summary>
+        public string? EmployeeName { get; set; }
+
         public DateTime SubmittedAt { get; set; }
         public string CompletionStatus { get; set; } = string.Empty;
         public List<SurveyAnswerResponse> Answers { get; set; } = new();

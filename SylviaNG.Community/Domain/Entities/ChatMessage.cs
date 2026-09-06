@@ -33,4 +33,9 @@ public class ChatMessage : Audit
 
     /// <summary>Set when this message was created via ChatMessageService.ForwardAsync rather than sent directly.</summary>
     public bool IsForwarded { get; set; }
+
+    /// <summary>Pinned to the conversation's "Pinned Messages" panel - any active participant may pin/unpin, not just the sender.</summary>
+    public bool IsPinned { get; set; }
+    public DateTime? PinnedAt { get; set; }
+    public long? PinnedByEmployeeId { get; set; }
 }

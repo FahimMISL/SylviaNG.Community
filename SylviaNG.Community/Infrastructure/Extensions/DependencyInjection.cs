@@ -6,6 +6,7 @@ using SylviaNG.Community.Application.Interfaces.Repositories;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Infrastructure.Authentication;
 using SylviaNG.Community.Infrastructure.Data;
+using SylviaNG.Community.Infrastructure.Email;
 using SylviaNG.Community.Infrastructure.Interceptors;
 using SylviaNG.Community.Infrastructure.Repositories;
 using SylviaNG.Community.Infrastructure.Services;
@@ -82,6 +83,9 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             // (distinct from the local Credential/InMemoryCredentialRepository login system below).
             services.AddHttpClient<IKeycloakAdminClient, KeycloakAdminClient>();
 
+            // Grant Access welcome emails (see Smtp config section) - see SmtpEmailService.
+            services.AddScoped<IEmailService, SmtpEmailService>();
+
             // Organization master data (Department/Branch/Designation/Role)
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
             services.AddScoped<IBranchRepository, BranchRepository>();
@@ -144,8 +148,6 @@ namespace SylviaNG.Community.Infrastructure.Extensions
             services.AddScoped<IMessageRepository, MessageRepository>();
             services.AddScoped<IMarketplaceReportRepository, MarketplaceReportRepository>();
             services.AddScoped<IPurchaseRepository, PurchaseRepository>();
-            services.AddScoped<IReviewRepository, ReviewRepository>();
-            services.AddScoped<IReviewImageRepository, ReviewImageRepository>();
 
             // Module 8 - Task Management
             services.AddScoped<IRecurringTaskRepository, RecurringTaskRepository>();

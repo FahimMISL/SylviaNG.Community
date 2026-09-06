@@ -97,17 +97,23 @@ namespace SylviaNG.Community.Application.Services
                 throw new ForbiddenException("Only this team's Supervisor, or HR/Admin, can do this.");
         }
 
-        public async Task<TeamResponse> GetByIdAsync(long teamId)
+        public async Task<TeamResponse> GetByIdAsync(long teamId, long? callerEmployeeId, bool isHrOrAdmin)
         {
             var entity = await _teamRepository.GetByIdAsync(teamId)
                 ?? throw new NotFoundException("Team", teamId);
 
+            await EnsureSupervisorMemberOrHrAdminAsync(entity, callerEmployeeId, isHrOrAdmin);
+
             return entity.ToResponse();
         }
 
-        public async Task<PagedResult<TeamResponse>> GetPaginatedAsync(PagedRequest request)
+        public async Task<PagedResult<TeamResponse>> GetPaginatedAsync(PagedRequest request, long? callerEmployeeId, bool isHrOrAdmin)
         {
-            var pagedResult = await _teamRepository.GetPaginatedAsync(request);
+            List<long>? memberTeamIds = null;
+            if (!isHrOrAdmin && callerEmployeeId.HasValue)
+                memberTeamIds = await _teamMemberRepository.GetTeamIdsByEmployeeIdAsync(callerEmployeeId.Value);
+
+            var pagedResult = await _teamRepository.GetPaginatedAsync(request, isHrOrAdmin ? null : callerEmployeeId, memberTeamIds);
 
             return new PagedResult<TeamResponse>
             {
@@ -116,6 +122,20 @@ namespace SylviaNG.Community.Application.Services
                 PageNumber = pagedResult.PageNumber,
                 PageSize = pagedResult.PageSize
             };
+        }
+
+        /// <summary>Read-access gate for team detail/members: unlike EnsureSupervisorOrHrAdmin (used
+        /// for edit/delete), an active member - not just the Supervisor - may also view.</summary>
+        private async Task EnsureSupervisorMemberOrHrAdminAsync(TeamEntity entity, long? callerEmployeeId, bool isHrOrAdmin)
+        {
+            if (isHrOrAdmin)
+                return;
+
+            var isSupervisor = callerEmployeeId != null && entity.SupervisorId == callerEmployeeId;
+            var isMember = callerEmployeeId != null && await _teamMemberRepository.ExistsAsync(entity.TeamId, callerEmployeeId.Value);
+
+            if (!isSupervisor && !isMember)
+                throw new ForbiddenException("You are not a member of this team.");
         }
 
         public async Task<long> AddMemberAsync(long teamId, TeamMemberAddRequest request, long callerEmployeeId, bool isHrOrAdmin)
@@ -161,8 +181,13 @@ namespace SylviaNG.Community.Application.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task<List<TeamMemberResponse>> GetMembersAsync(long teamId)
+        public async Task<List<TeamMemberResponse>> GetMembersAsync(long teamId, long? callerEmployeeId, bool isHrOrAdmin)
         {
+            var team = await _teamRepository.GetByIdAsync(teamId)
+                ?? throw new NotFoundException("Team", teamId);
+
+            await EnsureSupervisorMemberOrHrAdminAsync(team, callerEmployeeId, isHrOrAdmin);
+
             var members = await _teamMemberRepository.GetByTeamIdAsync(teamId);
             return members.Select(m => m.ToResponse()).ToList();
         }

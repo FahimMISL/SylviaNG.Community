@@ -10,7 +10,7 @@ namespace SylviaNG.Community.Infrastructure.Repositories
     {
         public FileStorageRepository(ApplicationDBContext dbContext) : base(dbContext) { }
 
-        public async Task<PagedResult<FileStorage>> GetPaginatedAsync(PagedRequest request, string? module, long? entityId)
+        public async Task<PagedResult<FileStorage>> GetPaginatedAsync(PagedRequest request, string? module, long? entityId, long? uploadedBy)
         {
             var query = _dbSet.AsQueryable();
 
@@ -19,6 +19,9 @@ namespace SylviaNG.Community.Infrastructure.Repositories
 
             if (entityId.HasValue)
                 query = query.Where(f => f.EntityId == entityId.Value);
+
+            if (uploadedBy.HasValue)
+                query = query.Where(f => f.UploadedBy == uploadedBy.Value);
 
             request.SearchProperties ??= new[] { nameof(FileStorage.FileName), nameof(FileStorage.OriginalFileName) };
 

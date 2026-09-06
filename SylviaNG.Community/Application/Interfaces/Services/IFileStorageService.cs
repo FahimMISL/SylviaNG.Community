@@ -7,6 +7,6 @@ namespace SylviaNG.Community.Application.Interfaces.Services
     {
         Task<long> CreateAsync(FileStorageCreateRequest request);
         Task<FileStorageResponse> GetByIdAsync(long fileId);
-        Task<PagedResult<FileStorageResponse>> GetPaginatedAsync(PagedRequest request, string? module, long? entityId);
+        Task<PagedResult<FileStorageResponse>> GetPaginatedAsync(PagedRequest request, string? module, long? entityId, long? uploadedBy);
     }
 }

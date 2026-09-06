@@ -116,6 +116,20 @@ namespace SylviaNG.Community.Application.Services
             }
         }
 
+        public async System.Threading.Tasks.Task UpdateAsync(long employeeId, EmployeeUpdateRequest request)
+        {
+            var entity = await _employeeRepository.GetByIdAsync(employeeId)
+                ?? throw new NotFoundException("Employee", employeeId);
+
+            var emailTaken = await _employeeRepository.ExistsByEmailAsync(request.Email, employeeId);
+            if (emailTaken)
+                throw new DuplicateException("Employee", "Email", request.Email);
+
+            entity.ApplyUpdate(request);
+            _employeeRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         public async System.Threading.Tasks.Task UpdatePhotoAsync(long employeeId, string storagePath, long? viewerEmployeeId)
         {
             if (viewerEmployeeId != employeeId)
@@ -148,6 +162,16 @@ namespace SylviaNG.Community.Application.Services
                 ?? throw new NotFoundException("Employee", employeeId);
 
             entity.IsActive = false;
+            _employeeRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async System.Threading.Tasks.Task ActivateAsync(long employeeId)
+        {
+            var entity = await _employeeRepository.GetByIdAsync(employeeId)
+                ?? throw new NotFoundException("Employee", employeeId);
+
+            entity.IsActive = true;
             _employeeRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
         }

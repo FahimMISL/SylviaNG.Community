@@ -28,5 +28,8 @@ namespace SylviaNG.Community.Application.Interfaces.Services
 
         /// <summary>Group-targeted: everyone with the thread open replaces that message with the "removed" tombstone live.</summary>
         Task BroadcastMessageDeletedAsync(long conversationId, long chatMessageId, CancellationToken cancellationToken = default);
+
+        /// <summary>Group-targeted: everyone with the thread (or its Pinned Messages panel) open sees the pin/unpin live.</summary>
+        Task BroadcastMessagePinnedAsync(long conversationId, long chatMessageId, bool isPinned, long? pinnedByEmployeeId, CancellationToken cancellationToken = default);
     }
 }

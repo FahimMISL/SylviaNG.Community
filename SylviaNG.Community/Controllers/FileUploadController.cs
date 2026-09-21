@@ -136,7 +136,7 @@ namespace SylviaNG.Community.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            var uploadedBy = _currentUserService.EmployeeId ?? 0;
+            var uploadedBy = _currentUserService.RequireEmployeeId();
 
             var fileId = await _mediator.Send(new FileStorageCreateCommand(new FileStorageCreateRequest
             {

@@ -79,6 +79,8 @@ namespace SylviaNG.Community.Application.Mappings
                 RecentRecognitions = new List<string>(),
                 PhotoUrl = entity.PhotoUrl,
                 CoverPhotoUrl = entity.CoverPhotoUrl,
+                PhotoFileId = entity.PhotoFileId,
+                CoverPhotoFileId = entity.CoverPhotoFileId,
                 IsActive = entity.IsActive,
                 DateOfBirth = canSeePrivate ? entity.DateOfBirth : null,
                 DateOfJoining = canSeePrivate ? entity.DateOfJoining : null,

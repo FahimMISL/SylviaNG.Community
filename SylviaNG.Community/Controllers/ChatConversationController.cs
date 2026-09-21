@@ -41,7 +41,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResult<ChatConversationSummaryResponse>>> GetPaged([FromQuery] PagedRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new ChatConversationGetAllPagedQuery(request, callerId));
             return Ok(result);
         }
@@ -49,7 +49,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("{conversationId}")]
         public async Task<ActionResult<ChatConversationResponse>> GetById(long conversationId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new ChatConversationGetByIdQuery(conversationId, callerId));
             return Ok(result);
         }
@@ -62,7 +62,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Create([FromBody] ChatConversationCreateRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new ChatConversationCreateCommand(request, callerId));
             return Ok(id);
         }
@@ -70,7 +70,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("{conversationId}/messages/paged")]
         public async Task<ActionResult<PagedResult<ChatMessageResponse>>> GetMessagesPaged(long conversationId, [FromQuery] PagedRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new ChatMessageGetAllPagedQuery(conversationId, request, callerId));
             return Ok(result);
         }
@@ -79,7 +79,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("{conversationId}/messages/pinned")]
         public async Task<ActionResult<List<ChatMessageResponse>>> GetPinnedMessages(long conversationId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new ChatMessageGetPinnedQuery(conversationId, callerId));
             return Ok(result);
         }
@@ -88,7 +88,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("{conversationId}/attachments/paged")]
         public async Task<ActionResult<PagedResult<ChatMessageAttachmentGalleryItemResponse>>> GetAttachmentsPaged(long conversationId, [FromQuery] PagedRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new ChatMessageGetAttachmentsPagedQuery(conversationId, request, callerId));
             return Ok(result);
         }
@@ -96,7 +96,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("{conversationId}/messages")]
         public async Task<ActionResult<ChatMessageResponse>> SendMessage(long conversationId, [FromBody] ChatMessageSendRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             var result = await _mediator.Send(new ChatMessageSendCommand(conversationId, request, callerId));
             return Ok(result);
         }
@@ -110,7 +110,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("messages/search")]
         public async Task<ActionResult<PagedResult<ChatMessageResponse>>> SearchMessages([FromQuery] string searchTerm, [FromQuery] PagedRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new ChatMessageSearchQuery(searchTerm, request, callerId));
             return Ok(result);
         }
@@ -119,7 +119,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{conversationId}/read")]
         public async Task<ActionResult> MarkRead(long conversationId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatConversationMarkReadCommand(conversationId, callerId));
             return Ok();
         }
@@ -128,7 +128,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{conversationId}/mute")]
         public async Task<ActionResult> SetMuted(long conversationId, [FromBody] ChatConversationMuteRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatConversationSetMutedCommand(conversationId, callerId, request.IsMuted));
             return Ok();
         }
@@ -137,7 +137,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{conversationId}/pin")]
         public async Task<ActionResult> SetPinned(long conversationId, [FromBody] ChatConversationPinRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatConversationSetPinnedCommand(conversationId, callerId, request.IsPinned));
             return Ok();
         }
@@ -146,7 +146,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{conversationId}/group")]
         public async Task<ActionResult> UpdateGroup(long conversationId, [FromBody] ChatConversationUpdateGroupRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatConversationUpdateGroupCommand(conversationId, request, callerId));
             return Ok();
         }
@@ -155,7 +155,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("{conversationId}/participants")]
         public async Task<ActionResult> AddParticipants(long conversationId, [FromBody] ChatConversationAddParticipantsRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatConversationAddParticipantsCommand(conversationId, request, callerId));
             return Ok();
         }
@@ -164,7 +164,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{conversationId}/settings")]
         public async Task<ActionResult> SetAddMemberPermission(long conversationId, [FromBody] ChatConversationSetAddMemberPermissionRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatConversationSetAddMemberPermissionCommand(conversationId, request.OnlyAdminsCanAddMembers, callerId));
             return Ok();
         }
@@ -173,7 +173,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{conversationId}/participants/{employeeId}/admin")]
         public async Task<ActionResult> SetParticipantAdmin(long conversationId, long employeeId, [FromBody] ChatConversationSetParticipantAdminRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatConversationSetParticipantAdminCommand(conversationId, employeeId, request.IsAdmin, callerId));
             return Ok();
         }

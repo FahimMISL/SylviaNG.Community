@@ -27,8 +27,8 @@ namespace SylviaNG.Community.Infrastructure.Configurations
                 .HasForeignKey(c => c.ElectionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Employee is treated as an externally-synced entity (see EmployeeEventConsumer) -
-            // like TeamMember.EmployeeId elsewhere in this codebase, it is indexed but not a
+            // Employee is treated as an externally-owned entity - like TeamMember.EmployeeId
+            // elsewhere in this codebase, it is indexed but not a
             // DB-enforced FK. Team is owned within this bounded context, so it gets a real FK;
             // Restrict (not Cascade) is used here to avoid deleting nomination history if a
             // Team is ever removed, and to avoid a second cascade path into this table

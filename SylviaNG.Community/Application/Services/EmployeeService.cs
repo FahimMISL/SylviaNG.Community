@@ -19,6 +19,7 @@ namespace SylviaNG.Community.Application.Services
         private readonly IEmployeeRepository _employeeRepository;
         private readonly IEmployeeContactLinkRepository _employeeContactLinkRepository;
         private readonly IEmployeeKeycloakAccountRepository _employeeKeycloakAccountRepository;
+        private readonly IFileStorageRepository _fileStorageRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICoreGrpcClient _coreGrpcClient;
         private readonly ILogger<EmployeeService> _logger;
@@ -27,6 +28,7 @@ namespace SylviaNG.Community.Application.Services
             IEmployeeRepository employeeRepository,
             IEmployeeContactLinkRepository employeeContactLinkRepository,
             IEmployeeKeycloakAccountRepository employeeKeycloakAccountRepository,
+            IFileStorageRepository fileStorageRepository,
             IUnitOfWork unitOfWork,
             ICoreGrpcClient coreGrpcClient,
             ILogger<EmployeeService> logger)
@@ -34,6 +36,7 @@ namespace SylviaNG.Community.Application.Services
             _employeeRepository = employeeRepository;
             _employeeContactLinkRepository = employeeContactLinkRepository;
             _employeeKeycloakAccountRepository = employeeKeycloakAccountRepository;
+            _fileStorageRepository = fileStorageRepository;
             _unitOfWork = unitOfWork;
             _coreGrpcClient = coreGrpcClient;
             _logger = logger;
@@ -130,7 +133,7 @@ namespace SylviaNG.Community.Application.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async System.Threading.Tasks.Task UpdatePhotoAsync(long employeeId, string storagePath, long? viewerEmployeeId)
+        public async System.Threading.Tasks.Task UpdatePhotoAsync(long employeeId, string storagePath, long? fileId, long? viewerEmployeeId)
         {
             if (viewerEmployeeId != employeeId)
                 throw new ForbiddenException("You can only edit your own profile.");
@@ -138,12 +141,19 @@ namespace SylviaNG.Community.Application.Services
             var entity = await _employeeRepository.GetByIdAsync(employeeId)
                 ?? throw new NotFoundException("Employee", employeeId);
 
+            if (fileId.HasValue)
+            {
+                _ = await _fileStorageRepository.GetByIdAsync(fileId.Value)
+                    ?? throw new NotFoundException("FileStorage", fileId.Value);
+            }
+
             entity.PhotoUrl = storagePath;
+            entity.PhotoFileId = fileId;
             _employeeRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async System.Threading.Tasks.Task UpdateCoverPhotoAsync(long employeeId, string storagePath, long? viewerEmployeeId)
+        public async System.Threading.Tasks.Task UpdateCoverPhotoAsync(long employeeId, string storagePath, long? fileId, long? viewerEmployeeId)
         {
             if (viewerEmployeeId != employeeId)
                 throw new ForbiddenException("You can only edit your own profile.");
@@ -151,7 +161,14 @@ namespace SylviaNG.Community.Application.Services
             var entity = await _employeeRepository.GetByIdAsync(employeeId)
                 ?? throw new NotFoundException("Employee", employeeId);
 
+            if (fileId.HasValue)
+            {
+                _ = await _fileStorageRepository.GetByIdAsync(fileId.Value)
+                    ?? throw new NotFoundException("FileStorage", fileId.Value);
+            }
+
             entity.CoverPhotoUrl = storagePath;
+            entity.CoverPhotoFileId = fileId;
             _employeeRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
         }

@@ -6,8 +6,9 @@ namespace SylviaNG.Community.Domain.Entities;
 /// <summary>
 /// Employee directory/profile record (Feature 1). Core identity fields
 /// (EmployeeName, EmployeeCode, DepartmentId, DesignatioId, SiteId) are
-/// synced from the Core/Employee microservice via Kafka (see EmployeeEventConsumer)
-/// when that integration is live; the profile fields below are owned locally.
+/// owned by the Core/Employee microservice and populated here manually / via the
+/// Core gRPC client (ICoreGrpcClient) rather than an event stream; the profile
+/// fields below are owned locally.
 /// </summary>
 public class Employee : Audit
 {
@@ -33,6 +34,8 @@ public class Employee : Audit
     public string? CommunityContributions { get; set; }
     public string? PhotoUrl { get; set; }
     public string? CoverPhotoUrl { get; set; }
+    public long? PhotoFileId { get; set; }
+    public long? CoverPhotoFileId { get; set; }
     public bool IsActive { get; set; } = true;
 
     /// <summary>Settable at EmployeeCreate time, editable afterward via the self-service profile

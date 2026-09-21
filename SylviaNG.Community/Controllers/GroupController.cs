@@ -47,7 +47,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("my")]
         public async Task<ActionResult<List<GroupResponse>>> GetMy()
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new GroupGetMyQuery(callerId));
             return Ok(result);
         }
@@ -62,7 +62,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Create([FromBody] GroupCreateRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new GroupCreateCommand(request, callerId));
             return Ok(id);
         }
@@ -70,7 +70,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{groupId}")]
         public async Task<ActionResult> Update(long groupId, [FromBody] GroupUpdateRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new GroupUpdateCommand(groupId, request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
@@ -78,7 +78,11 @@ namespace SylviaNG.Community.Controllers
         [HttpDelete("{groupId}")]
         public async Task<ActionResult> Delete(long groupId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            // GroupService.DeleteAsync only consults callerId when the caller isn't HR/Admin (the
+            // creator-only check); an HR/Admin caller never needs a personal identity for this, so
+            // RequireEmployeeId() is only evaluated on that branch - an Admin-type caller (no
+            // Employee record) can still delete any group via the HR/Admin override.
+            var callerId = _currentUserService.IsHrOrAdmin ? -1 : _currentUserService.RequireEmployeeId();
             await _mediator.Send(new GroupDeleteCommand(groupId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
@@ -86,7 +90,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("{groupId}/join")]
         public async Task<ActionResult> Join(long groupId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new GroupJoinCommand(groupId, callerId));
             return Ok();
         }
@@ -94,7 +98,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("{groupId}/leave")]
         public async Task<ActionResult> Leave(long groupId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new GroupLeaveCommand(groupId, callerId));
             return Ok();
         }
@@ -102,7 +106,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("{groupId}/join-requests")]
         public async Task<ActionResult<long>> RequestToJoin(long groupId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new GroupJoinRequestCreateCommand(groupId, callerId));
             return Ok(id);
         }
@@ -110,7 +114,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("{groupId}/join-requests")]
         public async Task<ActionResult<List<GroupJoinRequestResponse>>> GetPendingJoinRequests(long groupId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new GroupJoinRequestGetAllPendingQuery(groupId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok(result);
         }
@@ -118,7 +122,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{groupId}/join-requests/{groupJoinRequestId}/approve")]
         public async Task<ActionResult> ApproveJoinRequest(long groupId, long groupJoinRequestId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new GroupJoinRequestApproveCommand(groupJoinRequestId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
@@ -126,7 +130,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{groupId}/join-requests/{groupJoinRequestId}/reject")]
         public async Task<ActionResult> RejectJoinRequest(long groupId, long groupJoinRequestId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new GroupJoinRequestRejectCommand(groupJoinRequestId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
@@ -141,7 +145,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("{groupId}/members")]
         public async Task<ActionResult<long>> AddMember(long groupId, [FromBody] GroupMemberAddRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new GroupMemberAddCommand(groupId, request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok(id);
         }
@@ -149,7 +153,7 @@ namespace SylviaNG.Community.Controllers
         [HttpDelete("{groupId}/members/{employeeId}")]
         public async Task<ActionResult> RemoveMember(long groupId, long employeeId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new GroupMemberRemoveCommand(groupId, employeeId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
@@ -157,7 +161,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{groupId}/members/role")]
         public async Task<ActionResult> ChangeMemberRole(long groupId, [FromBody] GroupMemberRoleChangeRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new GroupMemberRoleChangeCommand(groupId, request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
@@ -165,7 +169,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("{groupId}/posts")]
         public async Task<ActionResult<PagedResult<PostResponse>>> GetPosts(long groupId, [FromQuery] PostFilterRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new GroupPostGetAllPagedQuery(groupId, request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok(result);
         }

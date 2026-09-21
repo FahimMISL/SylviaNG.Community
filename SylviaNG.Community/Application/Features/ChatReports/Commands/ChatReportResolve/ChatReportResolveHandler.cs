@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.ChatReports.Commands.ChatRepor
 
         public async Task Handle(ChatReportResolveCommand command, CancellationToken cancellationToken)
         {
-            await _chatReportService.ResolveAsync(command.ReportId, command.Request);
+            await _chatReportService.ResolveAsync(command.ReportId, command.ReviewerId, command.Request);
         }
     }
 }

@@ -43,7 +43,10 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{commentId}")]
         public async Task<ActionResult> Update(long postId, long commentId, [FromBody] PostCommentUpdateRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            // PostCommentService.UpdateAsync only consults callerId when the caller isn't HR/Admin
+            // (the author-only check); RequireEmployeeId() is only evaluated on that branch, so an
+            // Admin-type caller (no Employee record) can still edit any comment via the moderation override.
+            var callerId = _currentUserService.IsHrOrAdmin ? -1 : _currentUserService.RequireEmployeeId();
             await _mediator.Send(new PostCommentUpdateCommand(postId, commentId, request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
@@ -51,7 +54,9 @@ namespace SylviaNG.Community.Controllers
         [HttpDelete("{commentId}")]
         public async Task<ActionResult> Delete(long postId, long commentId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            // Same rationale as Update above: RequireEmployeeId() is only evaluated when the caller
+            // isn't HR/Admin, preserving the moderation-delete override for an Admin-type caller.
+            var callerId = _currentUserService.IsHrOrAdmin ? -1 : _currentUserService.RequireEmployeeId();
             await _mediator.Send(new PostCommentDeleteCommand(postId, commentId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }

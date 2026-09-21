@@ -28,6 +28,7 @@ public class PostControllerTests
         _mediatorMock = new Mock<IMediator>();
         _currentUserServiceMock = new Mock<ICurrentUserService>();
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(1);
+        _currentUserServiceMock.Setup(c => c.RequireEmployeeId()).Returns(1);
         _controller = new PostController(_mediatorMock.Object, _currentUserServiceMock.Object);
     }
 

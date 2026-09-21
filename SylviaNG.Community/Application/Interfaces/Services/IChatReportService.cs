@@ -6,6 +6,6 @@ namespace SylviaNG.Community.Application.Interfaces.Services
     public interface IChatReportService
     {
         Task<PagedResult<ChatReportQueueItemResponse>> GetPaginatedAsync(PagedRequest request);
-        Task ResolveAsync(long reportId, ChatReportResolveRequest request);
+        Task ResolveAsync(long reportId, long? reviewedBy, ChatReportResolveRequest request);
     }
 }

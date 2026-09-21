@@ -6,10 +6,10 @@ namespace SylviaNG.Community.Application.Features.Marketplace.Commands.Marketpla
     public class MarketplaceReportResolveCommand : IRequest
     {
         public long ReportId { get; set; }
-        public long ReviewerId { get; set; }
+        public long? ReviewerId { get; set; }
         public MarketplaceReportResolveRequest Request { get; set; }
 
-        public MarketplaceReportResolveCommand(long reportId, long reviewerId, MarketplaceReportResolveRequest request)
+        public MarketplaceReportResolveCommand(long reportId, long? reviewerId, MarketplaceReportResolveRequest request)
         {
             ReportId = reportId;
             ReviewerId = reviewerId;

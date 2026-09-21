@@ -26,6 +26,12 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         Task<int> NominateBulkAsync(long electionId, ElectionCandidateNominateBulkRequest request);
         Task<List<ElectionCandidateResponse>> GetCandidatesAsync(long electionId);
 
+        /// <summary>Removes a nomination. Blocked once the election has received any votes (a voted-for candidate cannot be deleted - see ElectionVoteConfiguration's Restrict delete behavior).</summary>
+        Task RemoveCandidateAsync(long electionId, long candidateId);
+
+        /// <summary>Adds or edits a candidate's manifesto after nomination.</summary>
+        Task UpdateManifestoAsync(long electionId, long candidateId, ElectionCandidateUpdateManifestoRequest request);
+
         /// <summary>Casts one ballot (possibly selecting several candidates); returns the created vote row ids.</summary>
         Task<List<long>> CastVoteAsync(long electionId, ElectionVoteCastRequest request, long voterId);
         Task<PagedResult<ElectionVoteResponse>> GetVotesPaginatedAsync(long electionId, PagedRequest request);

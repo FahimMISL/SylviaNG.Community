@@ -11,9 +11,9 @@ namespace SylviaNG.Community.Application.Interfaces.Services
 
         Task UpdateAsync(long employeeId, EmployeeUpdateRequest request);
 
-        Task UpdatePhotoAsync(long employeeId, string storagePath, long? viewerEmployeeId);
+        Task UpdatePhotoAsync(long employeeId, string storagePath, long? fileId, long? viewerEmployeeId);
 
-        Task UpdateCoverPhotoAsync(long employeeId, string storagePath, long? viewerEmployeeId);
+        Task UpdateCoverPhotoAsync(long employeeId, string storagePath, long? fileId, long? viewerEmployeeId);
 
         Task DeactivateAsync(long employeeId);
 

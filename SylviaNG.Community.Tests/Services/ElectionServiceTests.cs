@@ -387,11 +387,14 @@ public class ElectionServiceTests
             .Setup(s => s.GetEligibleEmployeeIdsAsync(election, It.IsAny<List<ElectionAudienceTarget>>()))
             .ReturnsAsync(new HashSet<long> { 5, 6 });
 
+        var before = DateTime.UtcNow;
+
         // Act
         await _service.PublishAsync(1);
 
         // Assert
         election.Status.Should().Be("Open");
+        election.PublishedAt.Should().NotBeNull().And.BeOnOrAfter(before);
         _notificationServiceMock.Verify(n => n.CreateAsync(It.IsAny<Application.Features.Notifications.Models.NotificationCreateRequest>()), Times.Exactly(2));
     }
 

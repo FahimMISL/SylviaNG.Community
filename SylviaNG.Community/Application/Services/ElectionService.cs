@@ -115,6 +115,7 @@ namespace SylviaNG.Community.Application.Services
                     $"At least {entity.MinSelection} nominated candidate(s) are required to publish - currently {candidateCount}.");
 
             entity.Status = ElectionStatus.Open;
+            entity.PublishedAt = DateTime.UtcNow;
             _electionRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
 
@@ -212,6 +213,12 @@ namespace SylviaNG.Community.Application.Services
             _ = await _electionRepository.GetByIdAsync(electionId)
                 ?? throw new NotFoundException("Election", electionId);
 
+            var existingCandidates = await _candidateRepository.GetByElectionIdAsync(electionId);
+            if (request.EmployeeId.HasValue && existingCandidates.Any(c => c.EmployeeId == request.EmployeeId))
+                throw new DuplicateException("ElectionCandidate", "EmployeeId", request.EmployeeId.Value.ToString());
+            if (request.TeamId.HasValue && existingCandidates.Any(c => c.TeamId == request.TeamId))
+                throw new DuplicateException("ElectionCandidate", "TeamId", request.TeamId.Value.ToString());
+
             var entity = request.ToEntity(electionId);
             await _candidateRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
@@ -260,6 +267,29 @@ namespace SylviaNG.Community.Application.Services
         {
             var candidates = await _candidateRepository.GetByElectionIdAsync(electionId);
             return candidates.Select(c => c.ToResponse()).ToList();
+        }
+
+        public async Task RemoveCandidateAsync(long electionId, long candidateId)
+        {
+            var candidate = await _candidateRepository.GetByIdForElectionAsync(electionId, candidateId)
+                ?? throw new NotFoundException("ElectionCandidate", candidateId);
+
+            var hasVotes = await _voteRepository.HasAnyVotesAsync(electionId);
+            if (hasVotes)
+                throw new ForbiddenException("Candidates can no longer be removed once the election has received votes.");
+
+            _candidateRepository.Delete(candidate);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task UpdateManifestoAsync(long electionId, long candidateId, ElectionCandidateUpdateManifestoRequest request)
+        {
+            var candidate = await _candidateRepository.GetByIdForElectionAsync(electionId, candidateId)
+                ?? throw new NotFoundException("ElectionCandidate", candidateId);
+
+            candidate.Manifesto = request.Manifesto?.Trim() is { Length: > 0 } manifesto ? manifesto : null;
+            _candidateRepository.Update(candidate);
+            await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task<List<long>> CastVoteAsync(long electionId, ElectionVoteCastRequest request, long voterId)

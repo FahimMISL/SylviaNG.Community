@@ -33,7 +33,7 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<EmployeeDashboardSummaryResponse>> GetEmployeeSummary()
         {
             var employeeId = _currentUserService.EmployeeId
-                ?? throw new UnauthorizedException("Only an authenticated employee has a personal dashboard.");
+                ?? throw new ForbiddenException("Only an authenticated employee has a personal dashboard.");
 
             var result = await _mediator.Send(new EmployeeDashboardSummaryGetQuery(employeeId));
             return Ok(result);
@@ -48,7 +48,7 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<SupervisorTaskOverviewResponse>> GetSupervisorTaskOverview()
         {
             var employeeId = _currentUserService.EmployeeId
-                ?? throw new UnauthorizedException("Only an authenticated employee can have assigned tasks.");
+                ?? throw new ForbiddenException("Only an authenticated employee can have assigned tasks.");
 
             var result = await _mediator.Send(new SupervisorTaskOverviewGetQuery(employeeId));
             return Ok(result);

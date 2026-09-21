@@ -278,4 +278,45 @@ public class TeamServiceTests
         // Assert
         _teamMemberRepositoryMock.Verify(r => r.ExistsAsync(It.IsAny<long>(), It.IsAny<long>()), Times.Never);
     }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetTeamsByEmployeeIdAsync_WhenNoMemberships_ShouldReturnEmptyListWithoutQueryingTeams()
+    {
+        // Arrange
+        _teamMemberRepositoryMock.Setup(r => r.GetTeamIdsByEmployeeIdAsync(7)).ReturnsAsync(new List<long>());
+
+        // Act
+        var result = await _service.GetTeamsByEmployeeIdAsync(7);
+
+        // Assert
+        result.Should().BeEmpty();
+        _teamRepositoryMock.Verify(r => r.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Team, bool>>>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetTeamsByEmployeeIdAsync_WhenEmployeeHasMemberships_ShouldReturnTheirActiveTeams()
+    {
+        // Arrange
+        _teamMemberRepositoryMock.Setup(r => r.GetTeamIdsByEmployeeIdAsync(7)).ReturnsAsync(new List<long> { 2, 3 });
+
+        var allTeams = new List<Team>
+        {
+            new() { TeamId = 2, Name = "Engineering", IsActive = true },
+            new() { TeamId = 3, Name = "Platform", IsActive = true },
+            new() { TeamId = 4, Name = "Legacy (inactive)", IsActive = false },
+        };
+
+        // The repository call is mocked, so the predicate passed in isn't actually executed by
+        // Moq - compile and apply it ourselves against a mixed active/inactive/unrelated-id set
+        // to verify GetTeamsByEmployeeIdAsync builds the right filter.
+        _teamRepositoryMock
+            .Setup(r => r.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Team, bool>>>()))
+            .ReturnsAsync((System.Linq.Expressions.Expression<Func<Team, bool>> predicate) => allTeams.Where(predicate.Compile()));
+
+        // Act
+        var result = await _service.GetTeamsByEmployeeIdAsync(7);
+
+        // Assert
+        result.Select(t => t.TeamId).Should().BeEquivalentTo(new long[] { 2, 3 });
+    }
 }

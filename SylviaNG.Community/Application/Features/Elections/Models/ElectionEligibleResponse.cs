@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using SylviaNG.Community.SharedKernel.Utils;
+
 namespace SylviaNG.Community.Application.Features.Elections.Models
 {
     /// <summary>
@@ -15,8 +18,15 @@ namespace SylviaNG.Community.Application.Features.Elections.Models
         public bool AllowMultipleChoice { get; set; }
         public int MinSelection { get; set; }
         public int MaxSelection { get; set; }
+
+        // Same true-UTC requirement as ElectionResponse - the client computes "time remaining"
+        // against its own clock from these.
+        [JsonConverter(typeof(UtcDateTimeJsonConverter))]
         public DateTime StartDate { get; set; }
+
+        [JsonConverter(typeof(NullableUtcDateTimeJsonConverter))]
         public DateTime? EndDate { get; set; }
+
         public bool HasVoted { get; set; }
     }
 }

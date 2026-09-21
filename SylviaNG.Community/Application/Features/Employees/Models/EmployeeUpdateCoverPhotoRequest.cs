@@ -8,5 +8,9 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
     public class EmployeeUpdateCoverPhotoRequest
     {
         public string StoragePath { get; set; } = string.Empty;
+
+        /// <summary>FileId already returned alongside StoragePath by POST community/file-upload -
+        /// links Employee.CoverPhotoFileId back to its FileStorage row for uploader/timestamp traceability.</summary>
+        public long? FileId { get; set; }
     }
 }

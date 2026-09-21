@@ -6,6 +6,7 @@ using SylviaNG.Community.Application.Features.ContentReports.Commands.ContentRep
 using SylviaNG.Community.Application.Features.ContentReports.Commands.ContentReportResolve;
 using SylviaNG.Community.Application.Features.ContentReports.Models;
 using SylviaNG.Community.Application.Features.ContentReports.Queries.ContentReportGetAllPaged;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Controllers;
 using SylviaNG.Community.SharedKernel.Pagination;
 
@@ -14,12 +15,15 @@ namespace SylviaNG.Community.Tests.Controllers;
 public class ContentReportControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock;
+    private readonly Mock<ICurrentUserService> _currentUserServiceMock;
     private readonly ContentReportController _controller;
 
     public ContentReportControllerTests()
     {
         _mediatorMock = new Mock<IMediator>();
-        _controller = new ContentReportController(_mediatorMock.Object);
+        _currentUserServiceMock = new Mock<ICurrentUserService>();
+        _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(9);
+        _controller = new ContentReportController(_mediatorMock.Object, _currentUserServiceMock.Object);
     }
 
     [Fact]
@@ -63,13 +67,13 @@ public class ContentReportControllerTests
     public async Task Resolve_ShouldReturnOk()
     {
         // Arrange
-        var request = new ContentReportResolveRequest { ReviewedBy = 9, Status = "Resolved" };
+        var request = new ContentReportResolveRequest { Status = "Resolved" };
 
         // Act
         var result = await _controller.Resolve(1, request);
 
         // Assert
         result.Should().BeOfType<OkResult>();
-        _mediatorMock.Verify(m => m.Send(It.Is<ContentReportResolveCommand>(c => c.ReportId == 1), default), Times.Once);
+        _mediatorMock.Verify(m => m.Send(It.Is<ContentReportResolveCommand>(c => c.ReportId == 1 && c.ReviewerId == 9), default), Times.Once);
     }
 }

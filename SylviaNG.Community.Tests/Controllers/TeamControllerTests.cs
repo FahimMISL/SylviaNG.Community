@@ -5,6 +5,7 @@ using Moq;
 using SylviaNG.Community.Application.Features.Teams.Commands.TeamCreate;
 using SylviaNG.Community.Application.Features.Teams.Models;
 using SylviaNG.Community.Application.Features.Teams.Queries.TeamGetAllPaged;
+using SylviaNG.Community.Application.Features.Teams.Queries.TeamGetByEmployeeId;
 using SylviaNG.Community.Application.Features.Teams.Queries.TeamGetById;
 using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.Controllers;
@@ -71,5 +72,20 @@ public class TeamControllerTests
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         okResult.Value.Should().Be(42L);
+    }
+
+    [Fact]
+    public async Task GetByEmployeeId_ShouldReturnOkWithResult()
+    {
+        // Arrange
+        var expected = new List<TeamResponse> { new() { TeamId = 1, Name = "Engineering" } };
+        _mediatorMock.Setup(m => m.Send(It.IsAny<TeamGetByEmployeeIdQuery>(), default)).ReturnsAsync(expected);
+
+        // Act
+        var result = await _controller.GetByEmployeeId(7);
+
+        // Assert
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeEquivalentTo(expected);
     }
 }

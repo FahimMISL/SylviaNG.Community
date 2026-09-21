@@ -70,13 +70,13 @@ public class SurveyControllerTests
     }
 
     [Fact]
-    public async Task GetEligible_WhenNoCurrentEmployeeId_ShouldThrowUnauthorizedException()
+    public async Task GetEligible_WhenNoCurrentEmployeeId_ShouldThrowForbiddenException()
     {
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns((long?)null);
 
         var act = () => _controller.GetEligible();
 
-        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.UnauthorizedException>();
+        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.ForbiddenException>();
     }
 
     [Fact]
@@ -103,13 +103,13 @@ public class SurveyControllerTests
     }
 
     [Fact]
-    public async Task SubmitResponse_WhenNoCurrentEmployeeId_ShouldThrowUnauthorizedException()
+    public async Task SubmitResponse_WhenNoCurrentEmployeeId_ShouldThrowForbiddenException()
     {
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns((long?)null);
 
         var act = () => _controller.SubmitResponse(1, new SurveySubmissionRequest());
 
-        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.UnauthorizedException>();
+        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.ForbiddenException>();
     }
 
     [Fact]

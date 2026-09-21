@@ -31,6 +31,8 @@ namespace SylviaNG.Community.Application.Features.Employees.Models
         public List<string> RecentRecognitions { get; set; } = new();
         public string? PhotoUrl { get; set; }
         public string? CoverPhotoUrl { get; set; }
+        public long? PhotoFileId { get; set; }
+        public long? CoverPhotoFileId { get; set; }
         public bool IsActive { get; set; }
 
         /// <summary>Null unless the viewer is HR/Admin or the profile owner - same gate as Phone/Email/Extension.</summary>

@@ -17,6 +17,7 @@ public class EmployeeServiceTests
     private readonly Mock<IEmployeeRepository> _repositoryMock;
     private readonly Mock<IEmployeeContactLinkRepository> _contactLinkRepositoryMock;
     private readonly Mock<IEmployeeKeycloakAccountRepository> _keycloakAccountRepositoryMock;
+    private readonly Mock<IFileStorageRepository> _fileStorageRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<ICoreGrpcClient> _coreGrpcClientMock;
     private readonly EmployeeService _service;
@@ -28,12 +29,14 @@ public class EmployeeServiceTests
         _contactLinkRepositoryMock.Setup(r => r.GetByEmployeeIdAsync(It.IsAny<long>())).ReturnsAsync(new List<EmployeeContactLink>());
         _keycloakAccountRepositoryMock = new Mock<IEmployeeKeycloakAccountRepository>();
         _keycloakAccountRepositoryMock.Setup(r => r.GetEmployeeIdsWithAccountsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new HashSet<long>());
+        _fileStorageRepositoryMock = new Mock<IFileStorageRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _coreGrpcClientMock = new Mock<ICoreGrpcClient>();
         _service = new EmployeeService(
             _repositoryMock.Object,
             _contactLinkRepositoryMock.Object,
             _keycloakAccountRepositoryMock.Object,
+            _fileStorageRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _coreGrpcClientMock.Object,
             Mock.Of<ILogger<EmployeeService>>());
@@ -136,7 +139,7 @@ public class EmployeeServiceTests
     public async System.Threading.Tasks.Task UpdatePhotoAsync_WhenViewerIsNotOwner_ShouldThrowForbiddenException()
     {
         // Act
-        var act = () => _service.UpdatePhotoAsync(employeeId: 1, storagePath: "uploads/employee-photo/2026-07/guid.jpg", viewerEmployeeId: 2);
+        var act = () => _service.UpdatePhotoAsync(employeeId: 1, storagePath: "uploads/employee-photo/2026-07/guid.jpg", fileId: null, viewerEmployeeId: 2);
 
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>();
@@ -144,26 +147,42 @@ public class EmployeeServiceTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task UpdatePhotoAsync_WhenViewerIsOwner_ShouldSetPhotoUrlAndSave()
+    public async System.Threading.Tasks.Task UpdatePhotoAsync_WhenViewerIsOwner_ShouldSetPhotoUrlAndFileIdAndSave()
     {
         // Arrange
         var entity = new Employee { EmployeeId = 1, PhotoUrl = null };
         _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+        _fileStorageRepositoryMock.Setup(r => r.GetByIdAsync(9)).ReturnsAsync(new FileStorage { FileId = 9 });
 
         // Act
-        await _service.UpdatePhotoAsync(employeeId: 1, storagePath: "uploads/employee-photo/2026-07/guid.jpg", viewerEmployeeId: 1);
+        await _service.UpdatePhotoAsync(employeeId: 1, storagePath: "uploads/employee-photo/2026-07/guid.jpg", fileId: 9, viewerEmployeeId: 1);
 
         // Assert
         entity.PhotoUrl.Should().Be("uploads/employee-photo/2026-07/guid.jpg");
+        entity.PhotoFileId.Should().Be(9);
         _repositoryMock.Verify(r => r.Update(entity), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdatePhotoAsync_WhenFileIdDoesNotExist_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Employee { EmployeeId = 1 });
+        _fileStorageRepositoryMock.Setup(r => r.GetByIdAsync(9)).ReturnsAsync((FileStorage?)null);
+
+        // Act
+        var act = () => _service.UpdatePhotoAsync(employeeId: 1, storagePath: "uploads/employee-photo/2026-07/guid.jpg", fileId: 9, viewerEmployeeId: 1);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
     }
 
     [Fact]
     public async System.Threading.Tasks.Task UpdateCoverPhotoAsync_WhenViewerIsNotOwner_ShouldThrowForbiddenException()
     {
         // Act
-        var act = () => _service.UpdateCoverPhotoAsync(employeeId: 1, storagePath: "uploads/employee-cover/2026-07/guid.jpg", viewerEmployeeId: 2);
+        var act = () => _service.UpdateCoverPhotoAsync(employeeId: 1, storagePath: "uploads/employee-cover/2026-07/guid.jpg", fileId: null, viewerEmployeeId: 2);
 
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>();
@@ -171,19 +190,35 @@ public class EmployeeServiceTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task UpdateCoverPhotoAsync_WhenViewerIsOwner_ShouldSetCoverPhotoUrlAndSave()
+    public async System.Threading.Tasks.Task UpdateCoverPhotoAsync_WhenViewerIsOwner_ShouldSetCoverPhotoUrlAndFileIdAndSave()
     {
         // Arrange
         var entity = new Employee { EmployeeId = 1, CoverPhotoUrl = null };
         _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
+        _fileStorageRepositoryMock.Setup(r => r.GetByIdAsync(9)).ReturnsAsync(new FileStorage { FileId = 9 });
 
         // Act
-        await _service.UpdateCoverPhotoAsync(employeeId: 1, storagePath: "uploads/employee-cover/2026-07/guid.jpg", viewerEmployeeId: 1);
+        await _service.UpdateCoverPhotoAsync(employeeId: 1, storagePath: "uploads/employee-cover/2026-07/guid.jpg", fileId: 9, viewerEmployeeId: 1);
 
         // Assert
         entity.CoverPhotoUrl.Should().Be("uploads/employee-cover/2026-07/guid.jpg");
+        entity.CoverPhotoFileId.Should().Be(9);
         _repositoryMock.Verify(r => r.Update(entity), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateCoverPhotoAsync_WhenFileIdDoesNotExist_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        _repositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Employee { EmployeeId = 1 });
+        _fileStorageRepositoryMock.Setup(r => r.GetByIdAsync(9)).ReturnsAsync((FileStorage?)null);
+
+        // Act
+        var act = () => _service.UpdateCoverPhotoAsync(employeeId: 1, storagePath: "uploads/employee-cover/2026-07/guid.jpg", fileId: 9, viewerEmployeeId: 1);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
     }
 
     [Fact]

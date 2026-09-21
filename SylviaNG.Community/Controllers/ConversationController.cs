@@ -27,7 +27,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResult<ConversationResponse>>> GetPaged([FromQuery] PagedRequest request)
         {
-            var employeeId = _currentUserService.EmployeeId ?? 0;
+            var employeeId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new ConversationGetAllPagedQuery(employeeId, request));
             return Ok(result);
         }
@@ -42,7 +42,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Start([FromBody] ConversationStartRequest request)
         {
-            var employeeId = _currentUserService.EmployeeId ?? 0;
+            var employeeId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new ConversationStartCommand(employeeId, request));
             return Ok(id);
         }
@@ -57,7 +57,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("{conversationId}/messages")]
         public async Task<ActionResult<long>> SendMessage(long conversationId, [FromBody] MessageSendRequest request)
         {
-            var senderId = _currentUserService.EmployeeId ?? 0;
+            var senderId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new MessageSendCommand(conversationId, senderId, request));
             return Ok(id);
         }

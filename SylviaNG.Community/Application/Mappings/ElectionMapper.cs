@@ -87,6 +87,7 @@ namespace SylviaNG.Community.Application.Mappings
                 StartDate = entity.StartDate,
                 EndDate = entity.EndDate,
                 Status = entity.Status,
+                PublishedAt = entity.PublishedAt,
                 CreatedBy = entity.CreatedBy
             };
         }

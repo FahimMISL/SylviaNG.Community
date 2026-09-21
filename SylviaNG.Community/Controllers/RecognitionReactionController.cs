@@ -31,7 +31,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Add(long recognitionId, [FromBody] RecognitionReactionAddRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new RecognitionReactionAddCommand(recognitionId, request, callerId));
             return Ok(id);
         }
@@ -39,7 +39,11 @@ namespace SylviaNG.Community.Controllers
         [HttpDelete("{employeeId}")]
         public async Task<ActionResult> Remove(long recognitionId, long employeeId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            // RecognitionService.RemoveReactionAsync only consults callerId when the caller isn't
+            // HR/Admin (the self-only check); RequireEmployeeId() is only evaluated on that branch,
+            // so an Admin-type caller (no Employee record) can still remove any reaction via the
+            // moderation override.
+            var callerId = _currentUserService.IsHrOrAdmin ? -1 : _currentUserService.RequireEmployeeId();
             await _mediator.Send(new RecognitionReactionRemoveCommand(recognitionId, employeeId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }

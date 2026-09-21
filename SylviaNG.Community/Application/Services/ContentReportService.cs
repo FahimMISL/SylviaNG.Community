@@ -129,13 +129,13 @@ namespace SylviaNG.Community.Application.Services
             return value.Length <= maxLength ? value : value[..maxLength] + "...";
         }
 
-        public async Task ResolveAsync(long reportId, ContentReportResolveRequest request)
+        public async Task ResolveAsync(long reportId, long? reviewedBy, ContentReportResolveRequest request)
         {
             var entity = await _contentReportRepository.GetByIdAsync(reportId)
                 ?? throw new NotFoundException("ContentReport", reportId);
 
             entity.Status = request.Status;
-            entity.ReviewedBy = request.ReviewedBy;
+            entity.ReviewedBy = reviewedBy;
             entity.ReviewedAt = DateTime.UtcNow;
 
             _contentReportRepository.Update(entity);

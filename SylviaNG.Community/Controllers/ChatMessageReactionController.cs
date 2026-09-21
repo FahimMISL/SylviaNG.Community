@@ -26,7 +26,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<ChatMessageReactionResponse?>> React(long messageId, [FromBody] ChatMessageReactionRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             var result = await _mediator.Send(new ChatMessageReactCommand(messageId, request.ReactionType, callerId));
             return Ok(result);
         }

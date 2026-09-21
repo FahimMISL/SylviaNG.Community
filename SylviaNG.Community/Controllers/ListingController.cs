@@ -47,7 +47,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Create([FromBody] ListingCreateRequest request)
         {
-            var sellerId = _currentUserService.EmployeeId ?? 0;
+            var sellerId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new ListingCreateCommand(sellerId, _currentUserService.IsHrOrAdmin, request));
             return Ok(id);
         }
@@ -55,7 +55,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{listingId}")]
         public async Task<ActionResult> Update(long listingId, [FromBody] ListingUpdateRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ListingUpdateCommand(listingId, request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
@@ -63,7 +63,11 @@ namespace SylviaNG.Community.Controllers
         [HttpDelete("{listingId}")]
         public async Task<ActionResult> Delete(long listingId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            // MarketplaceService.DeleteListingAsync only consults callerId when the caller isn't
+            // HR/Admin (the seller-only check); RequireEmployeeId() is only evaluated on that
+            // branch, so an Admin-type caller (no Employee record) can still delete any listing
+            // via the HR/Admin override.
+            var callerId = _currentUserService.IsHrOrAdmin ? -1 : _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ListingDeleteCommand(listingId, callerId, _currentUserService.IsHrOrAdmin));
             return Ok();
         }
@@ -72,7 +76,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{listingId}/approve")]
         public async Task<ActionResult> Approve(long listingId)
         {
-            var approverId = _currentUserService.EmployeeId ?? 0;
+            var approverId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ListingApproveCommand(listingId, approverId));
             return Ok();
         }
@@ -81,7 +85,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{listingId}/reject")]
         public async Task<ActionResult> Reject(long listingId, [FromBody] ListingRejectRequest request)
         {
-            var approverId = _currentUserService.EmployeeId ?? 0;
+            var approverId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ListingRejectCommand(listingId, approverId, request));
             return Ok();
         }

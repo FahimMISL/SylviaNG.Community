@@ -191,5 +191,15 @@ namespace SylviaNG.Community.Application.Services
             var members = await _teamMemberRepository.GetByTeamIdAsync(teamId);
             return members.Select(m => m.ToResponse()).ToList();
         }
+
+        public async Task<List<TeamResponse>> GetTeamsByEmployeeIdAsync(long employeeId)
+        {
+            var teamIds = await _teamMemberRepository.GetTeamIdsByEmployeeIdAsync(employeeId);
+            if (teamIds.Count == 0)
+                return new List<TeamResponse>();
+
+            var teams = await _teamRepository.FindAsync(t => teamIds.Contains(t.TeamId) && t.IsActive);
+            return teams.Select(t => t.ToResponse()).ToList();
+        }
     }
 }

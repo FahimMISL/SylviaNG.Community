@@ -14,18 +14,16 @@ namespace SylviaNG.Community.Infrastructure.Repositories
     {
         public PostRepository(ApplicationDBContext dbContext) : base(dbContext) { }
 
-        public async Task<PagedResult<Post>> GetFeedPaginatedAsync(PostFilterRequest request, long? callerDepartmentId, long? callerSiteId)
+        public async Task<PagedResult<Post>> GetFeedPaginatedAsync(PostFilterRequest request, long callerEmployeeId, long? callerDepartmentId, long? callerSiteId)
         {
-            var query = from p in _dbSet
+            var query = from p in _dbSet.Include(p => p.Group)
                         join e in _dbContext.Set<Employee>() on p.EmployeeId equals e.EmployeeId
-                        join g in _dbContext.Set<Group>() on p.GroupId equals g.GroupId into groupJoin
-                        from g in groupJoin.DefaultIfEmpty()
                         where !p.IsHidden
                             && (p.GroupId == null
                                 ? (p.Visibility == VisibilityEnum.Everyone
                                     || (p.Visibility == VisibilityEnum.Department && callerDepartmentId != null && e.DepartmentId == callerDepartmentId)
                                     || (p.Visibility == VisibilityEnum.Branch && callerSiteId != null && e.SiteId == callerSiteId))
-                                : g.Visibility == GroupVisibilityEnum.Public)
+                                : _dbContext.Set<GroupMember>().Any(gm => gm.GroupId == p.GroupId && gm.EmployeeId == callerEmployeeId && gm.IsActive))
                         select p;
 
             if (request.IsAnnouncement.HasValue)
@@ -46,7 +44,7 @@ namespace SylviaNG.Community.Infrastructure.Repositories
 
         public async Task<PagedResult<Post>> GetGroupFeedPaginatedAsync(PostFilterRequest request, long groupId)
         {
-            var query = _dbSet.Where(p => p.GroupId == groupId && !p.IsHidden);
+            var query = _dbSet.Include(p => p.Group).Where(p => p.GroupId == groupId && !p.IsHidden);
 
             if (request.IsAnnouncement.HasValue)
                 query = query.Where(p => p.IsAnnouncement == request.IsAnnouncement.Value);

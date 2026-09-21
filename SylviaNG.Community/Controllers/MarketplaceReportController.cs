@@ -43,8 +43,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{reportId}/resolve")]
         public async Task<ActionResult> Resolve(long reportId, [FromBody] MarketplaceReportResolveRequest request)
         {
-            var reviewerId = _currentUserService.EmployeeId ?? 0;
-            await _mediator.Send(new MarketplaceReportResolveCommand(reportId, reviewerId, request));
+            await _mediator.Send(new MarketplaceReportResolveCommand(reportId, _currentUserService.EmployeeId, request));
             return Ok();
         }
     }

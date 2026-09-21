@@ -29,7 +29,7 @@ namespace SylviaNG.Community.Infrastructure.Configurations
             builder.HasIndex(p => p.IsHidden);
             builder.HasIndex(p => p.GroupId);
 
-            builder.HasOne<Group>()
+            builder.HasOne(p => p.Group)
                 .WithMany()
                 .HasForeignKey(p => p.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);

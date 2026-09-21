@@ -45,8 +45,8 @@ public class AuditInterceptor : SaveChangesInterceptor
         // Same 3-tier resolution (JWT claim -> Finbuckle -> empty) already used to filter reads
         // (ApplicationDBContext.CurrentTenantId) - reused here so every new row is stamped with the
         // tenant that will actually be able to see it. Left at Audit.TenantId's "default_tenant"
-        // default when no tenant context resolves (e.g. background jobs / Kafka consumers with no
-        // HttpContext), rather than writing an empty string.
+        // default when no tenant context resolves (e.g. background jobs with no HttpContext),
+        // rather than writing an empty string.
         var currentTenantId = (context as ApplicationDBContext)?.CurrentTenantId;
 
         foreach (var entry in context.ChangeTracker.Entries<Audit>())

@@ -29,4 +29,7 @@ public class Election : Audit
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public new string Status { get; set; } = "Draft";
+
+    /// <summary>UTC instant the election moved Draft -> Open (ElectionService.PublishAsync). Null while still a Draft.</summary>
+    public DateTime? PublishedAt { get; set; }
 }

@@ -468,7 +468,7 @@ namespace SylviaNG.Community.Application.Services
             };
         }
 
-        public async System.Threading.Tasks.Task ResolveReportAsync(long reportId, long reviewerId, MarketplaceReportResolveRequest request)
+        public async System.Threading.Tasks.Task ResolveReportAsync(long reportId, long? reviewerId, MarketplaceReportResolveRequest request)
         {
             var entity = await _marketplaceReportRepository.GetByIdAsync(reportId)
                 ?? throw new NotFoundException("MarketplaceReport", reportId);

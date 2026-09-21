@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.ContentReports.Commands.Conten
 
         public async Task Handle(ContentReportResolveCommand command, CancellationToken cancellationToken)
         {
-            await _contentReportService.ResolveAsync(command.ReportId, command.Request);
+            await _contentReportService.ResolveAsync(command.ReportId, command.ReviewerId, command.Request);
         }
     }
 }

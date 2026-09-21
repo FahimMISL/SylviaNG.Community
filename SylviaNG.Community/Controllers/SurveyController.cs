@@ -56,7 +56,7 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<List<SurveyDetailResponse>>> GetEligible()
         {
             var employeeId = _currentUserService.EmployeeId
-                ?? throw new UnauthorizedException("Only authenticated employees may browse eligible surveys.");
+                ?? throw new ForbiddenException("Only authenticated employees may browse eligible surveys.");
 
             var result = await _mediator.Send(new SurveyGetEligibleQuery(employeeId));
             return Ok(result);
@@ -69,7 +69,7 @@ namespace SylviaNG.Community.Controllers
             return Ok(result);
         }
 
-        [Authorize(Policy = "HRAdminOnly")]
+        [Authorize(Policy = "HROnly")]
         [HttpPost]
         public async Task<ActionResult<long>> Create([FromBody] SurveyCreateRequest request)
         {
@@ -103,9 +103,10 @@ namespace SylviaNG.Community.Controllers
 
         /// <summary>
         /// Permanently deletes a survey. Closed surveys cannot be deleted (US-5.8) -
-        /// SurveyService.DeleteAsync rejects the request with a validation error.
+        /// SurveyService.DeleteAsync rejects the request with a validation error. HR-only, not
+        /// HR/Admin - see the HROnly policy comment in AuthorizationExtensions.
         /// </summary>
-        [Authorize(Policy = "HRAdminOnly")]
+        [Authorize(Policy = "HROnly")]
         [HttpDelete("{surveyId}")]
         public async Task<ActionResult> Delete(long surveyId)
         {
@@ -170,7 +171,7 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<long>> SubmitResponse(long surveyId, [FromBody] SurveySubmissionRequest request)
         {
             var employeeId = _currentUserService.EmployeeId
-                ?? throw new UnauthorizedException("Only authenticated employees may submit a survey response.");
+                ?? throw new ForbiddenException("Only authenticated employees may submit a survey response.");
 
             var id = await _mediator.Send(new SurveyResponseSubmitCommand(surveyId, request, employeeId));
             return Ok(id);

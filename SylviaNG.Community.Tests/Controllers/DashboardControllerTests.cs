@@ -44,7 +44,7 @@ public class DashboardControllerTests
     }
 
     [Fact]
-    public async Task GetEmployeeSummary_WhenCallerHasNoEmployeeRecord_ShouldThrowUnauthorizedException()
+    public async Task GetEmployeeSummary_WhenCallerHasNoEmployeeRecord_ShouldThrowForbiddenException()
     {
         // Arrange - e.g. an Admin-type caller, not an Employee record.
         _currentUserServiceMock.Setup(s => s.EmployeeId).Returns((long?)null);
@@ -53,7 +53,7 @@ public class DashboardControllerTests
         var act = () => _controller.GetEmployeeSummary();
 
         // Assert
-        await act.Should().ThrowAsync<UnauthorizedException>();
+        await act.Should().ThrowAsync<ForbiddenException>();
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class DashboardControllerTests
     }
 
     [Fact]
-    public async Task GetSupervisorTaskOverview_WhenCallerHasNoEmployeeRecord_ShouldThrowUnauthorizedException()
+    public async Task GetSupervisorTaskOverview_WhenCallerHasNoEmployeeRecord_ShouldThrowForbiddenException()
     {
         // Arrange
         _currentUserServiceMock.Setup(s => s.EmployeeId).Returns((long?)null);
@@ -84,7 +84,7 @@ public class DashboardControllerTests
         var act = () => _controller.GetSupervisorTaskOverview();
 
         // Assert
-        await act.Should().ThrowAsync<UnauthorizedException>();
+        await act.Should().ThrowAsync<ForbiddenException>();
     }
 
     [Fact]

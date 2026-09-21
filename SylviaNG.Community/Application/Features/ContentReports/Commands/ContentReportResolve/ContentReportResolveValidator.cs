@@ -6,9 +6,6 @@ namespace SylviaNG.Community.Application.Features.ContentReports.Commands.Conten
     {
         public ContentReportResolveValidator()
         {
-            RuleFor(x => x.Request.ReviewedBy)
-                .GreaterThan(0).WithMessage("ReviewedBy is required.");
-
             RuleFor(x => x.Request.Status)
                 .NotEmpty().WithMessage("Status is required.")
                 .MaximumLength(50).WithMessage("Status must not exceed 50 characters.");

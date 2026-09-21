@@ -12,7 +12,6 @@ policy updates, holidays, etc.). It ships one aggregate root — `Announcement`.
 - Entity Framework Core 10.0
 - PostgreSQL / SQL Server / Oracle (configurable via `Database:Provider`)
 - Keycloak Authentication (JWT)
-- Apache Kafka for event-driven architecture (employee sync)
 - Finbuckle.MultiTenant for multi-tenancy support
 - MediatR for CQRS pattern
 - FluentValidation for input validation
@@ -55,7 +54,6 @@ SylviaNG.Community/
 │   │   ├── DependencyInjection.cs     # Infrastructure service registrations
 │   │   └── GrpcExtensions.cs          # gRPC client registration
 │   ├── Interceptors/                  # EF Core interceptors (UtcDateTime)
-│   ├── Kafka/                         # Kafka consumers (EmployeeEventConsumer)
 │   ├── MultiTenancy/                  # Tenant info model
 │   ├── Repositories/                  # Repository implementations
 │   └── Services/                      # External service implementations (CoreGrpcClient)
@@ -95,7 +93,7 @@ This project follows **Clean Architecture** with **Domain-Driven Design (DDD)** 
 ├──────────────────────────────────────────────────┤
 │                    Domain                         │  ← Entities, Events, Enums
 ├──────────────────────────────────────────────────┤
-│                Infrastructure                     │  ← Data access, Kafka, gRPC
+│                Infrastructure                     │  ← Data access, gRPC
 │         (EF Core, Repositories, Interceptors)     │
 ├──────────────────────────────────────────────────┤
 │                SharedKernel                       │  ← Generic repo, Audit, Pagination
@@ -109,7 +107,6 @@ This project follows **Clean Architecture** with **Domain-Driven Design (DDD)** 
 - .NET 10.0 SDK
 - PostgreSQL / SQL Server / Oracle database
 - Keycloak instance for authentication
-- Apache Kafka (for employee sync events)
 
 ### Configuration
 
@@ -157,7 +154,6 @@ Once running, access Swagger UI at: `http://localhost:5210/swagger`
 - **Audit logging** — All entities inherit from `Audit` base class
 - **UTC DateTime enforcement** via EF Core interceptor
 - **Manual object mapping** — static mapper extensions per feature (no AutoMapper)
-- **Event-driven architecture** with Kafka (employee sync)
 - **gRPC** for inter-service communication with Core microservice
 - **FluentValidation** integrated into MediatR pipeline
 

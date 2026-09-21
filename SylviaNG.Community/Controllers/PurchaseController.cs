@@ -24,7 +24,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Create([FromBody] PurchaseCreateRequest request)
         {
-            var buyerId = _currentUserService.EmployeeId ?? 0;
+            var buyerId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new PurchaseCreateCommand(buyerId, request));
             return Ok(id);
         }
@@ -32,7 +32,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("mine")]
         public async Task<ActionResult<List<PurchaseResponse>>> GetMine()
         {
-            var employeeId = _currentUserService.EmployeeId ?? 0;
+            var employeeId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new PurchaseGetAllForEmployeeQuery(employeeId));
             return Ok(result);
         }
@@ -40,7 +40,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("has-purchased/{listingId}")]
         public async Task<ActionResult<bool>> HasPurchased(long listingId)
         {
-            var employeeId = _currentUserService.EmployeeId ?? 0;
+            var employeeId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new PurchaseHasPurchasedQuery(employeeId, listingId));
             return Ok(result);
         }

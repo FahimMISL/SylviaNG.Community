@@ -23,6 +23,15 @@ namespace SylviaNG.Community.Infrastructure.Configurations
 
             builder.HasIndex(c => c.CreatedByEmployeeId);
             builder.HasIndex(c => c.LastMessageAt);
+
+            // Never let a group avatar silently orphan if the underlying file record is
+            // removed - same reasoning as ChatMessageAttachment's restrict-on-delete. This
+            // was previously a "soft" reference validated only at the service layer
+            // (ChatConversationService) with no DB-level constraint.
+            builder.HasOne<FileStorage>()
+                .WithMany()
+                .HasForeignKey(c => c.GroupAvatarFileId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

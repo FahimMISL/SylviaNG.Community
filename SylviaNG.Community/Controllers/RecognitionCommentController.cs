@@ -30,7 +30,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Add(long recognitionId, [FromBody] RecognitionCommentAddRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new RecognitionCommentAddCommand(recognitionId, request, callerId));
             return Ok(id);
         }

@@ -368,7 +368,7 @@ public class PostServiceTests
             PageNumber = 1,
             PageSize = 10
         };
-        _postRepositoryMock.Setup(r => r.GetFeedPaginatedAsync(It.IsAny<PostFilterRequest>(), It.IsAny<long?>(), It.IsAny<long?>())).ReturnsAsync(pagedResult);
+        _postRepositoryMock.Setup(r => r.GetFeedPaginatedAsync(It.IsAny<PostFilterRequest>(), It.IsAny<long>(), It.IsAny<long?>(), It.IsAny<long?>())).ReturnsAsync(pagedResult);
         _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Employee { EmployeeId = 1, DepartmentId = 5, SiteId = 9 });
 
         // Act
@@ -377,7 +377,7 @@ public class PostServiceTests
         // Assert
         result.Data.Should().ContainSingle(p => p.PostId == 1);
         result.TotalCount.Should().Be(1);
-        _postRepositoryMock.Verify(r => r.GetFeedPaginatedAsync(It.IsAny<PostFilterRequest>(), 5, 9), Times.Once);
+        _postRepositoryMock.Verify(r => r.GetFeedPaginatedAsync(It.IsAny<PostFilterRequest>(), 1, 5, 9), Times.Once);
     }
 
     [Fact]
@@ -391,14 +391,14 @@ public class PostServiceTests
             PageNumber = 1,
             PageSize = 10
         };
-        _postRepositoryMock.Setup(r => r.GetFeedPaginatedAsync(It.IsAny<PostFilterRequest>(), It.IsAny<long?>(), It.IsAny<long?>())).ReturnsAsync(pagedResult);
+        _postRepositoryMock.Setup(r => r.GetFeedPaginatedAsync(It.IsAny<PostFilterRequest>(), It.IsAny<long>(), It.IsAny<long?>(), It.IsAny<long?>())).ReturnsAsync(pagedResult);
         _employeeRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Employee { EmployeeId = 1, DepartmentId = 5, SiteId = 9 });
 
         // Act
         await _service.GetFeedPaginatedAsync(new PostFilterRequest { EmployeeId = 7 }, callerEmployeeId: 1);
 
         // Assert
-        _postRepositoryMock.Verify(r => r.GetFeedPaginatedAsync(It.Is<PostFilterRequest>(req => req.EmployeeId == 7), 5, 9), Times.Once);
+        _postRepositoryMock.Verify(r => r.GetFeedPaginatedAsync(It.Is<PostFilterRequest>(req => req.EmployeeId == 7), 1, 5, 9), Times.Once);
     }
 
     [Fact]

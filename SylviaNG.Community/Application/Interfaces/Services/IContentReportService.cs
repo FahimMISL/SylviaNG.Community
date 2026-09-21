@@ -7,6 +7,6 @@ namespace SylviaNG.Community.Application.Interfaces.Services
     {
         Task<long> CreateAsync(ContentReportCreateRequest request);
         Task<PagedResult<ContentReportQueueItemResponse>> GetPaginatedAsync(PagedRequest request);
-        Task ResolveAsync(long reportId, ContentReportResolveRequest request);
+        Task ResolveAsync(long reportId, long? reviewedBy, ContentReportResolveRequest request);
     }
 }

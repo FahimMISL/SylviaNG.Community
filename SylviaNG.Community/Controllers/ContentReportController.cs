@@ -5,6 +5,7 @@ using SylviaNG.Community.Application.Features.ContentReports.Commands.ContentRep
 using SylviaNG.Community.Application.Features.ContentReports.Commands.ContentReportResolve;
 using SylviaNG.Community.Application.Features.ContentReports.Models;
 using SylviaNG.Community.Application.Features.ContentReports.Queries.ContentReportGetAllPaged;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.SharedKernel.Pagination;
 
 namespace SylviaNG.Community.Controllers
@@ -14,10 +15,12 @@ namespace SylviaNG.Community.Controllers
     public class ContentReportController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public ContentReportController(IMediator mediator)
+        public ContentReportController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         [HttpPost]
@@ -42,7 +45,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{reportId}/resolve")]
         public async Task<ActionResult> Resolve(long reportId, [FromBody] ContentReportResolveRequest request)
         {
-            await _mediator.Send(new ContentReportResolveCommand(reportId, request));
+            await _mediator.Send(new ContentReportResolveCommand(reportId, _currentUserService.EmployeeId, request));
             return Ok();
         }
     }

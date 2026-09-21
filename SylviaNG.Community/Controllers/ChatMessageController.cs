@@ -26,7 +26,7 @@ namespace SylviaNG.Community.Controllers
         [HttpDelete]
         public async Task<ActionResult> Delete(long messageId)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatMessageDeleteCommand(messageId, callerId));
             return Ok();
         }
@@ -35,7 +35,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("forward")]
         public async Task<ActionResult> Forward(long messageId, [FromBody] ChatMessageForwardRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatMessageForwardCommand(messageId, request, callerId));
             return Ok();
         }
@@ -44,7 +44,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("report")]
         public async Task<ActionResult> Report(long messageId, [FromBody] ChatMessageReportRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatMessageReportCommand(messageId, request, callerId));
             return Ok();
         }
@@ -53,7 +53,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("pin")]
         public async Task<ActionResult> SetPinned(long messageId, [FromBody] ChatMessagePinRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new ChatMessageSetPinnedCommand(messageId, callerId, request.IsPinned));
             return Ok();
         }

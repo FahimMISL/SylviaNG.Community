@@ -37,6 +37,7 @@ public class FileUploadControllerTests : IDisposable
 
         _configurationMock.Setup(c => c["FileStorage:LocalRootPath"]).Returns("wwwroot/uploads");
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(42);
+        _currentUserServiceMock.Setup(c => c.RequireEmployeeId()).Returns(42);
 
         _controller = new FileUploadController(
             _mediatorMock.Object,

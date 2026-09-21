@@ -2135,3 +2135,57 @@ VALUES ('20260906051001_AddFileStorageIdToAttachments', '10.0.5');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE "Employees" ADD "CoverPhotoFileId" bigint;
+
+ALTER TABLE "Employees" ADD "PhotoFileId" bigint;
+
+UPDATE "Employees" SET "CoverPhotoFileId" = NULL, "PhotoFileId" = NULL
+WHERE "EmployeeId" = 1;
+
+UPDATE "Employees" SET "CoverPhotoFileId" = NULL, "PhotoFileId" = NULL
+WHERE "EmployeeId" = 2;
+
+UPDATE "Employees" SET "CoverPhotoFileId" = NULL, "PhotoFileId" = NULL
+WHERE "EmployeeId" = 3;
+
+CREATE INDEX "IX_Employees_CoverPhotoFileId" ON "Employees" ("CoverPhotoFileId");
+
+CREATE INDEX "IX_Employees_PhotoFileId" ON "Employees" ("PhotoFileId");
+
+CREATE INDEX "IX_ChatConversations_GroupAvatarFileId" ON "ChatConversations" ("GroupAvatarFileId");
+
+ALTER TABLE "ChatConversations" ADD CONSTRAINT "FK_ChatConversations_FileStorages_GroupAvatarFileId" FOREIGN KEY ("GroupAvatarFileId") REFERENCES "FileStorages" ("FileId") ON DELETE RESTRICT;
+
+ALTER TABLE "Employees" ADD CONSTRAINT "FK_Employees_FileStorages_CoverPhotoFileId" FOREIGN KEY ("CoverPhotoFileId") REFERENCES "FileStorages" ("FileId") ON DELETE RESTRICT;
+
+ALTER TABLE "Employees" ADD CONSTRAINT "FK_Employees_FileStorages_PhotoFileId" FOREIGN KEY ("PhotoFileId") REFERENCES "FileStorages" ("FileId") ON DELETE RESTRICT;
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260906101420_AddEmployeePhotoFileIdsAndGroupAvatarFk', '10.0.5');
+
+COMMIT;
+
+START TRANSACTION;
+ALTER TABLE "ChatMessageAttachments" ADD "FilePath" character varying(1000) NOT NULL DEFAULT '';
+
+UPDATE "ChatMessageAttachments" AS cma
+SET "FilePath" = fs."StoragePath"
+FROM "FileStorages" AS fs
+WHERE fs."FileId" = cma."FileStorageId";
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260906104529_AddFilePathToChatMessageAttachments', '10.0.5');
+
+COMMIT;
+
+START TRANSACTION;
+ALTER TABLE "Elections" ADD "PublishedAt" timestamp with time zone;
+
+UPDATE "Elections" SET "PublishedAt" = COALESCE("UpdatedAt", "CreatedAt") WHERE "Status" <> 'Draft';
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260920183429_AddElectionPublishedAt', '10.0.5');
+
+COMMIT;
+

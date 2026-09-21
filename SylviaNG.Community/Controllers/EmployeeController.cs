@@ -111,8 +111,8 @@ namespace SylviaNG.Community.Controllers
         /// HR/Admin edit of an employee's locally-owned details - Email, Date of Birth, Date of
         /// Joining. Distinct from the self-service UpdateProfile endpoint above (which is
         /// restricted to the profile owner). Department/Designation/Site/Name are intentionally
-        /// excluded - they're synced from the upstream Core/Employee service via Kafka (see
-        /// EmployeeEventConsumer) and any local edit here would be overwritten by the next sync.
+        /// excluded - they're owned by the upstream Core/Employee service and any local edit
+        /// here would be overwritten by the next sync.
         /// </summary>
         [Authorize(Policy = "HRAdminOnly")]
         [HttpPut("{employeeId}/details")]

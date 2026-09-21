@@ -23,6 +23,7 @@ public class FileStorageControllerTests
         _mediatorMock = new Mock<IMediator>();
         _currentUserServiceMock = new Mock<ICurrentUserService>();
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(42);
+        _currentUserServiceMock.Setup(c => c.RequireEmployeeId()).Returns(42);
         _controller = new FileStorageController(_mediatorMock.Object, _currentUserServiceMock.Object);
     }
 

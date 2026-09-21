@@ -28,5 +28,10 @@ namespace SylviaNG.Community.Application.Interfaces.Services
 
         /// <summary>Caller must be this team's Supervisor, an active member, or HR/Admin.</summary>
         Task<List<TeamMemberResponse>> GetMembersAsync(long teamId, long? callerEmployeeId, bool isHrOrAdmin);
+
+        /// <summary>Open read: any authenticated caller may look up an employee's active team
+        /// memberships (used to show team affiliation elsewhere, e.g. election candidate lists) -
+        /// unlike GetByIdAsync/GetMembersAsync, this is not gated to supervisor/member/HR-admin.</summary>
+        Task<List<TeamResponse>> GetTeamsByEmployeeIdAsync(long employeeId);
     }
 }

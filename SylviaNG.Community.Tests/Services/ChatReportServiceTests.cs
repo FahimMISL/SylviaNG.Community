@@ -44,7 +44,7 @@ public class ChatReportServiceTests
         _chatReportRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(report);
 
         // Act
-        await _service.ResolveAsync(1, new ChatReportResolveRequest { ReviewedBy = 9, Status = "Resolved" });
+        await _service.ResolveAsync(1, 9, new ChatReportResolveRequest { Status = "Resolved" });
 
         // Assert
         report.Status.Should().Be("Resolved");
@@ -60,7 +60,7 @@ public class ChatReportServiceTests
         _chatReportRepositoryMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((ChatReport?)null);
 
         // Act
-        var act = () => _service.ResolveAsync(1, new ChatReportResolveRequest { ReviewedBy = 9, Status = "Resolved" });
+        var act = () => _service.ResolveAsync(1, 9, new ChatReportResolveRequest { Status = "Resolved" });
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();

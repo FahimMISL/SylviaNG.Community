@@ -19,6 +19,7 @@ public class Post : Audit
     /// Visibility (see PostRepository.GetFeedPaginatedAsync), not cached here.
     /// </summary>
     public long? GroupId { get; set; }
+    public Group? Group { get; set; }
 
     public string Type { get; set; } = string.Empty;
     public VisibilityEnum Visibility { get; set; } = VisibilityEnum.Everyone;

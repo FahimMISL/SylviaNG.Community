@@ -116,7 +116,7 @@ namespace SylviaNG.Community.Application.Services
             await _chatMessageRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
-            var attachmentEntities = request.Attachments.Select(a => a.ToEntity(entity.ChatMessageId)).ToList();
+            var attachmentEntities = request.Attachments.Select(a => a.ToEntity(entity.ChatMessageId, attachmentFiles[a.FileStorageId].StoragePath)).ToList();
             if (attachmentEntities.Count > 0)
             {
                 await _chatMessageAttachmentRepository.AddRangeAsync(attachmentEntities);
@@ -323,7 +323,8 @@ namespace SylviaNG.Community.Application.Services
                         ChatMessageId = newMessage.ChatMessageId,
                         FileStorageId = a.FileStorageId,
                         AttachmentType = a.AttachmentType,
-                        DurationSeconds = a.DurationSeconds
+                        DurationSeconds = a.DurationSeconds,
+                        FilePath = files[a.FileStorageId].StoragePath
                     })
                     .ToList();
                 if (newAttachmentEntities.Count > 0)

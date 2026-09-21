@@ -84,14 +84,15 @@ namespace SylviaNG.Community.Application.Mappings
             };
         }
 
-        public static ChatMessageAttachment ToEntity(this ChatMessageAttachmentRequest request, long chatMessageId)
+        public static ChatMessageAttachment ToEntity(this ChatMessageAttachmentRequest request, long chatMessageId, string filePath)
         {
             return new ChatMessageAttachment
             {
                 ChatMessageId = chatMessageId,
                 FileStorageId = request.FileStorageId,
                 AttachmentType = request.AttachmentType,
-                DurationSeconds = request.DurationSeconds
+                DurationSeconds = request.DurationSeconds,
+                FilePath = filePath
             };
         }
 

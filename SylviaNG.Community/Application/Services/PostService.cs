@@ -116,7 +116,7 @@ namespace SylviaNG.Community.Application.Services
         public async Task<PagedResult<PostResponse>> GetFeedPaginatedAsync(PostFilterRequest request, long callerEmployeeId)
         {
             var caller = await _employeeRepository.GetByIdAsync(callerEmployeeId);
-            var pagedResult = await _postRepository.GetFeedPaginatedAsync(request, caller?.DepartmentId, caller?.SiteId);
+            var pagedResult = await _postRepository.GetFeedPaginatedAsync(request, callerEmployeeId, caller?.DepartmentId, caller?.SiteId);
 
             return new PagedResult<PostResponse>
             {

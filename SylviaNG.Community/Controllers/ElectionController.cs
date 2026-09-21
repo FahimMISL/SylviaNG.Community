@@ -5,6 +5,8 @@ using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionAudienceTargetAdd;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCandidateNominate;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCandidateNominateBulk;
+using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCandidateRemove;
+using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCandidateUpdateManifesto;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionClose;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionCreate;
 using SylviaNG.Community.Application.Features.Elections.Commands.ElectionDelete;
@@ -50,7 +52,7 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<List<ElectionEligibleResponse>>> GetEligible()
         {
             var employeeId = _currentUserService.EmployeeId
-                ?? throw new UnauthorizedException("Only authenticated employees may browse eligible elections.");
+                ?? throw new ForbiddenException("Only authenticated employees may browse eligible elections.");
 
             var result = await _mediator.Send(new ElectionGetEligibleQuery(employeeId));
             return Ok(result);
@@ -154,6 +156,24 @@ namespace SylviaNG.Community.Controllers
             return Ok(count);
         }
 
+        // Removing a nomination and editing its manifesto after the fact are HR-only moderation
+        // actions, unlike the open single-nominate above.
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpDelete("{electionId}/candidates/{candidateId}")]
+        public async Task<ActionResult> RemoveCandidate(long electionId, long candidateId)
+        {
+            await _mediator.Send(new ElectionCandidateRemoveCommand(electionId, candidateId));
+            return Ok();
+        }
+
+        [Authorize(Policy = "HRAdminOnly")]
+        [HttpPut("{electionId}/candidates/{candidateId}/manifesto")]
+        public async Task<ActionResult> UpdateCandidateManifesto(long electionId, long candidateId, [FromBody] ElectionCandidateUpdateManifestoRequest request)
+        {
+            await _mediator.Send(new ElectionCandidateUpdateManifestoCommand(electionId, candidateId, request));
+            return Ok();
+        }
+
         // Votes - casting stays open to any authenticated employee (business rules enforced
         // in ElectionService.CastVoteAsync). Reading results is also left open rather than
         // HRAdminOnly: ElectionMapper.ToResponse already hides VoterId when the election is
@@ -163,7 +183,7 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult<List<long>>> CastVote(long electionId, [FromBody] ElectionVoteCastRequest request)
         {
             var voterId = _currentUserService.EmployeeId
-                ?? throw new UnauthorizedException("Only authenticated employees may cast a vote.");
+                ?? throw new ForbiddenException("Only authenticated employees may cast a vote.");
 
             var ids = await _mediator.Send(new ElectionVoteCastCommand(electionId, request, voterId));
             return Ok(ids);

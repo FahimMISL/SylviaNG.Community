@@ -91,7 +91,7 @@ public class ElectionControllerTests
     }
 
     [Fact]
-    public async Task CastVote_WhenNoEmployeeId_ShouldThrowUnauthorizedException()
+    public async Task CastVote_WhenNoEmployeeId_ShouldThrowForbiddenException()
     {
         // Arrange
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns((long?)null);
@@ -100,7 +100,7 @@ public class ElectionControllerTests
         var act = () => _controller.CastVote(1, new ElectionVoteCastRequest { CandidateIds = new List<long> { 10 } });
 
         // Assert
-        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.UnauthorizedException>();
+        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.ForbiddenException>();
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public class ElectionControllerTests
     }
 
     [Fact]
-    public async Task GetEligible_WhenNoEmployeeId_ShouldThrowUnauthorizedException()
+    public async Task GetEligible_WhenNoEmployeeId_ShouldThrowForbiddenException()
     {
         // Arrange
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns((long?)null);
@@ -131,7 +131,7 @@ public class ElectionControllerTests
         var act = () => _controller.GetEligible();
 
         // Assert
-        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.UnauthorizedException>();
+        await act.Should().ThrowAsync<SylviaNG.Community.Application.Common.Exceptions.ForbiddenException>();
     }
 
     [Fact]

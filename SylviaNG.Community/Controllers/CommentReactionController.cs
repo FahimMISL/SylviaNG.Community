@@ -33,7 +33,7 @@ namespace SylviaNG.Community.Controllers
         {
             // EmployeeId is always the caller's own id - never trust a client-supplied value here,
             // otherwise any authenticated caller could react as anyone else.
-            request.EmployeeId = _currentUserService.EmployeeId ?? 0;
+            request.EmployeeId = _currentUserService.RequireEmployeeId();
             var result = await _mediator.Send(new CommentReactionAddCommand(commentId, request));
             return Ok(result);
         }
@@ -42,9 +42,10 @@ namespace SylviaNG.Community.Controllers
         public async Task<ActionResult> Remove(long commentId, long employeeId)
         {
             // Route employeeId is only honored for HR/Admin (moderation override); everyone else
-            // can only remove their own reaction regardless of what's in the route.
-            var callerId = _currentUserService.EmployeeId ?? 0;
-            var targetEmployeeId = _currentUserService.IsHrOrAdmin ? employeeId : callerId;
+            // can only remove their own reaction regardless of what's in the route. RequireEmployeeId()
+            // is only evaluated on the non-admin branch, so an Admin-type caller (no Employee record)
+            // can still exercise the moderation override without needing a personal identity.
+            var targetEmployeeId = _currentUserService.IsHrOrAdmin ? employeeId : _currentUserService.RequireEmployeeId();
             await _mediator.Send(new CommentReactionRemoveCommand(commentId, targetEmployeeId));
             return Ok();
         }

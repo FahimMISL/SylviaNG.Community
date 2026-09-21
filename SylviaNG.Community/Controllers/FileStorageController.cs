@@ -49,7 +49,7 @@ namespace SylviaNG.Community.Controllers
         {
             // UploadedBy must come from the authenticated caller, never from client input -
             // otherwise anyone can record any employee id as the uploader of any file.
-            request.UploadedBy = _currentUserService.EmployeeId ?? 0;
+            request.UploadedBy = _currentUserService.RequireEmployeeId();
 
             var id = await _mediator.Send(new FileStorageCreateCommand(request));
             return Ok(id);

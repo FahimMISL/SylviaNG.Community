@@ -139,7 +139,13 @@ namespace SylviaNG.Community.Controllers
         [HttpPost("{taskId}/attachments")]
         public async Task<ActionResult<long>> AddAttachment(long taskId, [FromBody] TaskAttachmentAddRequest request)
         {
-            var id = await _mediator.Send(new TaskAttachmentAddCommand(taskId, request, _currentUserService.EmployeeId, _currentUserService.IsHrOrAdmin));
+            // Unlike the other Task actions below, TaskService.AddAttachmentAsync attributes the
+            // attachment's UploadedBy to the caller unconditionally (not just for access-gating),
+            // so - unlike Create/Update/Delete's null-tolerant fallback - a real employee identity
+            // is required here even for an HR/Admin caller. RequireEmployeeId() throws a clean 403
+            // for an Admin-type caller (no Employee record) instead of the attachment silently
+            // recording UploadedBy = 0.
+            var id = await _mediator.Send(new TaskAttachmentAddCommand(taskId, request, _currentUserService.RequireEmployeeId(), _currentUserService.IsHrOrAdmin));
             return Ok(id);
         }
 

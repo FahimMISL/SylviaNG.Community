@@ -55,7 +55,7 @@ namespace SylviaNG.Community.Infrastructure.Configurations
                 .HasForeignKey(t => t.RecurringTaskId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // AssignedBy/AssignedTo reference Employee, which is synced via Kafka and not
+            // AssignedBy/AssignedTo reference Employee, which is externally-owned and not
             // given an enforced FK constraint anywhere else in this codebase (see
             // TeamMemberConfiguration/PostCommentConfiguration) - indexed only.
         }

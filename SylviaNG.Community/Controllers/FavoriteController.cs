@@ -24,7 +24,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet]
         public async Task<ActionResult<List<FavoriteResponse>>> GetAll()
         {
-            var employeeId = _currentUserService.EmployeeId ?? 0;
+            var employeeId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new FavoriteGetAllQuery(employeeId));
             return Ok(result);
         }
@@ -32,7 +32,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Add([FromBody] FavoriteAddRequest request)
         {
-            var employeeId = _currentUserService.EmployeeId ?? 0;
+            var employeeId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new FavoriteAddCommand(employeeId, request));
             return Ok(id);
         }
@@ -40,7 +40,7 @@ namespace SylviaNG.Community.Controllers
         [HttpDelete("{listingId}")]
         public async Task<ActionResult> Remove(long listingId)
         {
-            var employeeId = _currentUserService.EmployeeId ?? 0;
+            var employeeId = _currentUserService.RequireEmployeeId();
             await _mediator.Send(new FavoriteRemoveCommand(employeeId, listingId));
             return Ok();
         }

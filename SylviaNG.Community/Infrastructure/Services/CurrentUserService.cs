@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using SylviaNG.Community.Application.Common.Exceptions;
 using SylviaNG.Community.Application.Interfaces.Services;
 
 namespace SylviaNG.Community.Infrastructure.Services
@@ -26,6 +27,9 @@ namespace SylviaNG.Community.Infrastructure.Services
                 return long.TryParse(value, out var employeeId) ? employeeId : null;
             }
         }
+
+        public long RequireEmployeeId() =>
+            EmployeeId ?? throw new ForbiddenException("This action requires an authenticated employee identity; the current account (e.g. Admin) has none.");
 
         public bool IsHrOrAdmin =>
             _httpContextAccessor.HttpContext?.User?.IsInRole("HR") == true ||

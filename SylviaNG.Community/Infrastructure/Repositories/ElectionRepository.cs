@@ -22,8 +22,12 @@ namespace SylviaNG.Community.Infrastructure.Repositories
 
         public async Task<List<Election>> GetByStatusAsync(string status)
         {
+            // Most recently published first. The UpdatedAt/CreatedAt fallbacks only matter for rows
+            // published before PublishedAt existed and not caught by the migration's backfill.
             return await _dbSet
                 .Where(e => e.Status == status)
+                .OrderByDescending(e => e.PublishedAt ?? e.UpdatedAt ?? e.CreatedAt)
+                .ThenByDescending(e => e.ElectionId)
                 .ToListAsync();
         }
     }

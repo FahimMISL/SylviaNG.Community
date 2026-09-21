@@ -36,7 +36,7 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         // Reports
         Task<long> CreateReportAsync(long reportedBy, MarketplaceReportCreateRequest request);
         Task<PagedResult<MarketplaceReportResponse>> GetReportsPagedAsync(PagedRequest request);
-        Task ResolveReportAsync(long reportId, long reviewerId, MarketplaceReportResolveRequest request);
+        Task ResolveReportAsync(long reportId, long? reviewerId, MarketplaceReportResolveRequest request);
 
         // Purchases
         Task<long> CreatePurchaseAsync(long buyerId, PurchaseCreateRequest request);

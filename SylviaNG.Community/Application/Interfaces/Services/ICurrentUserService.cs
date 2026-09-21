@@ -14,6 +14,13 @@ namespace SylviaNG.Community.Application.Interfaces.Services
         /// </summary>
         long? EmployeeId { get; }
 
+        /// <summary>
+        /// Same as <see cref="EmployeeId"/> but throws <see cref="Application.Common.Exceptions.ForbiddenException"/>
+        /// (mapped to HTTP 403) when the caller has no employee identity - e.g. an Admin system account.
+        /// Use this at any call site that would otherwise need to fall back to a fake id like 0.
+        /// </summary>
+        long RequireEmployeeId();
+
         bool IsHrOrAdmin { get; }
 
         /// <summary>

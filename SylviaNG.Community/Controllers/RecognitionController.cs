@@ -43,7 +43,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPost]
         public async Task<ActionResult<long>> Create([FromBody] RecognitionCreateRequest request)
         {
-            var callerId = _currentUserService.EmployeeId ?? 0;
+            var callerId = _currentUserService.RequireEmployeeId();
             var id = await _mediator.Send(new RecognitionCreateCommand(request, callerId, _currentUserService.IsHrOrAdmin));
             return Ok(id);
         }

@@ -372,7 +372,15 @@ namespace SylviaNG.Community.Application.Services
                     ?? throw new NotFoundException("FileStorage", request.FileStorageId.Value);
             }
 
-            var entity = request.ToEntity(taskId, callerEmployeeId ?? 0);
+            // UploadedBy is attributed to the caller unconditionally (unlike the access checks
+            // above, which tolerate a null caller when isHrOrAdmin), so a null identity here would
+            // silently record UploadedBy = 0 for an Admin-type caller - reject it instead. The
+            // controller (TaskController.AddAttachment) already guards this via RequireEmployeeId(),
+            // this is defense-in-depth for any other caller of this service method.
+            if (callerEmployeeId == null)
+                throw new ForbiddenException("A valid employee identity is required to add a task attachment.");
+
+            var entity = request.ToEntity(taskId, callerEmployeeId.Value);
             await _taskAttachmentRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 

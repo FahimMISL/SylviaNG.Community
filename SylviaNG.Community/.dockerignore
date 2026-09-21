@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/*.user
+**/*.suo
+.git
+.gitignore
+.env
+.env.*
+Dockerfile*
+.dockerignore
+appsettings.Example.json

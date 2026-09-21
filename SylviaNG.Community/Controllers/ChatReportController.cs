@@ -8,6 +8,7 @@ using SylviaNG.Community.Application.Features.ChatReports.Models;
 using SylviaNG.Community.Application.Features.ChatReports.Queries.ChatReportConversationGetForModeration;
 using SylviaNG.Community.Application.Features.ChatReports.Queries.ChatReportGetAllPaged;
 using SylviaNG.Community.Application.Features.ChatReports.Queries.ChatReportMessagesGetPagedForModeration;
+using SylviaNG.Community.Application.Interfaces.Services;
 using SylviaNG.Community.SharedKernel.Pagination;
 
 namespace SylviaNG.Community.Controllers
@@ -17,10 +18,12 @@ namespace SylviaNG.Community.Controllers
     public class ChatReportController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public ChatReportController(IMediator mediator)
+        public ChatReportController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         /// <summary>
@@ -39,7 +42,7 @@ namespace SylviaNG.Community.Controllers
         [HttpPut("{reportId}/resolve")]
         public async Task<ActionResult> Resolve(long reportId, [FromBody] ChatReportResolveRequest request)
         {
-            await _mediator.Send(new ChatReportResolveCommand(reportId, request));
+            await _mediator.Send(new ChatReportResolveCommand(reportId, _currentUserService.EmployeeId, request));
             return Ok();
         }
 

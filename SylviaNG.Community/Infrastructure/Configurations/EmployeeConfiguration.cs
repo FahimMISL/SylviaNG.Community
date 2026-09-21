@@ -69,6 +69,18 @@ namespace SylviaNG.Community.Infrastructure.Configurations
             builder.HasIndex(e => e.DepartmentId);
             builder.HasIndex(e => e.SiteId);
 
+            // Never let a photo silently orphan if the underlying file record is
+            // removed - same reasoning as ChatMessageAttachment's restrict-on-delete.
+            builder.HasOne<FileStorage>()
+                .WithMany()
+                .HasForeignKey(e => e.PhotoFileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne<FileStorage>()
+                .WithMany()
+                .HasForeignKey(e => e.CoverPhotoFileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Seed data - dev personas for the Feature 1 mock current-user switcher
             builder.HasData(
                 new

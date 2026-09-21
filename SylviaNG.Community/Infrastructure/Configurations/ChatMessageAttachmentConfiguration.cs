@@ -15,6 +15,10 @@ namespace SylviaNG.Community.Infrastructure.Configurations
                 .HasConversion<string>()
                 .HasMaxLength(20);
 
+            builder.Property(a => a.FilePath)
+                .IsRequired()
+                .HasMaxLength(1000);
+
             builder.HasIndex(a => a.ChatMessageId);
 
             builder.HasOne<ChatMessage>()

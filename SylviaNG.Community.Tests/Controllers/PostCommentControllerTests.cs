@@ -22,6 +22,7 @@ public class PostCommentControllerTests
         _mediatorMock = new Mock<IMediator>();
         _currentUserServiceMock = new Mock<ICurrentUserService>();
         _currentUserServiceMock.Setup(c => c.EmployeeId).Returns(2);
+        _currentUserServiceMock.Setup(c => c.RequireEmployeeId()).Returns(2);
         _controller = new PostCommentController(_mediatorMock.Object, _currentUserServiceMock.Object);
     }
 

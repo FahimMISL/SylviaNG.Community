@@ -36,6 +36,7 @@ namespace SylviaNG.Community.Application.Mappings
                 PostId = entity.PostId,
                 EmployeeId = entity.EmployeeId,
                 GroupId = entity.GroupId,
+                GroupName = entity.Group?.Name,
                 Type = entity.Type,
                 Visibility = entity.Visibility,
                 Content = entity.Content,

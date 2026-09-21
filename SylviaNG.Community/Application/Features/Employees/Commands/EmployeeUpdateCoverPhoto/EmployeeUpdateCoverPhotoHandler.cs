@@ -14,7 +14,7 @@ namespace SylviaNG.Community.Application.Features.Employees.Commands.EmployeeUpd
 
         public async Task<Unit> Handle(EmployeeUpdateCoverPhotoCommand command, CancellationToken cancellationToken)
         {
-            await _employeeService.UpdateCoverPhotoAsync(command.EmployeeId, command.Request.StoragePath, command.ViewerEmployeeId);
+            await _employeeService.UpdateCoverPhotoAsync(command.EmployeeId, command.Request.StoragePath, command.Request.FileId, command.ViewerEmployeeId);
             return Unit.Value;
         }
     }

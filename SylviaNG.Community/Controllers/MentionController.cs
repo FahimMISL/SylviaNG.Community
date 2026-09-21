@@ -28,7 +28,7 @@ namespace SylviaNG.Community.Controllers
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResult<MentionResponse>>> GetPaged([FromQuery] PagedRequest request)
         {
-            var employeeId = _currentUserService.EmployeeId ?? 0;
+            var employeeId = _currentUserService.EmployeeId ?? -1;
             var result = await _mediator.Send(new MentionGetAllPagedQuery(employeeId, request));
             return Ok(result);
         }
